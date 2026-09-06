@@ -1,3 +1,4 @@
+<!-- Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md. -->
 <template>
   <aside class="sidebar-container" :class="{ 'mobile-open': mobileOpen }" @click="handleSidebarClick">
     <!-- Logo -->
@@ -8,7 +9,7 @@
       <div class="brand-copy">
         <h1 class="logo-text">易创</h1>
         <span class="brand-line"></span>
-        <div class="brand-subtitle">AI创作平台</div>
+        <div class="brand-subtitle">本地增强版 · LOCAL</div>
       </div>
     </div>
 
@@ -98,6 +99,10 @@ v-if="isFeatureEnabled('writeStatistics')" to="/writeStatistics" class="nav-item
     </nav>
 
     <div class="footer-links">
+      <router-link to="/localCenter" class="nav-item footer-item ink-nav-item" :class="{ 'active': currentRoute === '/localCenter' }">
+        <i class="fa-solid fa-hard-drive"></i>
+        <span>本地中心</span>
+      </router-link>
       <router-link to="/feedback" class="nav-item footer-item ink-nav-item" :class="{ 'active': currentRoute === '/feedback' }">
         <i class="fa-regular fa-message"></i>
         <span>反馈</span>

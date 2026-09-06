@@ -1,3 +1,4 @@
+// Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md.
 import { getWritingStorage, isTauriRuntime } from '@/storage'
 import { saveBlobFile } from '@/utils/download'
 import { IndexedDbLocalLibraryStorage } from './indexeddb-local-library'
@@ -182,7 +183,7 @@ export const importLocalBookFromPreview = async (
   }
 }
 
-export const exportLocalBook = async (bookId: number | string, format: 'txt' | 'json') => {
+export const getLocalBookExportPayload = async (bookId: number | string) => {
   const library = getLocalLibraryStorage()
   const book = await library.getLocalBookDetail(bookId)
   if (!book) throw new Error('本地作品不存在')
@@ -193,13 +194,17 @@ export const exportLocalBook = async (bookId: number | string, format: 'txt' | '
   })
   const chapters = tree.flatMap(volume => volume.children)
   const payload = await buildLocalExportPayload(book, volumes, chapters)
+  const reference = await exportLocalBookReference(book.id)
+  if (reference) payload.reference = reference
+  return payload
+}
+
+export const exportLocalBook = async (bookId: number | string, format: 'txt' | 'json') => {
+  const payload = await getLocalBookExportPayload(bookId)
+  const book = payload.book
   const exportDate = formatExportDate(new Date())
   if (format === 'json') {
     // 参考面板数据（大纲/角色/设定/时间线/故事线）随 JSON 备份走；TXT 是纯文本装不下
-    const reference = await exportLocalBookReference(book.id)
-    if (reference) {
-      payload.reference = reference
-    }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
     return await saveBlobFile(blob, `${safeFilename(book.title)}-${exportDate}.json`)
   }

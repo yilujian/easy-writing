@@ -1,3 +1,4 @@
+// Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md.
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 import NProgress from 'nprogress'
@@ -16,6 +17,12 @@ const routes: RouteRecordRaw[] = [
     component: MainLayout,
     redirect: '/novel',
     children: [
+      {
+        path: '/localCenter',
+        name: 'LocalCenter',
+        component: () => import('@/views/LocalCenter/index.vue'),
+        meta: { title: '本地中心' }
+      },
       {
         path: '/novel',
         name: 'Home',

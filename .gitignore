@@ -11,7 +11,6 @@ node_modules
 dist
 dist-ssr
 src-tauri/target
-/tests/
 /release/
 *.local
 
@@ -44,3 +43,6 @@ coverage
 stats.html
 
 docs/design/
+
+# Local companion user data (never commit)
+/local-data/

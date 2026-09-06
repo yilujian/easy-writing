@@ -1,8 +1,9 @@
+<!-- Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md. -->
 <template>
   <el-config-provider :locale="zhCn">
   <div id="app" :class="{ 'desktop-shell': desktopShell, 'web-shell': !desktopShell }">
     <DesktopTitleBar v-if="desktopShell" />
-    <GlobalSearchPalette v-if="desktopShell" />
+    <GlobalSearchPalette />
 
     <div class="app-shell-body">
       <!-- 背景层 -->

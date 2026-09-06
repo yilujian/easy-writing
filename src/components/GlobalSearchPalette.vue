@@ -1,3 +1,4 @@
+<!-- Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md. -->
 <template>
   <Teleport to="body">
     <div v-if="visible" class="gsp-overlay" @mousedown.self="close">
@@ -73,6 +74,7 @@ type IndexedItem = PaletteItem & { index: number }
 
 // 功能导航静态表：与 src/router/index.ts 一级功能页、Sidebar 图标保持一致。
 const FEATURE_ENTRIES: FeatureEntry[] = [
+  { title: '本地中心', path: '/localCenter', icon: 'fa-solid fa-hard-drive', keywords: 'local backup beifen bendizhongxin' },
   { title: '首页', path: '/novel', icon: 'fa-solid fa-house', keywords: 'home shouye sy' },
   { title: '我的作品', path: '/myBooks', icon: 'fa-solid fa-book', keywords: 'books mybooks wodezuopin wdzp zuopin' },
   { title: '工作流建书', path: '/workflowBook', icon: 'fa-solid fa-diagram-project', keywords: 'workflow gongzuoliujianshu gzljs jianshu', featureKey: 'workflowBook' },

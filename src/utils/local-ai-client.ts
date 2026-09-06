@@ -1,3 +1,4 @@
+// Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md.
 import type {
   AiThinkingMode,
   UserAiModelSavePayload,
@@ -8,6 +9,7 @@ import { createThinkStreamFilter, stripThinkBlocks } from '@/utils/ai-think-filt
 import { getLocalAiModelSecret, localAiModelCode, type LocalAiModel } from '@/storage/local-ai-models'
 import { appendLocalAiRecord, estimateTokens } from '@/storage/local-ai-records'
 import { isTauriRuntime } from '@/storage'
+import { localCompanionFetch, hasLocalCompanion } from '@/utils/local-companion'
 
 /**
  * BYOK 直连请求层（OpenAI 兼容协议）：密钥只在本机内存/存储流转，请求直发供应商。
@@ -33,6 +35,7 @@ const resolveAiFetch = async (): Promise<FetchLike> => {
         headers: { Origin: '', ...(init?.headers as Record<string, string> | undefined) },
       })
   }
+  if (await hasLocalCompanion()) return localCompanionFetch
   return window.fetch.bind(window)
 }
 

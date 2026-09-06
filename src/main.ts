@@ -1,3 +1,4 @@
+// Local enhancement modified 2026-09-05; AGPL-3.0-only. See LOCAL-NOTICE.md.
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
@@ -20,6 +21,7 @@ import App from './App.vue'
 import router from './router'
 import { useThemeStore } from '@/stores/theme'
 import { initLocalPrompts } from '@/storage/local-prompts'
+import { startLocalBackupSchedule } from '@/utils/local-companion'
 
 // 清掉旧 SaaS 版本残留的账号持久化，防止陈旧登录态误触云端分支
 localStorage.removeItem('ew-user')
@@ -43,4 +45,5 @@ themeStore.initTheme()
 // 提示词库先于挂载装载：AI 组装器同步读取，必须在任何界面可交互前就绪
 void initLocalPrompts().finally(() => {
   app.mount('#app')
+  startLocalBackupSchedule()
 })

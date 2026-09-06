@@ -1,6 +1,7 @@
-# 允许运行安装后构建脚本的依赖（pnpm v10 默认全部拦截）：
-# esbuild/@parcel/watcher 是原生二进制必须放行，vue-demi 要按 Vue 版本落位
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - esbuild
-  - vue-demi
+# pnpm 11: preserve the upstream allowlist using the new allowBuilds format.
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  vue-demi: true
+  es5-ext: false
+  simple-git-hooks: false

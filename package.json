@@ -42,7 +42,9 @@
     "format": "prettier --write",
     "check": "vue-tsc --noEmit && eslint . --ext .vue,.ts,.tsx --ignore-path .gitignore && vitest run --passWithNoTests",
     "prepare": "simple-git-hooks",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "start:local": "node local/server.mjs",
+    "test:local": "node --test local/server.test.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
