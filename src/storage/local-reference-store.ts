@@ -89,8 +89,9 @@ const withStore = async <T>(
     return await new Promise<T>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, mode)
       const request = run(tx.objectStore(STORE_NAME))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
+      tx.oncomplete = () => resolve(request.result)
+      tx.onerror = () => reject(tx.error || request.error)
+      tx.onabort = () => reject(tx.error || new Error('参考数据事务中止'))
     })
   } finally {
     db.close()
@@ -112,22 +113,30 @@ export const readDoc = async (bookId: string | number): Promise<BookReferenceDoc
   return emptyDoc(bookKey(bookId))
 }
 
-const writeDoc = async (doc: BookReferenceDoc) => {
-  doc.updatedAt = nowIso()
-  // 面板传入的数组/对象可能是 Vue reactive 代理，IndexedDB 结构化克隆会报错；
-  // JSON 往返转成纯数据，同时对齐原服务端 JSON 传输语义（undefined 字段丢弃）。
-  const plain = JSON.parse(JSON.stringify(doc)) as BookReferenceDoc
-  await withStore('readwrite', store => store.put(plain, doc.bookId))
-}
-
 export const mutateDoc = async <T>(
   bookId: string | number,
   fn: (doc: BookReferenceDoc) => T
 ): Promise<T> => {
-  const doc = await readDoc(bookId)
-  const result = fn(doc)
-  await writeDoc(doc)
-  return result
+  const db = await openDb()
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const request = store.get(bookKey(bookId))
+      let result: T
+      request.onsuccess = () => {
+        try {
+          const doc = { ...emptyDoc(bookKey(bookId)), ...(request.result || {}) } as BookReferenceDoc
+          result = fn(doc)
+          doc.updatedAt = nowIso()
+          store.put(JSON.parse(JSON.stringify(doc)), bookKey(bookId))
+        } catch (error) { tx.abort(); reject(error) }
+      }
+      tx.oncomplete = () => resolve(result)
+      tx.onerror = () => reject(tx.error || request.error)
+      tx.onabort = () => reject(tx.error || new Error('参考数据事务中止'))
+    })
+  } finally { db.close() }
 }
 
 /** 服务端接口的 { data } 信封 */

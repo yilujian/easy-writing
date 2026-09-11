@@ -149,12 +149,17 @@ const loadFromDesktop = async () => {
     if (sections) {
       applyParsed(def, sections)
     } else {
-      // 目录里没有这个场景的文件：按默认值补写一份，用户随时可改
+      // 仅创建缺失文件，不覆盖无法识别的原文件；单组失败不影响其他组。
       applyParsed(def, {})
-      await invoke('write_prompt_document', {
-        fileName: fileNameOf(def),
-        content: serializePromptFile(def),
-      })
+      try {
+        const created = await invoke<boolean>('ensure_prompt_document', {
+          fileName: fileNameOf(def),
+          content: serializePromptFile(def),
+        })
+        if (!created) console.warn(`「${def.name}」文件存在但无法识别，原文件未覆盖，本次使用默认值`)
+      } catch (error) {
+        console.warn(`「${def.name}」默认文件无法创建，原文件未修改`, error)
+      }
     }
   }
 }
@@ -174,9 +179,9 @@ export const initLocalPrompts = async () => {
     if (isTauriRuntime()) await loadFromDesktop()
     else await loadFromWeb()
   } catch (error) {
-    // 装载失败按默认值跑，不挡启动；设置中心会再报具体错误
+    // 保留已加载的自定义内容，仅为未加载的组补默认值。
     console.warn('提示词库装载失败，使用内置默认值', error)
-    for (const def of PROMPT_FILE_DEFS) applyParsed(def, {})
+    for (const def of PROMPT_FILE_DEFS) if (!cache.has(def.id)) applyParsed(def, {})
   }
   initialized = true
 }

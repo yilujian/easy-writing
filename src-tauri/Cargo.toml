@@ -1,6 +1,6 @@
 [package]
 name = "ew-client-desktop"
-version = "1.0.7"
+version = "1.0.8"
 description = "易创桌面客户端"
 authors = ["yilujian"]
 license = "AGPL-3.0-only"
@@ -26,8 +26,13 @@ tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 # 单实例锁：两个进程打开同一个 ew-writing.db 会在 Windows 上抢文件锁，
 # 表现为本地库时开时不开。第二个实例直接把已有窗口拉到前台。
 tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-updater = "2"
 # 关窗兜底超时用（tauri 自带 async_runtime 即 tokio，这里显式声明以使用 tokio::time）
 tokio = { version = "1", features = ["time"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# 与 Tauri 的原生窗口调整使用同一主队列，确保几何变更完成后再显示。
+dispatch2 = "0.3.1"

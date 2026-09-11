@@ -1,3 +1,4 @@
+import type { TextCounts } from '@/types/ui-preferences'
 import type { JsonRecord } from '@/types/json'
 import type {
   LocalBook,
@@ -13,6 +14,7 @@ import {
   calcLocalBookStatsWithDrafts,
   loadLocalDraftWordCounts,
   resolveLocalChapterWords,
+  resolveLocalChapterTextWords,
   normalizeLocalBook,
   normalizeLocalChapter,
   normalizeLocalGroup,
@@ -217,12 +219,13 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
   private async syncChapterStatsWithDrafts(
     bookId: number | string,
     chapters: LocalChapter[],
-    draftWords: Map<number, number>
+    draftWords: Map<number, TextCounts>
   ) {
     for (const chapter of chapters.filter(item => !item.deletedAt)) {
       const wordCount = resolveLocalChapterWords(chapter, draftWords)
-      if (Number(chapter.wordCount || 0) !== wordCount) {
-        await this.putChapter(normalizeLocalChapter({ ...chapter, wordCount, updateTime: chapter.updateTime }))
+      const textWordCount = resolveLocalChapterTextWords(chapter, draftWords)
+      if (Number(chapter.wordCount || 0) !== wordCount || chapter.textWordCount !== textWordCount) {
+        await this.putChapter(normalizeLocalChapter({ ...chapter, wordCount, textWordCount, updateTime: chapter.updateTime }))
       }
     }
   }
@@ -233,7 +236,7 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
     const draftWords = await loadLocalDraftWordCounts(book.id)
     await this.syncChapterStatsWithDrafts(book.id, chapters, draftWords)
     const stats = await calcLocalBookStatsWithDrafts(book.id, chapters, draftWords)
-    if (Number(book.wordCount || 0) === stats.wordCount && Number(book.chapterCount || 0) === stats.chapterCount) return book
+    if (Number(book.wordCount || 0) === stats.wordCount && Number(book.chapterCount || 0) === stats.chapterCount && book.textWordCount === stats.textWordCount) return book
     const next = normalizeLocalBook({ ...book, ...stats, updateTime: book.updateTime })
     await this.putBook(next)
     return next
@@ -408,7 +411,11 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
 
   async getLocalBookTree(bookId: number | string) {
     await this.getDb()
-    return buildLocalTree(await this.listBookVolumes(bookId), await this.listBookChapters(bookId))
+    const chapters = await this.listBookChapters(bookId)
+    const counts = await loadLocalDraftWordCounts(bookId)
+    return buildLocalTree(await this.listBookVolumes(bookId), chapters.map(chapter => ({
+      ...chapter, wordCount: resolveLocalChapterWords(chapter, counts), textWordCount: resolveLocalChapterTextWords(chapter, counts)
+    })))
   }
 
   async createLocalVolume(payload: { bookId: number | string; title: string; summary?: string; sortNo?: number; planMeta?: JsonRecord | null }) {

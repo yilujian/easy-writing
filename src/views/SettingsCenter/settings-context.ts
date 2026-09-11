@@ -1,3 +1,4 @@
+import type { UiPreferences } from '@/types/ui-preferences'
 import { inject, type InjectionKey, type Ref } from 'vue'
 import type { LocalWritingSettings } from '@/storage'
 import type { EditorPreferenceDraft, SettingsSectionId } from '@/types/settings-center'
@@ -10,6 +11,7 @@ import type { EditorPreferenceDraft, SettingsSectionId } from '@/types/settings-
 export interface SettingsCenterContext {
   settingsDraft: Ref<LocalWritingSettings>
   editorDraft: EditorPreferenceDraft
+  uiDraft: UiPreferences
   selectedTheme: Ref<string>
   selectedSkin: Ref<string>
   desktopSupported: boolean

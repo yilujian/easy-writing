@@ -75,6 +75,16 @@
                   <el-switch v-model="editorDraft.quickPolishToolbarEnabled" />
                 </label>
               </section>
+              <section class="settings-card">
+                <div class="settings-card-title"><i class="fa-solid fa-align-left"></i><strong>字数统计</strong></div>
+                <span class="setting-label">默认统计口径</span>
+                <div class="option-row two">
+                  <button type="button" class="settings-option-btn" :class="{ active: uiDraft.wordCountMode === 'all' }" :aria-pressed="uiDraft.wordCountMode === 'all'" @click="uiDraft.wordCountMode = 'all'">含标点</button>
+                  <button type="button" class="settings-option-btn" :class="{ active: uiDraft.wordCountMode === 'text' }" :aria-pressed="uiDraft.wordCountMode === 'text'" @click="uiDraft.wordCountMode = 'text'">不含标点</button>
+                </div>
+                <p class="hint-line">两种口径均忽略空格与换行；不含标点时仅计汉字、字母和数字。悬浮编辑器底部字数可查看两种结果。</p>
+                <p class="hint-line">章节目录、书架与码字统计同步使用此口径。旧码字记录没有不含标点数据时显示「—」。</p>
+              </section>
             </div>
           </section>
 </template>
@@ -86,7 +96,7 @@ import type { SettingsOption } from '@/types/settings-center'
 import { useSettingsCenterCtx } from '../settings-context'
 
 const ctx = useSettingsCenterCtx()
-const { editorDraft } = ctx
+const { editorDraft, uiDraft } = ctx
 
 const soundOptions: ReadonlyArray<SettingsOption<LocalWritingSettings['typingSound']>> =
   TYPING_SOUND_OPTIONS

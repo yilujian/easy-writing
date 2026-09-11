@@ -27,7 +27,7 @@ v-if="book.coverUrl && !coverLoadFailed[book.id]" class="book-cover-image" :src=
                 </div>
                 <div class="book-meta">
                   <div class="book-title">{{ book.title }}</div>
-                  <div class="book-sub">{{ book.category || '未分类' }} · {{ formatWordCount(book.wordCount) }}</div>
+                  <div class="book-sub">{{ book.category || '未分类' }} · {{ wordCounter.value(book) == null ? '—' : formatWordCount(wordCounter.value(book)) }}</div>
                   <div class="book-intro">{{ book.intro || '暂无简介' }}</div>
                   <div class="book-update">上次编辑：{{ formatUpdateTime(book.updateTime || book.createTime) }}</div>
                 </div>
@@ -62,12 +62,15 @@ v-if="book.coverUrl && !coverLoadFailed[book.id]" class="book-cover-image" :src=
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
 import type { Book } from '@/types'
 import { getLocalLibraryStorage } from '@/storage/local-library'
 import { formatUpdateTime, formatWordCount, getSortedBooks } from '../home-format'
+
+const wordCounter = useWordCount()
 
 const router = useRouter()
 const themeStore = useThemeStore()

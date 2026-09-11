@@ -19,7 +19,7 @@ v-model:visible="visibleProxy" title="回收站" width="800px" :close-on-click-m
               <h4 class="book-title">{{ book.title }}</h4>
               <div class="meta-row">
                 <el-tag size="small" type="info">{{ book.category || '未分类' }}</el-tag>
-                <span class="word-count">{{ book.wordCount || 0 }} 字</span>
+                <span class="word-count">{{ wordCounter.format(wordCounter.value(book)) }} 字</span>
               </div>
               <p class="delete-time">
                 <i class="fa-regular fa-clock"></i>
@@ -62,12 +62,15 @@ v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { ref, computed } from 'vue';
 import EwModal from '@/components/EwModal/index.vue';
 import { Book } from '@/types';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import defaultCover from '@/assets/images/bg/bg1.jpg'; // 使用一个默认封面或占位图
 import { getLocalLibraryStorage, purgeLocalBookCompletely } from '@/storage/local-library';
+
+const wordCounter = useWordCount()
 
 const props = defineProps({
   visible: { type: Boolean, default: false }

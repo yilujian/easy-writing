@@ -1,4 +1,6 @@
 import dayjs from 'dayjs'
+import { readUiPreferences } from '@/stores/ui-preferences'
+import type { WordCountMode } from '@/types/ui-preferences'
 
 /**
  * 本地码字统计：替代旧服务端 /writing/statistics 三接口的数据源。
@@ -17,9 +19,9 @@ import dayjs from 'dayjs'
 
 export interface LocalStatsDayItem {
   date: string
-  words: number
-  manualWords: number
-  aiWords: number
+  words: number | null
+  manualWords: number | null
+  aiWords: number | null
 }
 
 export interface LocalStatsOverview {
@@ -27,35 +29,38 @@ export interface LocalStatsOverview {
   targetWords: number
   manualTargetWords: number
   aiTargetWords: number
-  todayWords: number
-  manualWords: number
-  aiWords: number
+  todayWords: number | null
+  manualWords: number | null
+  aiWords: number | null
 }
 
 export interface LocalStatsTrend {
   days: number
   startDate: string
   endDate: string
-  totalWords: number
-  totalManualWords: number
-  totalAiWords: number
+  totalWords: number | null
+  totalManualWords: number | null
+  totalAiWords: number | null
   list: LocalStatsDayItem[]
 }
 
 export interface LocalStatsCalendar {
   month: string
-  monthTotalWords: number
-  monthManualWords: number
-  monthAiWords: number
-  monthAvgWords: number
-  monthManualAvgWords: number
-  monthAiAvgWords: number
+  monthTotalWords: number | null
+  monthManualWords: number | null
+  monthAiWords: number | null
+  monthAvgWords: number | null
+  monthManualAvgWords: number | null
+  monthAiAvgWords: number | null
   list: LocalStatsDayItem[]
 }
 
 interface DayBookRecord {
   manual: number
   ai: number
+  // 缺失表示该日有旧口径记录，无法精确回算；不得以新记录补成完整历史。
+  textManual?: number
+  textAi?: number
 }
 
 interface StatsFile {
@@ -65,6 +70,7 @@ interface StatsFile {
   days: Record<string, Record<string, DayBookRecord>>
   /** 每章最近一次落盘的字数基线；key = `${bookId}:${chapterId}` */
   chapterBase: Record<string, number>
+  chapterTextBase: Record<string, number>
 }
 
 const STORAGE_KEY = 'ew-local-write-stats'
@@ -75,7 +81,8 @@ const emptyFile = (): StatsFile => ({
   version: 1,
   targets: { manual: DEFAULT_DAILY_TARGET, ai: DEFAULT_DAILY_TARGET },
   days: {},
-  chapterBase: {}
+  chapterBase: {},
+  chapterTextBase: {}
 })
 
 const loadFile = (): StatsFile => {
@@ -91,7 +98,9 @@ const loadFile = (): StatsFile => {
         ai: Number(parsed.targets?.ai) >= 0 ? Number(parsed.targets.ai) : DEFAULT_DAILY_TARGET
       },
       days: parsed.days && typeof parsed.days === 'object' ? parsed.days : {},
-      chapterBase: parsed.chapterBase && typeof parsed.chapterBase === 'object' ? parsed.chapterBase : {}
+      chapterBase: parsed.chapterBase && typeof parsed.chapterBase === 'object' ? parsed.chapterBase : {},
+      chapterTextBase:
+        parsed.chapterTextBase && typeof parsed.chapterTextBase === 'object' ? parsed.chapterTextBase : {}
     }
   } catch (error) {
     console.warn('读取本地码字统计失败，重建空账本', error)
@@ -116,106 +125,122 @@ const saveFile = (file: StatsFile) => {
 
 const today = () => dayjs().format('YYYY-MM-DD')
 
-const sumDay = (day: Record<string, DayBookRecord> | undefined, bookId?: string) => {
-  let manual = 0
-  let ai = 0
-  if (day) {
-    for (const [id, record] of Object.entries(day)) {
-      if (bookId && id !== bookId) continue
-      manual += Number(record?.manual || 0)
-      ai += Number(record?.ai || 0)
-    }
+const averageKnown = (value: number | null, divisor: number) =>
+  value === null ? null : Math.round(value / divisor)
+const addKnown = (left: number | null, right: number | null) =>
+  left === null || right === null ? null : left + right
+const normalizeCount = (value: number) => Math.max(0, Math.round(Number(value) || 0))
+
+const sumDay = (
+  day: Record<string, DayBookRecord> | undefined,
+  bookId?: string,
+  mode: WordCountMode = 'all'
+) => {
+  let manual: number | null = 0
+  let ai: number | null = 0
+  for (const [id, record] of Object.entries(day || {})) {
+    if (bookId && id !== bookId) continue
+    manual = addKnown(
+      manual,
+      mode === 'all'
+        ? Number(record.manual || 0)
+        : typeof record.textManual === 'number'
+          ? record.textManual
+          : null
+    )
+    ai = addKnown(
+      ai,
+      mode === 'all' ? Number(record.ai || 0) : typeof record.textAi === 'number' ? record.textAi : null
+    )
   }
-  return { manual, ai, total: manual + ai }
+  return { manual, ai, total: addKnown(manual, ai) }
 }
 
-/** 章节加载完成时焊基线：只在还没有基线时写入，不记账。
- *  不做这一步的话，已有章节的第一段输入会在首次落盘时被当成存量吞掉。 */
+const dayRecord = (file: StatsFile, bookId: string | number) => {
+  const day = (file.days[today()] ||= {})
+  return (day[String(bookId)] ||= { manual: 0, ai: 0, textManual: 0, textAi: 0 })
+}
+
+/** 两种口径分别维护基线。切换显示口径不会改动基线，也不会制造码字增量。 */
 export const primeChapterWords = (
   bookId: string | number,
   chapterId: string | number,
-  wordCount: number
+  wordCount: number,
+  textWordCount?: number
 ) => {
   const file = loadFile()
-  const baseKey = `${String(bookId)}:${String(chapterId)}`
-  if (file.chapterBase[baseKey] !== undefined) return
-  file.chapterBase[baseKey] = Math.max(0, Math.round(Number(wordCount) || 0))
+  const key = `${bookId}:${chapterId}`
+  file.chapterBase[key] ??= normalizeCount(wordCount)
+  if (textWordCount !== undefined) file.chapterTextBase[key] ??= normalizeCount(textWordCount)
   saveFile(file)
 }
 
-/** 写作台每次落盘调用：上报某章当前字数，内部按基线差记账 */
 export const recordChapterWords = (
   bookId: string | number,
   chapterId: string | number,
-  wordCount: number
+  wordCount: number,
+  textWordCount?: number
 ) => {
-  const count = Math.max(0, Math.round(Number(wordCount) || 0))
-  const baseKey = `${String(bookId)}:${String(chapterId)}`
+  recordChapterLanding(bookId, chapterId, wordCount, textWordCount, 'manual')
+}
+
+function recordChapterLanding(
+  bookId: string | number,
+  chapterId: string | number,
+  wordCount: number,
+  textWordCount: number | undefined,
+  source: 'manual' | 'ai'
+) {
   const file = loadFile()
-  const base = file.chapterBase[baseKey]
-  file.chapterBase[baseKey] = count
-  if (base === undefined) {
-    // 首次见到该章：只建基线，不把存量字数记成今天的码字
-    saveFile(file)
-    return
+  const key = `${bookId}:${chapterId}`
+  const count = normalizeCount(wordCount)
+  const textCount = textWordCount === undefined ? undefined : normalizeCount(textWordCount)
+  const delta = Math.max(0, count - (file.chapterBase[key] ?? (source === 'ai' ? 0 : count)))
+  const textDelta =
+    textCount === undefined
+      ? undefined
+      : Math.max(0, textCount - (file.chapterTextBase[key] ?? (source === 'ai' ? 0 : textCount)))
+  file.chapterBase[key] = count
+  if (textCount !== undefined) file.chapterTextBase[key] = textCount
+  if (delta || textDelta) {
+    const record = dayRecord(file, bookId)
+    record[source] += delta
+    const field = source === 'manual' ? 'textManual' : 'textAi'
+    if (textDelta === undefined) delete record[field]
+    else if (record[field] !== undefined) record[field]! += textDelta
   }
-  const delta = count - base
-  if (delta <= 0) {
-    saveFile(file)
-    return
-  }
-  const date = today()
-  const bookKey = String(bookId)
-  const day = (file.days[date] ||= {})
-  const record = (day[bookKey] ||= { manual: 0, ai: 0 })
-  record.manual += delta
   saveFile(file)
 }
 
-/** 编辑器内 AI 插字（划词改写/快捷续写/幽灵字采纳/取名插入）：字数记 AI，
- *  基线同步抬高，随后的自动落盘不会把这批字再记成手写。
- *  传负数用于「废弃改写」回冲：AI 计数与基线一并回退（都不小于 0）。 */
+/** AI 插入或撤销按两种口径分别记账，即使含标点净增为 0 也不能漏掉纯文字增量。 */
 export const recordAiWordsAdded = (
   bookId: string | number,
   chapterId: string | number,
-  wordDelta: number
+  wordDelta: number,
+  textWordDelta?: number
 ) => {
   const delta = Math.round(Number(wordDelta) || 0)
-  if (!delta) return
+  const textDelta = textWordDelta === undefined ? undefined : Math.round(Number(textWordDelta) || 0)
+  if (!delta && !textDelta) return
   const file = loadFile()
-  const baseKey = `${String(bookId)}:${String(chapterId)}`
-  const base = file.chapterBase[baseKey]
-  if (base !== undefined) {
-    file.chapterBase[baseKey] = Math.max(0, base + delta)
-  }
-  const date = today()
-  const day = (file.days[date] ||= {})
-  const record = (day[String(bookId)] ||= { manual: 0, ai: 0 })
+  const key = `${bookId}:${chapterId}`
+  if (file.chapterBase[key] !== undefined) file.chapterBase[key] = Math.max(0, file.chapterBase[key] + delta)
+  if (textDelta !== undefined && file.chapterTextBase[key] !== undefined)
+    file.chapterTextBase[key] = Math.max(0, file.chapterTextBase[key] + textDelta)
+  const record = dayRecord(file, bookId)
   record.ai = Math.max(0, record.ai + delta)
+  if (textDelta === undefined) delete record.textAi
+  else if (record.textAi !== undefined) record.textAi = Math.max(0, record.textAi + textDelta)
   saveFile(file)
 }
 
-/** 工作流整章落稿：与基线求差记 AI（新章没基线=整章都算 AI），基线抬到当前值。
- *  流式生成会多次落稿，按基线差累计恰好等于全文净增，不会重复记。 */
 export const recordAiChapterLanding = (
   bookId: string | number,
   chapterId: string | number,
-  wordCount: number
+  wordCount: number,
+  textWordCount?: number
 ) => {
-  const count = Math.max(0, Math.round(Number(wordCount) || 0))
-  const baseKey = `${String(bookId)}:${String(chapterId)}`
-  const file = loadFile()
-  const delta = count - (file.chapterBase[baseKey] ?? 0)
-  file.chapterBase[baseKey] = count
-  if (delta <= 0) {
-    saveFile(file)
-    return
-  }
-  const date = today()
-  const day = (file.days[date] ||= {})
-  const record = (day[String(bookId)] ||= { manual: 0, ai: 0 })
-  record.ai += delta
-  saveFile(file)
+  recordChapterLanding(bookId, chapterId, wordCount, textWordCount, 'ai')
 }
 
 export const getStatsTargets = () => {
@@ -232,10 +257,14 @@ export const setStatsTargets = (targets: { manual: number; ai: number }) => {
   saveFile(file)
 }
 
-export const getStatsOverview = (date?: string, bookId?: string | number): LocalStatsOverview => {
+export const getStatsOverview = (
+  date?: string,
+  bookId?: string | number,
+  mode: WordCountMode = readUiPreferences().wordCountMode
+): LocalStatsOverview => {
   const file = loadFile()
   const day = file.days[date || today()]
-  const { manual, ai, total } = sumDay(day, bookId === undefined ? undefined : String(bookId))
+  const { manual, ai, total } = sumDay(day, bookId === undefined ? undefined : String(bookId), mode)
   return {
     date: date || today(),
     targetWords: file.targets.manual + file.targets.ai,
@@ -250,34 +279,39 @@ export const getStatsOverview = (date?: string, bookId?: string | number): Local
 export const getStatsTrend = (
   days: number,
   endDate?: string,
-  bookId?: string | number
+  bookId?: string | number,
+  mode: WordCountMode = readUiPreferences().wordCountMode
 ): LocalStatsTrend => {
   const file = loadFile()
   const span = Math.min(Math.max(Math.round(days) || 7, 1), 90)
   const end = dayjs(endDate || today())
   const filterBook = bookId === undefined ? undefined : String(bookId)
   const list: LocalStatsDayItem[] = []
-  let totalManual = 0
-  let totalAi = 0
+  let totalManual: number | null = 0
+  let totalAi: number | null = 0
   for (let offset = span - 1; offset >= 0; offset -= 1) {
     const date = end.subtract(offset, 'day').format('YYYY-MM-DD')
-    const { manual, ai, total } = sumDay(file.days[date], filterBook)
-    totalManual += manual
-    totalAi += ai
+    const { manual, ai, total } = sumDay(file.days[date], filterBook, mode)
+    totalManual = addKnown(totalManual, manual)
+    totalAi = addKnown(totalAi, ai)
     list.push({ date, words: total, manualWords: manual, aiWords: ai })
   }
   return {
     days: span,
     startDate: end.subtract(span - 1, 'day').format('YYYY-MM-DD'),
     endDate: end.format('YYYY-MM-DD'),
-    totalWords: totalManual + totalAi,
+    totalWords: addKnown(totalManual, totalAi),
     totalManualWords: totalManual,
     totalAiWords: totalAi,
     list
   }
 }
 
-export const getStatsCalendar = (month: string, bookId?: string | number): LocalStatsCalendar => {
+export const getStatsCalendar = (
+  month: string,
+  bookId?: string | number,
+  mode: WordCountMode = readUiPreferences().wordCountMode
+): LocalStatsCalendar => {
   const file = loadFile()
   const start = dayjs(`${month}-01`)
   const filterBook = bookId === undefined ? undefined : String(bookId)
@@ -285,26 +319,26 @@ export const getStatsCalendar = (month: string, bookId?: string | number): Local
   // 日均分母：当月为已过天数，历史月为整月天数
   const elapsed = start.isSame(dayjs(), 'month') ? dayjs().date() : daysInMonth
   const list: LocalStatsDayItem[] = []
-  let totalManual = 0
-  let totalAi = 0
+  let totalManual: number | null = 0
+  let totalAi: number | null = 0
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = start.date(day).format('YYYY-MM-DD')
-    const { manual, ai, total } = sumDay(file.days[date], filterBook)
-    totalManual += manual
-    totalAi += ai
-    if (total > 0) {
+    const { manual, ai, total } = sumDay(file.days[date], filterBook, mode)
+    totalManual = addKnown(totalManual, manual)
+    totalAi = addKnown(totalAi, ai)
+    if (total === null || total > 0) {
       list.push({ date, words: total, manualWords: manual, aiWords: ai })
     }
   }
   const divisor = Math.max(1, elapsed)
   return {
     month,
-    monthTotalWords: totalManual + totalAi,
+    monthTotalWords: addKnown(totalManual, totalAi),
     monthManualWords: totalManual,
     monthAiWords: totalAi,
-    monthAvgWords: Math.round((totalManual + totalAi) / divisor),
-    monthManualAvgWords: Math.round(totalManual / divisor),
-    monthAiAvgWords: Math.round(totalAi / divisor),
+    monthAvgWords: averageKnown(addKnown(totalManual, totalAi), divisor),
+    monthManualAvgWords: averageKnown(totalManual, divisor),
+    monthAiAvgWords: averageKnown(totalAi, divisor),
     list
   }
 }
@@ -313,11 +347,11 @@ export const getStatsCalendar = (month: string, bookId?: string | number): Local
 export const getStatsStreak = (): number => {
   const file = loadFile()
   let cursor = dayjs()
-  if (sumDay(file.days[cursor.format('YYYY-MM-DD')]).total <= 0) {
+  if (Number(sumDay(file.days[cursor.format('YYYY-MM-DD')]).total) <= 0) {
     cursor = cursor.subtract(1, 'day')
   }
   let streak = 0
-  while (sumDay(file.days[cursor.format('YYYY-MM-DD')]).total > 0) {
+  while (Number(sumDay(file.days[cursor.format('YYYY-MM-DD')]).total) > 0) {
     streak += 1
     cursor = cursor.subtract(1, 'day')
   }

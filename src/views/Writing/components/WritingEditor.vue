@@ -568,15 +568,16 @@
             <strong>{{ sensitiveStatusValue }}</strong>
           </span>
         </el-tooltip>
-        <span
-          class="divider word-count-status"
-          :title="`本章：${chapterWordCount}`"
-          :aria-label="`本章：${chapterWordCount}`"
-        >
-          <i class="fa-solid fa-align-left"></i>
-          <span class="status-label">本章:</span>
-          <strong>{{ chapterWordCount }}</strong>
-        </span>
+        <el-tooltip placement="top">
+          <template #content>
+            <div>含标点：{{ chapterWordCount }} 字</div>
+            <div>不含标点：{{ countTextWords(editorStore.activeChapterTextContent) }} 字</div>
+          </template>
+          <span class="divider word-count-status" tabindex="0" :aria-label="`本章${wordCounter.label.value}：${displayedChapterWords}`">
+            <i class="fa-solid fa-align-left"></i><span class="status-label">本章:</span>
+            <strong>{{ displayedChapterWords }}</strong>
+          </span>
+        </el-tooltip>
       </div>
     </div>
 
@@ -673,10 +674,13 @@ import {
   plainTextToTiptapJson,
 } from '../editor-utils/content-normalize'
 import { primeChapterWords, recordAiWordsAdded, recordChapterWords } from '@/storage/local-write-stats'
-import { countWords } from '@/utils/word-count'
+import { useWordCount } from '@/composables/use-word-count'
+import { countWords, countTextWords } from '@/utils/word-count'
 
 // 编辑器样式 Store
 const editorStore = useWritingEditorStore()
+const wordCounter = useWordCount()
+const displayedChapterWords = computed(() => wordCounter.mode.value === 'text' ? countTextWords(editorStore.activeChapterTextContent) : editorStore.chapterWordCount)
 const {
   fontFamily,
   fontBold,
@@ -785,6 +789,7 @@ const saveStatusIconMeta = computed<{ icon: string; label: string } | null>(
 )
 
 const planRemainingText = computed(() => {
+  if (!planStore.todayWordsAvailable) return '—'
   const target = planTargetWords.value || 0
   if (!target) return '未设置'
   const diff = Math.max(target - (planTodayWords.value || 0), 0)
@@ -1023,6 +1028,7 @@ const markChapterReady = (chapterId: number) => {
       resolveCurrentBookId(),
       readyChapterId.value,
       countWords(readEditorText()),
+      countTextWords(readEditorText()),
     )
   }
   // 正文整体替换会让旧的建议标注随替换事务失效；内容就绪后按当前建议重挂。
@@ -1263,7 +1269,7 @@ const {
   activeChapterSummary,
   onDraftDirty: () => markDraftDirty(),
   onSelectionMenu: () => updateBubbleMenuPosition(),
-  onAiTextInserted: text => recordAiInsert(countWords(text)),
+  onAiTextInserted: text => recordAiInsert(countWords(text), countTextWords(text)),
 })
 
 const {
@@ -1312,6 +1318,10 @@ watch(
   () => nextTick(updateToolbarMode),
 )
 
+watch(wordCounter.mode, async () => {
+  await ensurePersisted()
+  await planStore.fetchSummary()
+})
 const lastPlanWordCount = ref(0)
 let editorKeydownTarget: HTMLElement | null = null
 let editorKeydownHandler: ((e: KeyboardEvent) => void) | null = null
@@ -1413,14 +1423,15 @@ const reviewData = ref({
   range: { from: 0, to: 0 },
   // 本次改写已记入 AI 账的净增字数，点「废弃」时按它回冲
   aiDelta: 0,
+  textAiDelta: 0,
 })
 
 // AI 插字记账：净增记 AI 并抬基线，自动落盘就不会把这批字记成手写；负数=回冲
-const recordAiInsert = (wordDelta: number) => {
+const recordAiInsert = (wordDelta: number, textWordDelta: number) => {
   const bookId = String(props.bookId || '')
   const chapterId = Number(activeChapterId.value || 0)
   if (!bookId || !chapterId) return
-  recordAiWordsAdded(bookId, chapterId, wordDelta)
+  recordAiWordsAdded(bookId, chapterId, wordDelta, textWordDelta)
 }
 
 const {
@@ -1534,7 +1545,7 @@ const updateLocalChapterMeta = async (draft: LocalChapterDraft) => {
   if (!bookId || !chapterId) return
   const wordCount = countWords(draft.textContent)
   // 本地码字统计记账：按章节字数基线求净增，喂首页进度与统计页
-  recordChapterWords(bookId, chapterId, wordCount)
+  recordChapterWords(bookId, chapterId, wordCount, countTextWords(draft.textContent))
   const book = await localLibrary.updateLocalChapterContentMeta({
     bookId,
     chapterId,
@@ -1548,7 +1559,7 @@ const updateLocalChapterMeta = async (draft: LocalChapterDraft) => {
   if (!book) return
   window.dispatchEvent(
     new CustomEvent('ew-writing-book-words', {
-      detail: { bookId, wordCount: Number(book.wordCount || 0) },
+      detail: { bookId, wordCount: Number(book.wordCount || 0), textWordCount: book.textWordCount },
     }),
   )
   // 章节数变了才是真的结构变化（增删章），这时才值得重载详情与目录。
@@ -1759,7 +1770,7 @@ const loadChapterContent = async (chapterId: number) => {
       markChapterReady(chapterId)
       const wordCount = countWords(text)
       editorStore.setChapterWordCount(wordCount)
-      editorStore.resetLocalSessionWords(wordCount)
+      editorStore.resetLocalSessionWords(wordCount, countTextWords(text))
       editorStore.setChapterSaveState('local_only', '仅本地保存')
       suppressAutoSave.value = false
     })
@@ -1942,7 +1953,7 @@ const createEditorInstance = (content: unknown) => {
             !workflowMode.value && workflowManualEditUnlocked.value,
           onFetchSuggestion: fetchAiSuggestion,
           onCancelRequest: cancelAiSuggestion,
-          onAcceptSuggestion: text => recordAiInsert(countWords(text)),
+          onAcceptSuggestion: text => recordAiInsert(countWords(text), countTextWords(text)),
           debounceMin: 1200,
           debounceMax: 1800,
           minRequestInterval: 8000,
@@ -2022,13 +2033,13 @@ const createEditorInstance = (content: unknown) => {
           if (isUserTextInput) {
             triggerTypingFeedback()
             planStore.notifyTyping()
-            planStore.addWords(insertedChars)
+            planStore.addWords(insertedChars, countInsertedCharsFromTransaction(transaction, 'text'))
           }
 
           // 删除：无论是键盘删除、剪切、还是粘贴覆盖造成的删除，都需要回退净字数
           const deletedChars = countDeletedCharsFromTransaction(transaction)
           if (deletedChars > 0) {
-            planStore.addWords(-deletedChars)
+            planStore.addWords(-deletedChars, -countDeletedCharsFromTransaction(transaction, 'text'))
           }
         }
       }
@@ -2133,24 +2144,26 @@ const handleAiDone = (payload: {
   // 改写文本已进正文：净增部分记 AI（替换比原文短则不记也不扣）
   const insertedText = editor.value?.state.doc.textBetween(payload.from, payload.to, '\n') || ''
   const aiDelta = Math.max(0, countWords(insertedText) - countWords(payload.original))
-  if (aiDelta > 0) recordAiInsert(aiDelta)
+  const textAiDelta = Math.max(0, countTextWords(insertedText) - countTextWords(payload.original))
+  if (aiDelta || textAiDelta) recordAiInsert(aiDelta, textAiDelta)
   if (!workflowManualEditUnlocked.value) return
   isBubbleMenuVisible.value = false
   reviewData.value = {
     original: payload.original,
     range: { from: payload.from, to: payload.to },
     aiDelta,
+    textAiDelta,
   }
   isReviewing.value = true
 }
 
 const handleReviewClose = async (action: 'accept' | 'discard') => {
-  const { aiDelta } = reviewData.value
+  const { aiDelta, textAiDelta } = reviewData.value
   isReviewing.value = false
-  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0 }
-  if (action === 'discard' && aiDelta > 0) {
+  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
+  if (action === 'discard' && (aiDelta > 0 || textAiDelta > 0)) {
     // 正文已被浮窗恢复原样，把当时记的 AI 字数冲掉
-    recordAiInsert(-aiDelta)
+    recordAiInsert(-aiDelta, -textAiDelta)
   }
   if (action === 'accept' && !workflowLocked.value) {
     await saveChapterContent(false)
@@ -2163,7 +2176,7 @@ const handleReviewClose = async (action: 'accept' | 'discard') => {
 function resetAiReviewState() {
   if (!isReviewing.value && !reviewData.value.original) return
   isReviewing.value = false
-  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0 }
+  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
   try {
     editor.value?.commands.unsetAiReviewRange()
   } catch {
@@ -2244,7 +2257,7 @@ const handleInsertName = (name: string) => {
   const text = String(name || '').trim()
   if (!text || !editor.value) return
   editor.value.chain().focus().insertContent(text).run()
-  recordAiInsert(countWords(text))
+  recordAiInsert(countWords(text), countTextWords(text))
   markDraftDirty()
   ElMessage.success(`已插入：${text}`)
 }

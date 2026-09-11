@@ -1,6 +1,6 @@
 {
   "name": "easy-writing",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "易创：纯本地、开源的 AI 网文写作桌面软件，支持小说创作、BYOK、自定义提示词与本地数据存储",
   "author": "yilujian",

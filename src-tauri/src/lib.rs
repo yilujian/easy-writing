@@ -11,6 +11,8 @@ use tauri::menu::{
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
+mod window_state;
+
 const MAIN_WINDOW_LABEL: &str = "main";
 /// 主窗口关闭兜底超时：前端 onCloseRequested 正常会自行 destroy；
 /// 超时后仍存在且页面已不在应用内（JS 已失联）才强制销毁。
@@ -601,6 +603,20 @@ fn list_prompt_documents() -> Result<Vec<PromptDocument>, String> {
     Ok(documents)
 }
 
+/// 启动时只创建缺失文件，不能覆盖无法读取或 ID 损坏的用户文件。
+#[tauri::command]
+fn ensure_prompt_document(file_name: String, content: String) -> Result<bool, String> {
+    use std::io::Write;
+    let safe_name = sanitize_segment(&file_name, "提示词");
+    if !safe_name.to_ascii_lowercase().ends_with(".md") { return Err("提示词文件必须是 .md".to_string()); }
+    let path = ensure_prompt_dir()?.join(safe_name);
+    match std::fs::OpenOptions::new().write(true).create_new(true).open(path) {
+        Ok(mut file) => { file.write_all(content.as_bytes()).map_err(|error| error.to_string())?; Ok(true) },
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 #[tauri::command]
 fn write_prompt_document(file_name: String, content: String) -> Result<(), String> {
     let safe_name = sanitize_segment(&file_name, "提示词");
@@ -960,7 +976,9 @@ fn build_main_window(app: &DesktopAppHandle) -> tauri::Result<DesktopWebviewWind
     let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::default())
         .title(&app_name)
         .inner_size(1440.0, 960.0)
-        .min_inner_size(1100.0, 720.0)
+        .min_inner_size(window_state::MIN_WIDTH, window_state::MIN_HEIGHT)
+        .center()
+        .visible(false)
         .shadow(true)
         // 对应原配置 dragDropEnabled: false
         .disable_drag_drop_handler()
@@ -979,7 +997,9 @@ fn build_main_window(app: &DesktopAppHandle) -> tauri::Result<DesktopWebviewWind
     #[cfg(target_os = "windows")]
     let builder = builder.decorations(false);
 
-    builder.build()
+    let window = builder.build()?;
+    window_state::restore(&window);
+    Ok(window)
 }
 
 /// 关窗超时兜底：CloseRequested 后前端正常路径（备份→destroy）会自行关窗；
@@ -1022,12 +1042,14 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(window_state::plugin())
         .setup(|app| {
             build_main_window(app.handle())?;
             Ok(())
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::CloseRequested { .. }) {
+                window_state::save_before_close(window);
                 schedule_main_window_close_fallback(window);
             }
         })
@@ -1047,6 +1069,7 @@ pub fn run() {
             rank_crawl_render_page,
             get_prompt_dir,
             list_prompt_documents,
+            ensure_prompt_document,
             write_prompt_document,
             open_prompt_dir,
         ]);

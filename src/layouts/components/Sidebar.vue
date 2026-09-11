@@ -12,106 +12,29 @@
       </div>
     </div>
 
-    <!-- 导航菜单 -->
+    <!-- 空分组不渲染分隔线，所有可选入口隐藏后仍可从设置恢复。 -->
     <nav class="nav-section">
-      <div class="nav-group">
-        <router-link to="/novel" class="nav-item ink-nav-item" :class="{ 'active': currentRoute === '/novel' }">
-          <i class="fa-solid fa-house"></i>
-          <span>首页</span>
-        </router-link>
-
-        <router-link to="/myBooks" class="nav-item ink-nav-item" :class="{ 'active': currentRoute === '/myBooks' }">
-          <i class="fa-solid fa-book"></i>
-          <span>我的作品</span>
-        </router-link>
-
-        <router-link
-          v-if="isFeatureEnabled('workflowBook')"
-          to="/workflowBook"
-          class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute.startsWith('/workflowBook') }"
-        >
-          <i class="fa-solid fa-diagram-project"></i>
-          <span>工作流建书</span>
-        </router-link>
-
-        <router-link
-v-if="isFeatureEnabled('writeStatistics')" to="/writeStatistics" class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute === '/writeStatistics' }">
-          <i class="fa-solid fa-chart-line"></i>
-          <span>码字统计</span>
-        </router-link>
-      </div>
-
-      <div class="menu-divider"></div>
-
-      <div class="nav-group">
-        <router-link v-if="isFeatureEnabled('novelRank')" to="/novelRank" class="nav-item ink-nav-item" :class="{ 'active': currentRoute === '/novelRank' }">
-          <i class="fa-solid fa-arrow-trend-up"></i>
-          <span>榜单风向</span>
-        </router-link>
-
-        <router-link
-          v-if="isFeatureEnabled('breakdown')"
-          to="/bookBreakdown"
-          class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute.startsWith('/bookBreakdown') }"
-        >
-          <i class="fa-solid fa-file-invoice"></i>
-          <span>竞品拆书</span>
-        </router-link>
-
-        <router-link
-          v-if="isFeatureEnabled('inspiration')"
-          to="/inspiration"
-          class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute === '/inspiration' }"
-        >
-          <i class="fa-regular fa-lightbulb"></i>
-          <span>灵感素材</span>
-        </router-link>
-      </div>
-
-      <div class="menu-divider"></div>
-
-      <div class="nav-group">
-        <router-link
-          v-if="isFeatureEnabled('byokModels')"
-          to="/aiModels"
-          class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute.startsWith('/aiModels') }"
-        >
-          <i class="fa-solid fa-cube"></i>
-          <span>模型管理</span>
-        </router-link>
-
-        <router-link
-          to="/prompts"
-          class="nav-item ink-nav-item"
-          :class="{ 'active': currentRoute.startsWith('/prompts') }"
-        >
-          <i class="fa-regular fa-file-lines"></i>
-          <span>提示词</span>
-        </router-link>
-
-      </div>
+      <template
+ v-for="(group, index) in visibleGroups" :key="group.title">
+        <div v-if="index" class="menu-divider"></div>
+        <div class="nav-group">
+          <router-link
+v-for="item in group.items" :key="item.id" :to="item.path!" class="nav-item ink-nav-item"
+            :class="{ active: currentRoute === item.path || currentRoute.startsWith(`${item.path}/`) }">
+            <i :class="item.icon"></i><span>{{ item.label }}</span>
+          </router-link>
+        </div>
+      </template>
     </nav>
-
     <div class="footer-links">
-      <router-link to="/feedback" class="nav-item footer-item ink-nav-item" :class="{ 'active': currentRoute === '/feedback' }">
-        <i class="fa-regular fa-message"></i>
-        <span>反馈</span>
-      </router-link>
-
-      <button
-        type="button"
-        class="nav-item footer-item ink-nav-item"
-        @click="checkForUpdates"
-      >
-        <i class="fa-solid fa-rotate"></i>
-        <span>检查更新</span>
-      </button>
-
+      <template v-for="item in footerItems" :key="item.id">
+        <router-link v-if="item.path" :to="item.path" class="nav-item footer-item ink-nav-item" :class="{ active: currentRoute === item.path }">
+          <i :class="item.icon"></i><span>{{ item.label }}</span>
+        </router-link>
+        <button v-else type="button" class="nav-item footer-item ink-nav-item" @click="checkForUpdates">
+          <i :class="item.icon"></i><span>{{ item.label }}</span>
+        </button>
+      </template>
       <button
         type="button"
         class="nav-item footer-item ink-nav-item"
@@ -132,6 +55,8 @@ import { useRoute } from 'vue-router'
 import LocalWritingSettingsModal from '@/views/Writing/components/LocalWritingSettingsModal.vue'
 
 import { useAppConfigStore } from '@/stores/app-config'
+import { useUiPreferencesStore } from '@/stores/ui-preferences'
+import { navigationGroups } from '@/config/navigation'
 
 const props = defineProps<{
   mobileOpen?: boolean
@@ -145,7 +70,12 @@ const route = useRoute()
 const currentRoute = computed(() => route.path)
 // 后台「功能与访问策略」关停的功能，导航入口直接隐藏
 const appConfigStore = useAppConfigStore()
-const { isFeatureEnabled } = appConfigStore
+const preferences = useUiPreferencesStore()
+const filteredGroups = computed(() => navigationGroups.map(group => ({
+  ...group, items: group.items.filter(item => preferences.isMenuVisible(item.id) && (!item.featureKey || appConfigStore.isFeatureEnabled(item.featureKey)))
+})))
+const visibleGroups = computed(() => filteredGroups.value.slice(0, -1).filter(group => group.items.length))
+const footerItems = computed(() => filteredGroups.value[filteredGroups.value.length - 1].items)
 const localSettingsVisible = ref(false)
 // 「检查更新」交给 App.vue：桌面端检查官网更新源，网页端打开官网下载页
 const checkForUpdates = () => {

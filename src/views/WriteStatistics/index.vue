@@ -1,5 +1,6 @@
 <template>
   <div class="statistics-page">
+    <p class="count-mode-note">统计口径：{{ wordCounter.label.value }}<span v-if="hasMissingCounts"> · 部分旧记录无法补算，缺失值显示「—」</span></p>
     <section class="statistics-grid">
       <article class="fusion-card today-overview">
         <div class="card-title">今日概览</div>
@@ -18,14 +19,14 @@
               古法码字
             </div>
             <div class="source-value">{{ fmt(manualWords) }}<span>字</span></div>
-            <div class="source-ratio">{{ sourceRatio(manualWords) }}%</div>
+            <div class="source-ratio">{{ sourceRatio(manualWords) }}</div>
           </div>
           <div class="source-card source-card--ai">
             <div class="source-label">
               AI码字
             </div>
             <div class="source-value">{{ fmt(aiWords) }}<span>字</span></div>
-            <div class="source-ratio">{{ sourceRatio(aiWords) }}%</div>
+            <div class="source-ratio">{{ sourceRatio(aiWords) }}</div>
           </div>
         </div>
         <p class="overview-note">
@@ -151,11 +152,11 @@
           >
             <template v-if="!cell.empty">
               <span class="day-num">{{ cell.day }}</span>
-              <span v-if="cell.manualWords" class="day-source day-source--manual">
+              <span v-if="cell.manualWords === null || cell.manualWords" class="day-source day-source--manual">
                 <i class="fa-solid fa-feather-pointed"></i>
                 {{ fmt(cell.manualWords) }}
               </span>
-              <span v-if="cell.aiWords" class="day-source day-source--ai">
+              <span v-if="cell.aiWords === null || cell.aiWords" class="day-source day-source--ai">
                 <i class="fa-solid fa-robot"></i>
                 {{ fmt(cell.aiWords) }}
               </span>
@@ -176,10 +177,10 @@
           </div>
           <div class="progress-content">
             <div class="ring" :style="ringStyle(manualProgress, 'manual')">
-              <span>{{ manualProgress }}%</span>
+              <span>{{ manualWords === null ? '—' : `${manualProgress}%` }}</span>
             </div>
             <div class="progress-info">
-              <div><span>今日进度</span><strong>{{ manualProgress }}%</strong></div>
+              <div><span>今日进度</span><strong>{{ manualWords === null ? '—' : `${manualProgress}%` }}</strong></div>
               <div><span>目标</span><strong>{{ fmt(manualTargetWords) }} 字</strong></div>
               <div><span>已完成</span><strong>{{ fmt(manualWords) }} 字</strong></div>
             </div>
@@ -197,10 +198,10 @@
           </div>
           <div class="progress-content">
             <div class="ring" :style="ringStyle(aiProgress, 'ai')">
-              <span>{{ aiProgress }}%</span>
+              <span>{{ aiWords === null ? '—' : `${aiProgress}%` }}</span>
             </div>
             <div class="progress-info">
-              <div><span>今日进度</span><strong>{{ aiProgress }}%</strong></div>
+              <div><span>今日进度</span><strong>{{ aiWords === null ? '—' : `${aiProgress}%` }}</strong></div>
               <div><span>目标</span><strong>{{ fmt(aiTargetWords) }} 字</strong></div>
               <div><span>已完成</span><strong>{{ fmt(aiWords) }} 字</strong></div>
             </div>
@@ -268,6 +269,7 @@
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
@@ -285,6 +287,8 @@ import {
   type LocalStatsOverview,
   type LocalStatsTrend
 } from '@/storage/local-write-stats'
+
+const wordCounter = useWordCount()
 
 const localLibrary = getLocalLibraryStorage()
 
@@ -317,7 +321,7 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(num) ? num : 0
 }
 
-const fmt = (value: unknown) => Math.round(toNumber(value)).toLocaleString()
+const fmt = (value: unknown) => value == null ? '—' : Math.round(toNumber(value)).toLocaleString()
 
 const activeBookId = computed(() => {
   return selectedBook.value === 'all' ? undefined : selectedBook.value
@@ -332,17 +336,18 @@ const canNextMonth = computed(() => currentMonth.value.isBefore(dayjs().startOf(
 const targetWords = computed(() => toNumber(overview.value?.targetWords))
 const manualTargetWords = computed(() => toNumber(overview.value?.manualTargetWords))
 const aiTargetWords = computed(() => toNumber(overview.value?.aiTargetWords))
-const todayWords = computed(() => toNumber(overview.value?.todayWords))
-const manualWords = computed(() => toNumber(overview.value?.manualWords))
-const aiWords = computed(() => toNumber(overview.value?.aiWords))
+const todayWords = computed(() => overview.value?.todayWords ?? null)
+const manualWords = computed(() => overview.value?.manualWords ?? null)
+const aiWords = computed(() => overview.value?.aiWords ?? null)
 
-const sourceRatio = (value: number) => {
-  if (!todayWords.value) return 0
-  return Math.round((value / todayWords.value) * 1000) / 10
+const sourceRatio = (value: number | null) => {
+  if (value === null || todayWords.value === null) return '—'
+  if (!todayWords.value) return '0%'
+  return `${Math.round((value / todayWords.value) * 1000) / 10}%`
 }
 
-const percent = (value: number, target: number) => {
-  if (!target) return 0
+const percent = (value: number | null, target: number) => {
+  if (value === null || !target) return 0
   return Math.min(100, Math.round((value / target) * 100))
 }
 
@@ -352,17 +357,17 @@ const aiProgress = computed(() => percent(aiWords.value, aiTargetWords.value))
 const trendList = computed(() => (trendData.value?.list || []) as LocalStatsDayItem[])
 const trendDays = computed(() => Math.min(Math.max(Number(trendPeriod.value) || 7, 1), 30))
 const trendLabel = computed(() => `${trendDays.value}日`)
-const trendManualTotal = computed(() => toNumber(trendData.value?.totalManualWords))
-const trendAiTotal = computed(() => toNumber(trendData.value?.totalAiWords))
-const trendTotalWords = computed(() => toNumber(trendData.value?.totalWords))
+const trendManualTotal = computed(() => trendData.value?.totalManualWords ?? null)
+const trendAiTotal = computed(() => trendData.value?.totalAiWords ?? null)
+const trendTotalWords = computed(() => trendData.value?.totalWords ?? null)
 
 const calendarList = computed(() => (calendarData.value?.list || []) as LocalStatsDayItem[])
-const calendarTotalWords = computed(() => toNumber(calendarData.value?.monthTotalWords))
-const calendarManualTotal = computed(() => toNumber(calendarData.value?.monthManualWords))
-const calendarAiTotal = computed(() => toNumber(calendarData.value?.monthAiWords))
-const calendarAvgWords = computed(() => toNumber(calendarData.value?.monthAvgWords))
-const calendarManualAvg = computed(() => toNumber(calendarData.value?.monthManualAvgWords))
-const calendarAiAvg = computed(() => toNumber(calendarData.value?.monthAiAvgWords))
+const calendarTotalWords = computed(() => calendarData.value?.monthTotalWords ?? null)
+const calendarManualTotal = computed(() => calendarData.value?.monthManualWords ?? null)
+const calendarAiTotal = computed(() => calendarData.value?.monthAiWords ?? null)
+const calendarAvgWords = computed(() => calendarData.value?.monthAvgWords ?? null)
+const calendarManualAvg = computed(() => calendarData.value?.monthManualAvgWords ?? null)
+const calendarAiAvg = computed(() => calendarData.value?.monthAiAvgWords ?? null)
 const manualMonthTarget = computed(() => manualTargetWords.value * currentMonth.value.daysInMonth())
 const aiMonthTarget = computed(() => aiTargetWords.value * currentMonth.value.daysInMonth())
 
@@ -380,8 +385,8 @@ const calendarCells = computed(() => {
     key: string
     empty: boolean
     day?: number
-    manualWords?: number
-    aiWords?: number
+    manualWords?: number | null
+    aiWords?: number | null
     hasData?: boolean
     isToday?: boolean
     title?: string
@@ -392,16 +397,16 @@ const calendarCells = computed(() => {
   for (let day = 1; day <= days; day += 1) {
     const date = start.date(day).format('YYYY-MM-DD')
     const record = calendarMap.value.get(date)
-    const manual = toNumber(record?.manualWords)
-    const ai = toNumber(record?.aiWords)
-    const total = manual + ai
+    const manual = record ? record.manualWords : 0
+    const ai = record ? record.aiWords : 0
+    const total = manual === null || ai === null ? null : manual + ai
     cells.push({
       key: date,
       empty: false,
       day,
       manualWords: manual,
       aiWords: ai,
-      hasData: total > 0,
+      hasData: total === null || total > 0,
       isToday: date === todayDate.value,
       title: `${date}\n古法码字：${fmt(manual)} 字\nAI码字：${fmt(ai)} 字\n合计：${fmt(total)} 字`
     })
@@ -420,8 +425,8 @@ const buildTrendOption = () => {
   const split = readCssVar('--ui-border') || 'rgba(0,0,0,0.08)'
   const panel = readCssVar('--ui-glass-bg') || 'rgba(255,255,255,0.95)'
   const xAxis = trendList.value.map(item => dayjs(item.date).format('MM/DD'))
-  const manualSeries = trendList.value.map(item => toNumber(item.manualWords))
-  const aiSeries = trendList.value.map(item => toNumber(item.aiWords))
+  const manualSeries = trendList.value.map(item => item.manualWords)
+  const aiSeries = trendList.value.map(item => item.aiWords)
   return {
     backgroundColor: 'transparent',
     grid: { left: 54, right: 24, top: 24, bottom: 34 },
@@ -547,6 +552,10 @@ const refreshAll = async () => {
   await Promise.all([fetchOverview(), fetchTrend(), fetchCalendar()])
 }
 
+const hasMissingCounts = computed(() => wordCounter.mode.value === 'text' &&
+  (todayWords.value === null || trendList.value.some(item => item.words === null) || calendarList.value.some(item => item.words === null)))
+watch(wordCounter.mode, refreshAll)
+
 const prevMonth = () => {
   currentMonth.value = currentMonth.value.subtract(1, 'month').startOf('month')
 }
@@ -616,6 +625,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+.count-mode-note { color: var(--ink-sec); font-size: 13px; margin: 0 0 16px; }
 .statistics-page {
   padding: 4px 14px 36px;
   min-height: calc(100vh - var(--desktop-titlebar-height, 0px) - 56px);

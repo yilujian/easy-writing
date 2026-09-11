@@ -1,4 +1,5 @@
-import { countWords } from '@/utils/word-count'
+import type { WordCountMode } from '@/types/ui-preferences'
+import { countWords, countTextWords } from '@/utils/word-count'
 
 /**
  * 从 ProseMirror 事务里统计本次编辑净插入/净删除的字数（全站口径）。
@@ -6,7 +7,7 @@ import { countWords } from '@/utils/word-count'
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PM Transaction 结构按最小假设访问
-export const countInsertedCharsFromTransaction = (transaction: any): number => {
+export const countInsertedCharsFromTransaction = (transaction: any, mode: WordCountMode = 'all'): number => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PM Step
     const steps: any[] = Array.isArray(transaction?.steps) ? transaction.steps : []
@@ -20,14 +21,14 @@ export const countInsertedCharsFromTransaction = (transaction: any): number => {
       insertedText += content.textBetween(0, content.size, '\n', '\n')
     }
 
-    return countWords(insertedText)
+    return mode === 'text' ? countTextWords(insertedText) : countWords(insertedText)
   } catch {
     return 0
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PM Transaction
-export const countDeletedCharsFromTransaction = (transaction: any): number => {
+export const countDeletedCharsFromTransaction = (transaction: any, mode: WordCountMode = 'all'): number => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PM Step
     const steps: any[] = Array.isArray(transaction?.steps) ? transaction.steps : []
@@ -48,7 +49,7 @@ export const countDeletedCharsFromTransaction = (transaction: any): number => {
       deletedText += docBefore.textBetween(from, to, '\n', '\n')
     }
 
-    return countWords(deletedText)
+    return mode === 'text' ? countTextWords(deletedText) : countWords(deletedText)
   } catch {
     return 0
   }

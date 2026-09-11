@@ -37,6 +37,7 @@
         <div ref="paneScrollRef" class="settings-pane-scroll">
           <OverviewPane v-if="activeSection === 'overview'" />
           <WritingPane v-else-if="activeSection === 'writing'" />
+          <MenuPane v-else-if="activeSection === 'menus'" />
           <AppearancePane v-else-if="activeSection === 'appearance'" />
           <SyncPane v-else-if="activeSection === 'sync'" />
           <SensitiveWordsPane v-else-if="activeSection === 'sensitive'" />
@@ -89,6 +90,8 @@ import {
 } from '@/storage'
 import type { EditorPreferenceDraft, SettingsNavGroup, SettingsSectionId } from '@/types/settings-center'
 import { SETTINGS_CENTER_CTX } from './settings-context'
+import { defaultUiPreferences, useUiPreferencesStore } from '@/stores/ui-preferences'
+import MenuPane from './panes/MenuPane.vue'
 import OverviewPane from './panes/OverviewPane.vue'
 import WritingPane from './panes/WritingPane.vue'
 import AppearancePane from './panes/AppearancePane.vue'
@@ -105,6 +108,8 @@ const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
 }>()
 
+const uiPreferences = useUiPreferencesStore()
+const uiDraft = reactive(defaultUiPreferences())
 const themeStore = useThemeStore()
 const editorStore = useWritingEditorStore()
 const backupService = getLocalBackupService()
@@ -121,6 +126,7 @@ const navGroups: SettingsNavGroup[] = [
     items: [
       { id: 'overview', label: '总览', icon: 'fa-solid fa-table-cells-large' },
       { id: 'writing', label: '写作体验', icon: 'fa-regular fa-pen-to-square' },
+      { id: 'menus', label: '菜单管理', icon: 'fa-solid fa-bars' },
       { id: 'appearance', label: '外观主题', icon: 'fa-solid fa-palette' },
       { id: 'sync', label: '保存与备份', icon: 'fa-solid fa-cloud-arrow-up' },
       { id: 'sensitive', label: '敏感词库', icon: 'fa-solid fa-shield-halved' },
@@ -142,6 +148,7 @@ const navGroups: SettingsNavGroup[] = [
 
 const sectionMeta: Record<SettingsSectionId, { title: string; description: string }> = {
   overview: { title: '设置中心', description: '统一管理写作体验、AI 能力与数据保存' },
+  menus: { title: '菜单管理', description: '选择侧边栏中显示的功能入口' },
   writing: { title: '写作体验', description: '管理打字反馈、自爆挑战与写作辅助' },
   appearance: { title: '外观主题', description: '切换创作空间的主题、字体与排版' },
   sync: { title: '保存与备份', description: '管理本地自动保存、备份与版本保留策略' },
@@ -175,6 +182,7 @@ const editorDraft = reactive<EditorPreferenceDraft>({
 provide(SETTINGS_CENTER_CTX, {
   settingsDraft,
   editorDraft,
+  uiDraft,
   selectedTheme,
   selectedSkin,
   desktopSupported,
@@ -203,6 +211,7 @@ const instantHint = computed(() => (activeSection.value === 'sensitive' ? '词�
 const loadSettings = async () => {
   loading.value = true
   try {
+    Object.assign(uiDraft, { hiddenMenus: [...uiPreferences.hiddenMenus], wordCountMode: uiPreferences.wordCountMode })
     const stored = await backupService.getSettings()
     settingsDraft.value = normalizeLocalWritingSettings(stored)
     selectedTheme.value = themeStore.currentTheme
@@ -232,6 +241,7 @@ const saveSettings = async () => {
   try {
     const saved = await backupService.saveSettings(settingsDraft.value)
     settingsDraft.value = saved
+    uiPreferences.save(uiDraft)
     applyEditorDraft()
     if (selectedTheme.value !== themeStore.currentTheme) themeStore.switchTheme(selectedTheme.value)
     if (selectedSkin.value !== themeStore.currentSkin) themeStore.switchSkin(selectedSkin.value)
@@ -260,7 +270,7 @@ const applyEditorDraft = () => {
 
 const restoreDefaults = async () => {
   try {
-    await inkConfirm('将写作体验、外观与备份设置恢复为默认值？点击「保存设置」后生效。', '恢复默认', {
+    await inkConfirm('将菜单、字数统计、写作体验、外观与备份设置恢复为默认值？点击「保存设置」后生效。', '恢复默认', {
       confirmButtonText: '恢复默认',
       cancelButtonText: '取消',
       type: 'warning',
@@ -268,6 +278,7 @@ const restoreDefaults = async () => {
   } catch {
     return
   }
+  Object.assign(uiDraft, defaultUiPreferences())
   settingsDraft.value = { ...DEFAULT_LOCAL_WRITING_SETTINGS }
   Object.assign(editorDraft, {
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, PingFang SC, Microsoft YaHei',
@@ -683,6 +694,12 @@ const restoreDefaults = async () => {
     min-width: 138px;
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  .menu-management {
+    > .hint-line { margin: 0 0 18px; }
+    .switch-row > span { flex-direction: row; align-items: center; gap: 12px; }
+    .switch-row i { width: 20px; text-align: center; color: var(--ink-sec); }
   }
 
   .settings-two-col {

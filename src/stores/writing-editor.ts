@@ -91,6 +91,7 @@ export interface WritingEditorState {
   chapterWordCount: number;
   localSessionWords: number;
   localSessionBaseWordCount: number;
+  localSessionBaseTextWordCount: number;
   isChapterSaving: boolean;
   chapterSaveState: ChapterSaveState;
   chapterSaveMessage: string;
@@ -133,6 +134,7 @@ export const useWritingEditorStore = defineStore({
     chapterWordCount: 0,
     localSessionWords: 0,
     localSessionBaseWordCount: 0,
+    localSessionBaseTextWordCount: 0,
     isChapterSaving: false,
     chapterSaveState: 'idle',
     chapterSaveMessage: '',
@@ -212,7 +214,8 @@ export const useWritingEditorStore = defineStore({
         this.activeChapterSummary = String(payload.summary || '');
         this.activeChapterTextContent = '';
         this.localSessionWords = 0;
-        this.localSessionBaseWordCount = 0;
+        this.localSessionBaseTextWordCount = 0;
+      this.localSessionBaseWordCount = 0;
         this.setWritingScrollRatio(0, null);
       } else {
         this.activeChapterId = null;
@@ -220,7 +223,8 @@ export const useWritingEditorStore = defineStore({
         this.activeChapterSummary = '';
         this.activeChapterTextContent = '';
         this.localSessionWords = 0;
-        this.localSessionBaseWordCount = 0;
+        this.localSessionBaseTextWordCount = 0;
+      this.localSessionBaseWordCount = 0;
         this.setWritingScrollRatio(0, null);
       }
     },
@@ -228,7 +232,8 @@ export const useWritingEditorStore = defineStore({
     setActiveChapterSummary(val: string) { this.activeChapterSummary = val; },
     setActiveChapterTextContent(val: string) { this.activeChapterTextContent = val; },
     setChapterWordCount(val: number) { this.chapterWordCount = val; },
-    resetLocalSessionWords(baseWordCount = 0) {
+    resetLocalSessionWords(baseWordCount = 0, baseTextWordCount = 0) {
+      this.localSessionBaseTextWordCount = baseTextWordCount;
       this.localSessionBaseWordCount = Math.max(0, Math.trunc(Number(baseWordCount) || 0));
       this.localSessionWords = 0;
     },

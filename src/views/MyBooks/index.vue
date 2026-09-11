@@ -183,7 +183,7 @@ v-for="option in sortOptions" :key="option.value" :command="option.value"
               <div class="work-meta">
                 <span class="meta-item">
                   <!-- <i class="fa-solid fa-font"></i> -->
-                  {{ formatWordCount(work.wordCount) }}
+                  {{ wordCounter.value(work) == null ? '—' : formatWordCount(wordCounter.value(work)) }}
                 </span>
                 <span class="meta-item">
                   <i class="fa-regular fa-clock"></i>
@@ -273,6 +273,7 @@ v-model:visible="showCreateModal" :book-data="currentBook" :book-groups="bookGro
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { computed, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { useRouter, useRoute } from 'vue-router'
@@ -288,6 +289,8 @@ import { Book, BookGroup } from "@/types"
 import { CATEGORY_TAG_MAP } from '@/utils/constants'
 import { useThemeStore } from '@/stores/theme'
 import { getLocalLibraryStorage } from '@/storage/local-library'
+
+const wordCounter = useWordCount()
 
 type SortValue = 'updateTime_DESC' | 'updateTime_ASC' | 'createTime_DESC' | 'wordCount_DESC' | 'wordCount_ASC' | 'title_ASC'
 
@@ -483,7 +486,8 @@ const formatUpdateTime = (value?: string) => {
   return date.isValid() ? date.format('YYYY-MM-DD HH:mm') : '--'
 }
 
-const formatWordCount = (value?: number) => {
+const formatWordCount = (value?: number | null) => {
+  if (value === null) return '—'
   const safe = Math.max(0, Number(value) || 0)
   return `${safe}字`
 }
@@ -546,7 +550,7 @@ const compareBooks = (a: Book, b: Book) => {
   if (sortBy === 'title') {
     diff = String(a.title || '').localeCompare(String(b.title || ''), 'zh-CN')
   } else if (sortBy === 'wordCount') {
-    diff = (Number(a.wordCount) || 0) - (Number(b.wordCount) || 0)
+    diff = (wordCounter.value(a) ?? -1) - (wordCounter.value(b) ?? -1)
   } else {
     diff = toSortTime(a[sortBy]) - toSortTime(b[sortBy])
   }

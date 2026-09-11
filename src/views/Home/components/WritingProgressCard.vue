@@ -19,7 +19,7 @@
                 <span class="progress-current">{{ formatNumber(progress.manual) }}</span>
                 <span class="progress-unit">/ {{ formatNumber(progress.manualTarget) }} 字</span>
               </div>
-              <div class="progress-block-sub manual">已完成古法码字目标 {{ manualPercent }}%</div>
+              <div class="progress-block-sub manual">已完成古法码字目标 {{ progress.manual === null ? '—' : `${manualPercent}%` }}</div>
               <div class="progress-track">
                 <div class="progress-fill manual" :style="{ width: manualPercent + '%' }"></div>
               </div>
@@ -34,7 +34,7 @@
                 <span class="progress-current">{{ formatNumber(progress.ai) }}</span>
                 <span class="progress-unit">/ {{ formatNumber(progress.aiTarget) }} 字</span>
               </div>
-              <div class="progress-block-sub ai">AI辅助生成占比 {{ aiRatio }}%</div>
+              <div class="progress-block-sub ai">AI辅助生成占比 {{ aiRatio === null ? '—' : `${aiRatio}%` }}</div>
               <div class="progress-track">
                 <div class="progress-fill ai" :style="{ width: aiPercent + '%' }"></div>
               </div>
@@ -57,20 +57,23 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useWordCount } from '@/composables/use-word-count'
+import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Book } from '@/types'
 import { getLocalLibraryStorage } from '@/storage/local-library'
 import { getStatsOverview, getStatsStreak } from '@/storage/local-write-stats'
 import { getSortedBooks } from '../home-format'
 
+const wordCounter = useWordCount()
 const router = useRouter()
 const localLibrary = getLocalLibraryStorage()
 
 const progress = ref({
-  manual: 0,
+  manual: 0 as number | null,
   manualTarget: 0,
   manualUpdatedAt: '未更新',
-  ai: 0,
+  ai: 0 as number | null,
   aiTarget: 0,
   aiUpdatedAt: '未更新',
   streak: 0
@@ -79,21 +82,22 @@ const progress = ref({
 const progressLoading = ref(true)
 
 const manualPercent = computed(() => {
-  if (!progress.value.manualTarget) return 0
+  if (progress.value.manual === null || !progress.value.manualTarget) return 0
   return Math.min(100, Math.round((progress.value.manual / progress.value.manualTarget) * 100))
 })
 const aiPercent = computed(() => {
-  if (!progress.value.aiTarget) return 0
+  if (progress.value.ai === null || !progress.value.aiTarget) return 0
   return Math.min(100, Math.round((progress.value.ai / progress.value.aiTarget) * 100))
 })
 // AI辅助生成占比 = AI字数 / 总字数，与进度条(AI/目标)是不同口径
 const aiRatio = computed(() => {
+  if (progress.value.manual === null || progress.value.ai === null) return null
   const total = progress.value.manual + progress.value.ai
   if (!total) return 0
   return Math.round((progress.value.ai / total) * 100)
 })
 
-const formatNumber = (value: number) => value.toLocaleString('zh-CN')
+const formatNumber = (value: number | null) => value === null ? '—' : value.toLocaleString('zh-CN')
 
 const fetchProgress = () => {
   progressLoading.value = true
@@ -112,6 +116,8 @@ const fetchProgress = () => {
     progressLoading.value = false
   }
 }
+
+watch(wordCounter.mode, fetchProgress)
 
 const goCreateBook = () => {
   router.push({ path: '/myBooks', query: { create: '1' } })

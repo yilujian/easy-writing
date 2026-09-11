@@ -3,7 +3,8 @@ import type { Book } from '@/types'
 
 /** 首页各卡共用的展示格式化；纯函数，无状态 */
 
-export const formatWordCount = (value?: number) => {
+export const formatWordCount = (value?: number | null) => {
+  if (value === null) return '—'
   const safe = Math.max(0, Number(value) || 0)
   if (safe >= 10000) return `${(safe / 10000).toFixed(1)}万字`
   return `${safe}字`

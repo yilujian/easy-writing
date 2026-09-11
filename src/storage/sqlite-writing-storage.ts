@@ -1,3 +1,4 @@
+import { countTextWords } from '@/utils/word-count'
 import { recordWriteJournal } from './write-journal'
 import {
   assertChapterWriteBack,
@@ -131,6 +132,10 @@ export class SqliteWritingStorage implements WritingStorage {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_chapter_versions_chapter ON chapter_versions (chapterId, createdAt DESC)'
     ).catch(() => undefined)
+    const columns = await db.select<{ name: string }>('PRAGMA table_info(chapter_contents)')
+    if (!columns.some(column => column.name === 'textWordCount')) {
+      await db.execute('ALTER TABLE chapter_contents ADD COLUMN textWordCount INTEGER')
+    }
     await this.backfillWordCountsOnce(db)
   }
 
@@ -220,8 +225,8 @@ export class SqliteWritingStorage implements WritingStorage {
   private async upsertChapterRow(db: TauriDatabase, record: StoredLocalChapterDraft) {
     await db.execute(
       `INSERT OR REPLACE INTO chapter_contents
-      (storageKey, userId, bookId, chapterId, payload, dirty, conflict, updatedAt, lastBackedUpAt, wordCount)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      (storageKey, userId, bookId, chapterId, payload, dirty, conflict, updatedAt, lastBackedUpAt, wordCount, textWordCount)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         record.storageKey,
         String(record.userId),
@@ -233,6 +238,7 @@ export class SqliteWritingStorage implements WritingStorage {
         Number(record.updatedAt),
         Number(record.lastBackedUpAt || 0),
         countDraftWords(record.textContent),
+        countTextWords(record.textContent),
       ]
     )
   }
@@ -289,8 +295,22 @@ export class SqliteWritingStorage implements WritingStorage {
   async listChapterWordCounts(userId: string, bookId?: string | number) {
     const db = await this.getDb()
     const scoped = bookId !== undefined && bookId !== null && String(bookId) !== ''
+    // 旧正文按本次读取范围分批补算；写回带 updatedAt 条件，避免覆盖并发保存的新计数。
+    const scopeSql = `userId = $1${scoped ? ' AND bookId = $2' : ''}`
+    const parameters = scoped ? [String(userId), String(bookId)] : [String(userId)]
+    const missing = await db.select<SqlRow>(`SELECT storageKey, updatedAt, json_extract(payload, '$.textContent') AS textContent FROM chapter_contents WHERE ${scopeSql} AND textWordCount IS NULL`, parameters)
+    for (let offset = 0; offset < missing.length; offset += 100) {
+      const batch = missing.slice(offset, offset + 100)
+      const values: unknown[] = []
+      const selects = batch.map(row => {
+        const start = values.length
+        values.push(row.storageKey, row.updatedAt, countTextWords(String(row.textContent ?? '')))
+        return `SELECT $${start + 1} AS storageKey, $${start + 2} AS updatedAt, $${start + 3} AS count`
+      })
+      await db.execute(`WITH counts AS (${selects.join(' UNION ALL ')}) UPDATE chapter_contents SET textWordCount = (SELECT count FROM counts WHERE counts.storageKey = chapter_contents.storageKey) WHERE textWordCount IS NULL AND EXISTS (SELECT 1 FROM counts WHERE counts.storageKey = chapter_contents.storageKey AND counts.updatedAt = chapter_contents.updatedAt)`, values)
+    }
     const rows = await db.select<SqlRow>(
-      `SELECT bookId, chapterId, wordCount, dirty FROM chapter_contents
+      `SELECT bookId, chapterId, wordCount, textWordCount, dirty FROM chapter_contents
        WHERE userId = $1${scoped ? ' AND bookId = $2' : ''}`,
       scoped ? [String(userId), String(bookId)] : [String(userId)]
     )
@@ -298,6 +318,7 @@ export class SqliteWritingStorage implements WritingStorage {
       bookId: String(row.bookId),
       chapterId: Number(row.chapterId),
       wordCount: Number(row.wordCount || 0),
+      textWordCount: row.textWordCount == null ? null : Number(row.textWordCount),
       dirty: Number(row.dirty || 0) === 1,
     }))
   }

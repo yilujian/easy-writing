@@ -53,11 +53,11 @@
           <i v-if="showRingTip" class="ring-tip" :style="tipStyle" aria-hidden="true"></i>
           <div class="ring-center">
             <div class="ring-number" :class="{ 'is-long': todayWords >= 10000 }">
-              {{ todayWords.toLocaleString() }}
+              {{ planStore.todayWordsAvailable ? todayWords.toLocaleString() : '—' }}
             </div>
             <div class="ring-label">今日已写</div>
             <div v-if="achieved" class="ring-seal">已达成</div>
-            <div v-if="!achieved && targetWords > 0" class="ring-percent">已完成 {{ rawProgressPercent }}%</div>
+            <div v-if="planStore.todayWordsAvailable && !achieved && targetWords > 0" class="ring-percent">已完成 {{ rawProgressPercent }}%</div>
           </div>
         </div>
 
@@ -130,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import EwModal from '@/components/EwModal/index.vue'
@@ -137,6 +138,8 @@ import { useWritingPlanStore } from '@/stores/writing-plan'
 import inkRingMask from '@/assets/writing-plan/v2/ink-ring-mask.webp'
 import footerBrushDivider from '@/assets/writing-plan/v2/footer-brush-divider.webp'
 import ricePaperTexture from '@/assets/writing-plan/v2/rice-paper-texture.webp'
+
+const wordCounter = useWordCount()
 
 const PANEL_WIDTH = 340
 const PANEL_HEIGHT = 620
@@ -212,11 +215,11 @@ const writingStatus = computed(() => {
 
 const displayedSessionWords = computed(() => {
   if (!trackingStarted.value) return 0
-  return sessionWords.value
+  return wordCounter.mode.value === 'text' ? planStore.sessionTextWords : sessionWords.value
 })
 
 // store 的 planProgress 封顶 100，画“超额”弧线和页脚文案需要未封顶的原始比例。
-const progressRatio = computed(() => (targetWords.value > 0 ? todayWords.value / targetWords.value : 0))
+const progressRatio = computed(() => (planStore.todayWordsAvailable && targetWords.value > 0 ? todayWords.value / targetWords.value : 0))
 const rawProgressPercent = computed(() => Math.round(progressRatio.value * 100))
 const achieved = computed(() => targetWords.value > 0 && progressRatio.value >= 1)
 
@@ -251,6 +254,7 @@ const tipStyle = computed(() => {
 })
 
 const footerParts = computed(() => {
+  if (!planStore.todayWordsAvailable) return { prefix: '今日部分旧记录无法补算', highlight: '', suffix: '' }
   if (!targetWords.value) return { prefix: '设个今日计划，', highlight: '', suffix: '落笔生花' }
   if (achieved.value) {
     const overage = rawProgressPercent.value - 100

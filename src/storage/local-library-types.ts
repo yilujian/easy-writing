@@ -42,6 +42,8 @@ export interface LocalChapter {
   title: string
   summary?: string | null
   wordCount: number
+
+  textWordCount?: number | null
   sortNo: number
   status: number
   isPaid: number

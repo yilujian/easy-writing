@@ -113,7 +113,7 @@ v-if="getChapterStatusLabel(chapter)" class="chapter-workflow-status"
                   :class="`is-${chapter.workflowStatus || 'planned'}`">
                   {{ getChapterStatusLabel(chapter) }}
                 </span>
-                <span v-else class="item-count">{{ chapter.wordCount }}</span>
+                <span v-else class="item-count">{{ wordCounter.format(wordCounter.value(chapter)) }}</span>
               </template>
             </div>
           </div>
@@ -173,7 +173,7 @@ v-if="chapterContextMenu.visible" class="context-menu"
         <div class="menu-info">
           创建于 {{ formatDateTimeLoose(chapterContextMenu.chapter?.createTime, 'MM-DD HH:mm', '未知时间') }}
           <br>
-          {{ chapterContextMenu.chapter?.wordCount || 0 }}字
+          {{ wordCounter.format(wordCounter.value(chapterContextMenu.chapter)) }}字
         </div>
       </div>
       <div class="menu-divider"></div>
@@ -247,6 +247,8 @@ import ChapterHistoryModal from './ChapterHistoryModal.vue'
 // 开源版：章纲提取走本地 BYOK 直连，正文读本地写作存储
 import { requestLocalChatCompletion, NO_MODEL_MESSAGE } from '@/utils/local-ai-client'
 import { buildFreeInstructionMessages } from '@/config/ai-prompts'
+import { useWordCount } from '@/composables/use-word-count'
+import { countTextWords } from '@/utils/word-count'
 import { useAiModelStore } from '@/stores/ai-model'
 import { getLocalChapterDetailData } from '@/storage/local-reference'
 import { showApiError } from '@/utils/api-error'
@@ -256,6 +258,7 @@ import { isTauriRuntime } from '@/storage'
 import { getLocalLibraryStorage } from '@/storage/local-library'
 
 const route = useRoute()
+const wordCounter = useWordCount()
 const editorStore = useWritingEditorStore()
 const aiModelStore = useAiModelStore()
 const { chapterWordCount, activeChapterTitle } = storeToRefs(editorStore)
@@ -270,6 +273,7 @@ interface Chapter {
   title: string
   summary: string | null
   wordCount: number
+  textWordCount?: number | null
   status: number
   isPaid: number
   type: 'chapter'
@@ -575,7 +579,7 @@ const handleMenuAction = async (action: string) => {
 
 const getVolumeWordCount = (volume: Volume | null) => {
   if (!volume || !volume.children) return 0
-  return volume.children.reduce((sum, chapter) => sum + (chapter.wordCount || 0), 0).toLocaleString()
+  return wordCounter.format(volume.children.reduce<number | null>((sum, chapter) => { const count = wordCounter.value(chapter); return sum === null || count === null ? null : sum + count }, 0))
 }
 
 const findVolumeById = (volumeId: number | null) => {
@@ -1151,12 +1155,13 @@ watch(
   }
 )
 
-watch(chapterWordCount, (count) => {
+watch([chapterWordCount, () => editorStore.activeChapterTextContent], ([count, text]) => {
   const currentId = editorStore.activeChapterId
   if (!currentId) return
   const chapter = findChapterInCatalog(currentId)
   if (chapter) {
     chapter.wordCount = typeof count === 'number' ? count : 0
+    chapter.textWordCount = countTextWords(text)
   }
 })
 
@@ -1177,12 +1182,12 @@ const handleCatalogRefresh = () => {
 // 后台生成章节的实时字数：AI 正在写的章不一定是当前打开的章，
 // 靠 activeChapter 的 watch 更新不到，由生成事件直推目录树。
 function handleChapterWordsEvent(event: Event) {
-  const detail = (event as CustomEvent<{ chapterId?: number; wordCount?: number }>).detail || {}
+  const detail = (event as CustomEvent<{ chapterId?: number; wordCount?: number; textWordCount?: number }>).detail || {}
   const chapterId = Number(detail.chapterId || 0)
   const wordCount = Number(detail.wordCount)
   if (!chapterId || !Number.isFinite(wordCount) || wordCount < 0) return
   const chapter = findChapterInCatalog(chapterId)
-  if (chapter) chapter.wordCount = wordCount
+  if (chapter) { chapter.wordCount = wordCount; chapter.textWordCount = detail.textWordCount ?? null }
 }
 
 async function handleOpenChapterEvent(event: Event) {

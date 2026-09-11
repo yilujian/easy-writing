@@ -1,3 +1,4 @@
+import { countTextWords } from '@/utils/word-count'
 import { recordWriteJournal } from './write-journal'
 import {
   assertChapterWriteBack,
@@ -172,6 +173,7 @@ export class IndexedDbWritingStorage implements WritingStorage {
         bookId: String(row.bookId),
         chapterId: Number(row.chapterId),
         wordCount: countDraftWords(row.textContent),
+        textWordCount: countTextWords(row.textContent),
         dirty: Boolean(row.dirty),
       }))
   }

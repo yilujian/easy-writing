@@ -47,7 +47,7 @@
               <label class="checkbox chapter" v-for="ch in vol.children" :key="ch.id">
                 <input type="checkbox" :checked="selectedIds.has(ch.id)" @change="toggleChapter(ch.id)" />
                 <span class="label-text">{{ ch.title }}</span>
-                <span class="meta">{{ Number(ch.wordCount || 0).toLocaleString() }} 字</span>
+                <span class="meta">{{ wordCounter.format(wordCounter.value(ch)) }} 字</span>
               </label>
             </div>
           </div>
@@ -89,11 +89,14 @@
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import EwModal from '@/components/EwModal/index.vue'
 // 开源版：目录读本地书库，导出在本机拼 TXT
 import { exportLocalChaptersTxt, getLocalLibraryStorage } from '@/storage/local-library'
+
+const wordCounter = useWordCount()
 
 type CatalogChapter = {
   id: number | string

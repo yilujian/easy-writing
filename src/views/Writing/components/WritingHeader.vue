@@ -17,7 +17,7 @@
         <span class="stat-item">
           <i class="fa-solid fa-chart-simple"></i> 本章: {{ displayChapterWords }}
         </span>
-        <span class="stat-text">总字数: {{ totalWords }}</span>
+        <span class="stat-text">总字数: {{ wordCounter.format(wordCounter.value({wordCount: totalWords, textWordCount: textTotalWords})) }}</span>
         <i class="fa-regular fa-circle-question help-icon"></i>
       </div>
     </div>
@@ -59,6 +59,9 @@
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
+import { countTextWords } from '@/utils/word-count'
+const wordCounter = useWordCount()
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWritingEditorStore } from '@/stores/writing-editor'
@@ -71,6 +74,7 @@ interface Props {
   bookTags?: string[]
   chapterWords?: number
   totalWords?: number
+  textTotalWords?: number | null
   workflowMode?: boolean
 }
 
@@ -79,6 +83,7 @@ const props = withDefaults(defineProps<Props>(), {
   bookTags: () => ['长篇', '第一人称', '男频'],
   chapterWords: 0,
   totalWords: 2685,
+  textTotalWords: null,
   workflowMode: false
 })
 
@@ -99,6 +104,7 @@ const exitConfirmVisible = ref(false)
 const isTitleLoading = computed(() => !props.bookTitle || props.bookTitle === '加载中...')
 
 const displayChapterWords = computed(() => {
+  if (wordCounter.mode.value === 'text') return countTextWords(writingStore.activeChapterTextContent)
   if (typeof chapterWordCount.value === 'number') {
     return chapterWordCount.value
   }
@@ -106,7 +112,7 @@ const displayChapterWords = computed(() => {
 })
 
 const sessionWordsDisplay = computed(() =>
-  Math.max(0, localSessionWords.value || 0).toLocaleString()
+  (wordCounter.mode.value === 'text' ? Math.max(0, countTextWords(writingStore.activeChapterTextContent) - writingStore.localSessionBaseTextWordCount) : Math.max(0, localSessionWords.value || 0)).toLocaleString()
 )
 
 const planProgressDisplay = computed(() => {

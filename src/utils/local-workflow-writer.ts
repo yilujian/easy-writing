@@ -31,7 +31,7 @@ import {
   unregisterLiveLocalTask,
 } from '@/utils/local-workflow-runtime'
 import { parseChineseWordTarget, resolveRunOutlineUi, resolveRunSettingUi } from '@/utils/local-workflow-book'
-import { countWords } from '@/utils/word-count'
+import { countWords, countTextWords } from '@/utils/word-count'
 import { workflowContentVersion } from '@/utils/workflow-local-draft'
 import { promptTemperature } from '@/storage/local-prompts'
 import { recordAiChapterLanding } from '@/storage/local-write-stats'
@@ -119,7 +119,7 @@ export const saveGeneratedChapterContent = async (params: {
     wordCount,
   })
   // 码字账本：整章 AI 落稿按基线差记 AI，并抬基线防编辑器落盘双记
-  recordAiChapterLanding(params.bookId, params.chapterId, wordCount)
+  recordAiChapterLanding(params.bookId, params.chapterId, wordCount, countTextWords(params.text))
 }
 
 export const readChapterText = async (bookId: string, chapterId: number) => {
@@ -855,6 +855,7 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
         chapterNo: Number(chapter.sortNo || 0),
         snapshot: fullText,
         wordCount: words,
+        textWordCount: countTextWords(fullText),
         totalGeneratedWords: Math.max(0, baseTotalWords) + words,
         progress: task.progress,
       })

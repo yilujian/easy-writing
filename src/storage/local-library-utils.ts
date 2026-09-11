@@ -9,6 +9,7 @@ import type {
   LocalParsedBook,
   LocalVolume,
 } from './local-library-types'
+import type { TextCounts } from '@/types/ui-preferences'
 import { countWords } from '@/utils/word-count'
 
 export const LOCAL_USER_ID = 'guest'
@@ -46,6 +47,7 @@ export const normalizeLocalBook = (payload: Partial<LocalBook>): LocalBook => {
     status: Number(payload.status || 0),
     visibility: Number(payload.visibility || 0),
     wordCount: Number(payload.wordCount || 0),
+    textWordCount: payload.textWordCount ?? (Number(payload.wordCount || 0) === 0 ? 0 : null),
     chapterCount: Number(payload.chapterCount || 0),
     authorId: LOCAL_USER_ID,
     createTime: createdAt,
@@ -98,6 +100,7 @@ export const normalizeLocalChapter = (payload: Omit<Partial<LocalChapter>, 'book
     title: String(payload.title || '').trim() || '第1章',
     summary: payload.summary || '',
     wordCount: Number(payload.wordCount || 0),
+    textWordCount: payload.textWordCount ?? (Number(payload.wordCount || 0) === 0 ? 0 : null),
     sortNo: Number(payload.sortNo || 0),
     status: Number(payload.status || 0),
     isPaid: Number(payload.isPaid || 0),
@@ -124,6 +127,10 @@ export const buildLocalTree = (volumes: LocalVolume[], chapters: LocalChapter[])
 }
 
 export const calcLocalBookStats = (chapters: LocalChapter[]) => ({
+  textWordCount: chapters.filter(chapter => !chapter.deletedAt).reduce<number | null>((sum, chapter) => {
+    const count = chapter.textWordCount ?? (chapter.wordCount === 0 ? 0 : null)
+    return sum === null || count === null ? null : sum + count
+  }, 0),
   wordCount: chapters.filter(chapter => !chapter.deletedAt).reduce((sum, chapter) => sum + Number(chapter.wordCount || 0), 0),
   chapterCount: chapters.filter(chapter => !chapter.deletedAt).length,
 })
@@ -139,10 +146,10 @@ const countTextWords = (value: string) => countWords(value)
  * 一条 SQL 就能取全，不必碰 payload。
  */
 export const loadLocalDraftWordCounts = async (bookId: number | string) => {
-  const map = new Map<number, number>()
+  const map = new Map<number, TextCounts>()
   try {
     const rows = await getWritingStorage().listChapterWordCounts(LOCAL_USER_ID, bookId)
-    rows.forEach(row => map.set(Number(row.chapterId), Number(row.wordCount || 0)))
+    rows.forEach(row => map.set(Number(row.chapterId), { wordCount: Number(row.wordCount || 0), textWordCount: row.textWordCount ?? null }))
   } catch (error) {
     console.warn('批量读取本地草稿字数失败', error)
   }
@@ -157,16 +164,19 @@ export const loadLocalDraftWordCounts = async (bookId: number | string) => {
  */
 export const resolveLocalChapterWords = (
   chapter: LocalChapter,
-  draftWords: Map<number, number>
+  draftWords: Map<number, TextCounts>
 ) => {
   const id = Number(chapter.id)
-  return draftWords.has(id) ? draftWords.get(id)! : Number(chapter.wordCount || 0)
+  return draftWords.has(id) ? draftWords.get(id)!.wordCount : Number(chapter.wordCount || 0)
 }
+
+export const resolveLocalChapterTextWords = (chapter: LocalChapter, draftWords: Map<number, TextCounts>) =>
+  draftWords.has(Number(chapter.id)) ? draftWords.get(Number(chapter.id))!.textWordCount : chapter.textWordCount ?? (chapter.wordCount === 0 ? 0 : null)
 
 export const calcLocalBookStatsWithDrafts = async (
   bookId: number | string,
   chapters: LocalChapter[],
-  draftWords?: Map<number, number>
+  draftWords?: Map<number, TextCounts>
 ) => {
   const activeChapters = chapters.filter(chapter => !chapter.deletedAt)
   // 本地正文草稿才是实际内容源，章节元数据可能因异步保存中断而滞后。
@@ -175,8 +185,13 @@ export const calcLocalBookStatsWithDrafts = async (
     (sum, chapter) => sum + resolveLocalChapterWords(chapter, words),
     0
   )
+  const textWordCount = activeChapters.reduce<number | null>((sum, chapter) => {
+    const count = resolveLocalChapterTextWords(chapter, words)
+    return sum === null || count === null ? null : sum + count
+  }, 0)
   return {
     wordCount,
+    textWordCount,
     chapterCount: activeChapters.length,
   }
 }

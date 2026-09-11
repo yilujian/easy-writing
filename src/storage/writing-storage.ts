@@ -65,6 +65,8 @@ export interface ChapterWordCountRow {
   bookId: string
   chapterId: number
   wordCount: number
+
+  textWordCount?: number | null
   /** 存量数据字段：纯本地模式下恒为真 */
   dirty: boolean
 }

@@ -11,7 +11,7 @@
       <!-- 顶部导航栏 -->
       <WritingHeader
 :book-title="bookData.title" :book-tags="bookData.tags" :chapter-words="bookData.chapterWords"
-        :total-words="bookData.totalWords" :workflow-mode="isWorkflowPageMode" @request-exit="handleWorkflowExit" />
+        :total-words="bookData.totalWords" :text-total-words="bookData.textTotalWords" :workflow-mode="isWorkflowPageMode" @request-exit="handleWorkflowExit" />
 
       <!-- 中间主体布局 -->
       <div class="main-layout">
@@ -116,6 +116,7 @@
 </template>
 
 <script setup lang="ts">
+import { calcLocalBookStats } from '@/storage/local-library-utils'
 import type { JsonRecord } from '@/types/json'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -294,11 +295,12 @@ const handleBeforeUnload = () => {
 // 目录树用本地草稿校正过字数后会把全书总数推过来：
 // 顶部「总字数」原本取服务端值，「仅本地」模式下那个数字永远是旧的。
 const handleBookWordsEvent = (event: Event) => {
-  const detail = (event as CustomEvent<{ bookId?: string | number; wordCount?: number }>).detail || {}
+  const detail = (event as CustomEvent<{ bookId?: string | number; wordCount?: number; textWordCount?: number | null }>).detail || {}
   if (String(detail.bookId || '') !== String(bookData.value.id || '')) return
   const wordCount = Number(detail.wordCount)
   if (!Number.isFinite(wordCount) || wordCount < 0) return
   bookData.value.totalWords = wordCount
+  bookData.value.textTotalWords = detail.textWordCount ?? null
 }
 
 const resetWritingSelection = () => {
@@ -576,7 +578,8 @@ const bookData = ref({
   title: '加载中...',
   tags: ['未分类'],
   chapterWords: 0,
-  totalWords: 0
+  totalWords: 0,
+  textTotalWords: null as number | null
 })
 const workflowHasContent = computed(() =>
   Number(bookData.value.totalWords || 0) > 0
@@ -876,12 +879,17 @@ const loadBookDetail = async (
       void router.replace('/myBooks')
       return
     }
+    // 直接打开旧书也从正文计数汇总，不能依赖用户先进入书架触发缓存补算。
+    const tree = await localLibrary.getLocalBookTree(bookId)
+    if (entryRevision !== workflowEntryRevision) return
+    const counts = calcLocalBookStats(tree.flatMap(volume => volume.children))
     bookData.value = {
       id: String(data.id),
       title: data.title || '未命名作品',
       tags: buildBookTags(data),
       chapterWords: bookData.value.chapterWords,
-      totalWords: data.wordCount ?? 0
+      totalWords: counts.wordCount,
+      textTotalWords: counts.textWordCount
     }
     // 本地书同样要走工作流入口校验：路由带 from=workflow 时核对 run/任务/书的归属
     if (revalidateWorkflow) {
@@ -1188,7 +1196,7 @@ const handleWorkflowToken = (payload: JsonRecord) => {
   const liveWords = Number(payload.wordCount || 0)
   if (chapterId && liveWords > 0) {
     window.dispatchEvent(
-      new CustomEvent('ew-writing-chapter-words', { detail: { chapterId, wordCount: liveWords } })
+      new CustomEvent('ew-writing-chapter-words', { detail: { chapterId, wordCount: liveWords, textWordCount: payload.textWordCount } })
     )
   }
   void applyWorkflowGeneratedText(chapterId, text)

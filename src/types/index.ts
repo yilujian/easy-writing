@@ -34,6 +34,8 @@ export interface Book {
   status?: number; // 0-连载 1-完结
   visibility?: number; // 0-私有 1-公开
   wordCount?: number;
+  textWordCount?: number | null;
+
   authorId?: string;
   globalInstruction?: Record<string, unknown> | string | null;
   createTime?: string;

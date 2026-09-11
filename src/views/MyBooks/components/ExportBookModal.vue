@@ -11,7 +11,7 @@
         <div class="book-title">{{ book.title }}</div>
         <div class="book-meta">
           <span v-if="book.category">分类：{{ book.category }}</span>
-          <span v-if="book.wordCount != null">字数：{{ Number(book.wordCount || 0).toLocaleString() }}</span>
+          <span v-if="book.wordCount != null">字数：{{ wordCounter.format(wordCounter.value(book)) }}</span>
         </div>
         <div class="book-intro" v-if="book.intro">{{ book.intro }}</div>
       </div>
@@ -64,11 +64,14 @@
 </template>
 
 <script setup lang="ts">
+import { useWordCount } from '@/composables/use-word-count'
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import EwModal from '@/components/EwModal/index.vue'
 import { exportLocalBook } from '@/storage/local-library'
 import type { Book } from '@/types'
+
+const wordCounter = useWordCount()
 
 const props = defineProps<{
   visible: boolean

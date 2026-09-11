@@ -1,3 +1,4 @@
+import { readUiPreferences } from '@/stores/ui-preferences'
 import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
 import piniaPersistConfig from '@/stores/helper/persist'
@@ -14,6 +15,7 @@ const formatNumber = (val: number) => Number.isFinite(val) ? val : 0
 interface WritingPlanState {
   targetWords: number
   todayWords: number
+  todayWordsAvailable: boolean
   writingSeconds: number
   staySeconds: number
   idleSecondsTotal: number
@@ -24,6 +26,7 @@ interface WritingPlanState {
   stayCarryMs: number
   idleCarryMs: number
   sessionWords: number
+  sessionTextWords: number
   planPanelVisible: boolean
   settingsVisible: boolean
   panelPosition: PanelPosition
@@ -46,6 +49,7 @@ export const useWritingPlanStore = defineStore('ew-writing-plan', {
   state: (): WritingPlanState => ({
     targetWords: 0,
     todayWords: 0,
+    todayWordsAvailable: true,
     writingSeconds: 0,
     staySeconds: 0,
     idleSecondsTotal: 0,
@@ -53,6 +57,7 @@ export const useWritingPlanStore = defineStore('ew-writing-plan', {
     stayCarryMs: 0,
     idleCarryMs: 0,
     sessionWords: 0,
+    sessionTextWords: 0,
     planPanelVisible: false,
     settingsVisible: false,
     panelPosition: { x: 32, y: 120 } as PanelPosition,
@@ -72,12 +77,12 @@ export const useWritingPlanStore = defineStore('ew-writing-plan', {
   }),
   getters: {
     planProgress(state): number {
-      if (!state.targetWords) return 0
+      if (!state.todayWordsAvailable || !state.targetWords) return 0
       if (!state.todayWords) return 0
       return Math.min(100, Math.round((state.todayWords / state.targetWords) * 100))
     },
     remainingWords(state): number {
-      if (!state.targetWords) return 0
+      if (!state.todayWordsAvailable || !state.targetWords) return 0
       return Math.max(state.targetWords - state.todayWords, 0)
     },
     idleSeconds(state): number {
@@ -123,41 +128,23 @@ export const useWritingPlanStore = defineStore('ew-writing-plan', {
         this.lastSummaryDate = targetDate
         // 开源版：计划数据来自本地码字账本，目标与今日字数都取古法口径
         this.targetWords = formatNumber(getStatsTargets().manual)
-        this.todayWords = formatNumber(getStatsOverview(targetDate).manualWords)
+        const words = getStatsOverview(targetDate).manualWords
+        this.todayWordsAvailable = words !== null
+        this.todayWords = formatNumber(words ?? 0)
       } finally {
         this.summaryLoading = false
       }
     },
-    addWords(count: number) {
+    addWords(count: number, textCount = 0) {
       this.ensureTimersRunning()
-      const delta = Math.trunc(Number(count) || 0)
-      if (!delta) return
-
-      if (delta > 0) {
-        this.sessionWords += delta
-        this.todayWords += delta
-        this.pendingWords += delta
-        return
-      }
-
-      // 删除导致的回退：最多回退本次会话新增字数，避免把历史统计扣成负数
-      const deductable = Math.min(Math.abs(delta), this.sessionWords)
-      if (!deductable) return
-
-      this.sessionWords = Math.max(this.sessionWords - deductable, 0)
-      this.todayWords = Math.max(this.todayWords - deductable, 0)
-
-      // 优先抵消尚未上报的正向累计；若已上报过，则生成负向增量用于纠正服务端统计
-      if (this.pendingWords > 0) {
-        const consume = Math.min(this.pendingWords, deductable)
-        this.pendingWords -= consume
-        const rest = deductable - consume
-        if (rest > 0) {
-          this.pendingWords -= rest
-        }
-      } else {
-        this.pendingWords -= deductable
-      }
+      const previousAll = this.sessionWords
+      const previousText = this.sessionTextWords
+      this.sessionWords = Math.max(0, previousAll + Math.trunc(Number(count) || 0))
+      this.sessionTextWords = Math.max(0, previousText + Math.trunc(Number(textCount) || 0))
+      const delta = readUiPreferences().wordCountMode === 'text'
+        ? this.sessionTextWords - previousText : this.sessionWords - previousAll
+      this.todayWords = Math.max(0, this.todayWords + delta)
+      this.pendingWords += delta
     },
     notifyTyping() {
       this.ensureTimersRunning()
@@ -198,6 +185,7 @@ export const useWritingPlanStore = defineStore('ew-writing-plan', {
     },
     resetSessionStats() {
       this.sessionWords = 0
+      this.sessionTextWords = 0
       this.writingSeconds = 0
       this.staySeconds = 0
       this.idleSecondsTotal = 0

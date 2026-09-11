@@ -2,6 +2,7 @@ import type { TypingSound } from '@/config/typing-sounds'
 
 export type SettingsSectionId =
   | 'overview'
+  | 'menus'
   | 'writing'
   | 'appearance'
   | 'sync'
