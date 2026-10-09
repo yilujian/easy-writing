@@ -4,7 +4,7 @@ import { resolve, basename } from 'node:path'
 
 // 输入已签名的更新包；只生成清单，不上传或改动线上文件。
 const { values } = parseArgs({ options: Object.fromEntries(
-  ['version', 'notes', 'date', 'base-url', 'windows', 'mac-arm64', 'mac-x64', 'out'].map(key => [key, { type: 'string' }])
+  ['version', 'notes', 'date', 'base-url', 'windows', 'mac-arm64', 'mac-x64', 'linux-x64', 'out'].map(key => [key, { type: 'string' }])
 ) })
 for (const key of ['version', 'notes', 'base-url', 'windows', 'mac-arm64', 'mac-x64', 'out']) {
   if (!values[key]) throw new Error(`缺少 --${key}`)
@@ -20,6 +20,7 @@ for (const [target, key, suffix] of [
   ['windows-x86_64', 'windows', '.exe'],
   ['darwin-aarch64', 'mac-arm64', '.app.tar.gz'],
   ['darwin-x86_64', 'mac-x64', '.app.tar.gz'],
+  ...(values['linux-x64'] ? [['linux-x86_64', 'linux-x64', '.AppImage']] : []),
 ]) {
   const path = resolve(values[key])
   if (!path.endsWith(suffix) || !(await stat(path)).size) throw new Error(`${target} 更新包格式不正确`)
