@@ -417,7 +417,7 @@ const openIssueList = () => {
   }
 }
 
-@media (max-width: 1080px) {
+@include content-max(800px) {
   .feedback-layout {
     grid-template-columns: 1fr;
   }

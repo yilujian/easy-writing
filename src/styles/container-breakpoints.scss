@@ -1,0 +1,17 @@
+// 页面级断点统一按"内容区宽度"写（MainLayout 的 .content-wrapper 声明为名为 content 的容器）。
+// 这样布局只看自己所在容器有多宽，与侧栏宽、窗口宽解耦；侧栏改宽或折叠都不需要重算断点。
+//
+// 旧 WebKit（不支持容器查询）退回窗口断点：默认 = 内容区阈值 + 侧栏 240 + 内容区左右内边距 40。
+// 全宽页面（hideLayout 路由，没有侧栏）调用时把 $window 传成与 $content 相同的值。
+//
+// 用法：@include content-max(920px) { ... }   等价于以前的 @media (max-width: 1200px)
+@mixin content-max($content, $window: $content + 280px) {
+  @container content (max-width: #{$content}) {
+    @content;
+  }
+  @supports not (container-type: inline-size) {
+    @media (max-width: #{$window}) {
+      @content;
+    }
+  }
+}

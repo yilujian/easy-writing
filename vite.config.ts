@@ -36,7 +36,7 @@ export default defineConfig(({ command }: ConfigEnv): UserConfig => {
     css: {
       preprocessorOptions: {
         scss: {
-          additionalData: `@use "@/styles/element-theme.scss" as *;`,
+          additionalData: `@use "@/styles/element-theme.scss" as *; @use "@/styles/container-breakpoints.scss" as *;`,
           api: 'modern-compiler', // 使用现代 Sass API，消除弃用警告
         },
       },

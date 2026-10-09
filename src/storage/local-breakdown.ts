@@ -1,3 +1,4 @@
+import { withRecordStore } from './desktop-records'
 import type { JsonRecord } from '@/types/json'
 import type {
   BreakdownChapterDetail,
@@ -39,36 +40,8 @@ export interface LocalBreakdownProject extends BreakdownProjectSummary {
 const DB_NAME = 'ew-local-breakdown'
 const STORE_NAME = 'kv'
 
-const openDb = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
-      }
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const withStore = async <T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-  const db = await openDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const request = run(tx.objectStore(STORE_NAME))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
-}
+const withStore = <T>(mode: IDBTransactionMode, run: Parameters<typeof withRecordStore>[4]) =>
+  withRecordStore<T>(DB_NAME, STORE_NAME, undefined, mode, run)
 
 const projectKey = (id: number | string) => `project:${id}`
 const contentKey = (chapterId: number | string) => `content:${chapterId}`

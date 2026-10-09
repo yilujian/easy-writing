@@ -1,3 +1,9 @@
+import { trackStorageWrite } from './storage-maintenance'
+import { StorageRecordCorruptError } from './stored-record'
+import type { CommonWord } from '@/types/word-library'
+import { normalizeCharacterAliases } from '@/utils/character-aliases'
+import { usesUnifiedStorage } from './storage-mode'
+import { withRecordStore, mutateDesktopRecord } from './desktop-records'
 import type {
   Character,
   CharacterGroup,
@@ -18,7 +24,7 @@ import { createLocalEntityId, nowIso } from './local-library-utils'
 
 /**
  * 参考面板本地库的存储底盘（大纲/角色/设定/时间线/故事线共用）：
- * 数据按书整包存 IndexedDB（设定/角色详情是富文本，可能超出 localStorage 容量）。
+ * 数据按书整包保存：桌面端 SQLite，网页端 IndexedDB。
  * CRUD 函数在 local-reference.ts（书域）与 local-reference-plot.ts（剧情域），
  * 备份迁移在 local-reference-transfer.ts。
  */
@@ -30,6 +36,7 @@ export interface BookReferenceDoc {
   version: 1
   bookId: string
   outlineNodes: OutlineNode[]
+  commonWords: CommonWord[]
   characters: Character[]
   characterGroups: CharacterGroup[]
   characterRelations: CharacterRelation[]
@@ -51,6 +58,7 @@ const emptyDoc = (bookId: string): BookReferenceDoc => ({
   version: 1,
   bookId,
   outlineNodes: [],
+  commonWords: [],
   characters: [],
   characterGroups: [],
   characterRelations: [],
@@ -80,25 +88,23 @@ const openDb = (): Promise<IDBDatabase> => {
   })
 }
 
-const withStore = async <T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-  const db = await openDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const request = run(tx.objectStore(STORE_NAME))
-      tx.oncomplete = () => resolve(request.result)
-      tx.onerror = () => reject(tx.error || request.error)
-      tx.onabort = () => reject(tx.error || new Error('参考数据事务中止'))
-    })
-  } finally {
-    db.close()
-  }
-}
+const withStore = <T>(mode: IDBTransactionMode, run: Parameters<typeof withRecordStore>[4]) =>
+  withRecordStore<T>(DB_NAME, STORE_NAME, undefined, mode, run)
 
 export const bookKey = (bookId: string | number) => String(bookId)
+
+function normalizeReferenceDoc(value: unknown, bookId: string | number): BookReferenceDoc {
+  const empty = emptyDoc(bookKey(bookId))
+  if (value == null) return empty
+  if (typeof value !== 'object' || Array.isArray(value) || (value as BookReferenceDoc).version !== 1)
+    throw new StorageRecordCorruptError('作品参考资料')
+  const doc = { ...empty, ...value } as BookReferenceDoc
+  for (const field of Object.keys(empty) as Array<keyof BookReferenceDoc>) {
+    if (Array.isArray(empty[field]) && !Array.isArray(doc[field])) throw new StorageRecordCorruptError('作品参考资料')
+  }
+  if (String(doc.bookId) !== bookKey(bookId)) throw new StorageRecordCorruptError('作品参考资料归属')
+  return doc
+}
 
 /** 彻底删除某书的参考数据整包（回收站"彻底删除"级联用） */
 export const deleteLocalReferenceDoc = async (bookId: string | number) => {
@@ -107,16 +113,25 @@ export const deleteLocalReferenceDoc = async (bookId: string | number) => {
 
 export const readDoc = async (bookId: string | number): Promise<BookReferenceDoc> => {
   const stored = await withStore<unknown>('readonly', store => store.get(bookKey(bookId)))
-  if (stored && typeof stored === 'object' && (stored as BookReferenceDoc).version === 1) {
-    return { ...emptyDoc(bookKey(bookId)), ...(stored as BookReferenceDoc) }
+  {
+    const doc = normalizeReferenceDoc(stored, bookId)
+    doc.characters = doc.characters.map(character => ({
+      ...character, aliases: normalizeCharacterAliases(character.name, character.aliases),
+    }))
+    return doc
   }
-  return emptyDoc(bookKey(bookId))
 }
 
-export const mutateDoc = async <T>(
+const mutateDocInternal = async <T>(
   bookId: string | number,
   fn: (doc: BookReferenceDoc) => T
-): Promise<T> => {
+ ): Promise<T> => {
+  if (usesUnifiedStorage()) return mutateDesktopRecord(`${DB_NAME}/${STORE_NAME}`, bookKey(bookId), value => {
+    const doc = normalizeReferenceDoc(value, bookId)
+    const result = fn(doc)
+    doc.updatedAt = nowIso()
+    return { value: doc, result }
+  })
   const db = await openDb()
   try {
     return await new Promise<T>((resolve, reject) => {
@@ -126,7 +141,7 @@ export const mutateDoc = async <T>(
       let result: T
       request.onsuccess = () => {
         try {
-          const doc = { ...emptyDoc(bookKey(bookId)), ...(request.result || {}) } as BookReferenceDoc
+          const doc = normalizeReferenceDoc(request.result, bookId)
           result = fn(doc)
           doc.updatedAt = nowIso()
           store.put(JSON.parse(JSON.stringify(doc)), bookKey(bookId))
@@ -138,6 +153,9 @@ export const mutateDoc = async <T>(
     })
   } finally { db.close() }
 }
+
+export const mutateDoc = <T>(bookId: string | number, fn: (doc: BookReferenceDoc) => T): Promise<T> =>
+  trackStorageWrite(() => mutateDocInternal(bookId, fn))
 
 /** 服务端接口的 { data } 信封 */
 export const ok = <T>(data: T) => ({ data })

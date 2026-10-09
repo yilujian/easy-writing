@@ -14,6 +14,9 @@ use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 mod window_state;
 mod backup_restore;
 mod full_backup;
+mod desktop_storage;
+mod storage_migration;
+mod qimao_rank_http;
 
 const MAIN_WINDOW_LABEL: &str = "main";
 /// 主窗口关闭兜底超时：前端 onCloseRequested 正常会自行 destroy；
@@ -95,6 +98,11 @@ struct ChapterBackupPayload {
     updated_at: i64,
     backup_at: i64,
     file_stem: String,
+    /// 目录里的实际位置（卷内第几章 / 第几卷）；旧前端不传时为空
+    #[serde(default)]
+    order_no: Option<i64>,
+    #[serde(default)]
+    volume_order_no: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -384,6 +392,8 @@ fn write_chapter_backup(payload: ChapterBackupPayload) -> Result<ChapterBackupRe
       "remoteVersion": payload.remote_version,
       "updatedAt": payload.updated_at,
       "backupAt": payload.backup_at,
+      "orderNo": payload.order_no,
+      "volumeOrderNo": payload.volume_order_no,
     });
     let json_text =
         serde_json::to_string_pretty(&json_payload).map_err(|error| error.to_string())?;
@@ -574,7 +584,7 @@ fn get_prompt_dir() -> Result<String, String> {
     Ok(ensure_prompt_dir()?.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn list_prompt_documents() -> Result<Vec<PromptDocument>, String> {
     let dir = ensure_prompt_dir()?;
     let mut documents = Vec::new();
@@ -606,7 +616,7 @@ fn list_prompt_documents() -> Result<Vec<PromptDocument>, String> {
 }
 
 /// 启动时只创建缺失文件，不能覆盖无法读取或 ID 损坏的用户文件。
-#[tauri::command]
+#[tauri::command(async)]
 fn ensure_prompt_document(file_name: String, content: String) -> Result<bool, String> {
     use std::io::Write;
     let safe_name = sanitize_segment(&file_name, "提示词");
@@ -1056,6 +1066,26 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            storage_migration::desktop_storage_session,
+            storage_migration::desktop_storage_activate,
+            storage_migration::desktop_storage_inspect,
+            storage_migration::desktop_storage_finalize,
+            storage_migration::desktop_migration_prepare,
+            storage_migration::desktop_migration_stage,
+            storage_migration::desktop_migration_commit,
+            storage_migration::desktop_migration_fail,
+            desktop_storage::desktop_core_books,
+            desktop_storage::desktop_store_batch,
+            desktop_storage::desktop_storage_snapshot,
+            desktop_storage::desktop_recover_restore,
+            desktop_storage::desktop_restore_apply,
+            desktop_storage::desktop_store_read,
+            desktop_storage::desktop_store_get,
+            desktop_storage::desktop_store_write,
+            desktop_storage::desktop_store_compare_write,
+            desktop_storage::desktop_asset_write,
+            desktop_storage::desktop_asset_read,
+            desktop_storage::desktop_sql_transaction,
             backup_restore::scan_backup_directory,
             full_backup::full_backup_begin,
             full_backup::full_backup_add_entry,
@@ -1077,6 +1107,8 @@ pub fn run() {
             toggle_devtools,
             restart_app,
             rank_crawl_render_page,
+            qimao_rank_http::qimao_rank_request,
+            qimao_rank_http::qimao_rank_response,
             get_prompt_dir,
             list_prompt_documents,
             ensure_prompt_document,
@@ -1090,8 +1122,19 @@ pub fn run() {
         .on_menu_event(handle_menu_event);
 
     builder
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Menu Quit/Cmd-Q must use the same flush-and-close path as the close button.
+            // Once the frontend destroys the main window, allow the resulting exit event.
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                if code == Some(tauri::RESTART_EXIT_CODE) { return; }
+                if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+                    api.prevent_exit();
+                    let _ = window.close();
+                }
+            }
+        });
 }
 
 #[cfg(test)]
@@ -1109,6 +1152,8 @@ mod tests {
 
     fn backup_payload(base_dir: &Path, title: &str, stem: &str) -> ChapterBackupPayload {
         ChapterBackupPayload {
+            order_no: Some(1),
+            volume_order_no: Some(1),
             backup_dir: Some(base_dir.to_string_lossy().to_string()),
             book_id: "12".to_string(),
             book_title: "测试作品".to_string(),

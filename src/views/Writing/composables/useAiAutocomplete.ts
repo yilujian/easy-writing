@@ -1,3 +1,5 @@
+import { loadCharacterContext } from '@/storage/character-context'
+import { appSettings } from '@/storage/app-settings'
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import { ElMessage } from 'element-plus'
@@ -11,6 +13,7 @@ import {
 } from '../editor-utils/content-normalize'
 
 interface AiAutocompleteOptions {
+  bookId: () => string | number | undefined
   editor: Ref<Editor | undefined>
   workflowMode: ComputedRef<boolean>
   workflowLocked: ComputedRef<boolean>
@@ -67,7 +70,7 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
   const readAiConfig = (): AiConfigState => {
     if (typeof window === 'undefined') return { ...defaultAiConfig }
     try {
-      const cached = window.localStorage.getItem(AI_CONFIG_STORAGE_KEY)
+      const cached = appSettings.getItem(AI_CONFIG_STORAGE_KEY)
       if (!cached) return { ...defaultAiConfig }
       const parsed = JSON.parse(cached)
       return {
@@ -92,7 +95,7 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
     (nextVal) => {
       if (typeof window === 'undefined') return
       try {
-        window.localStorage.setItem(
+        appSettings.setItem(
           AI_CONFIG_STORAGE_KEY,
           JSON.stringify(nextVal),
         )
@@ -141,6 +144,8 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
         modelCode = aiModelStore.textModel
       }
       if (!modelCode) return null
+      const characterContext = await loadCharacterContext(options.bookId(), [payload.context, activeChapterTitle.value, activeChapterSummary.value].join('\n'))
+      if (controller.signal.aborted) return null
       const data = await requestLocalChatCompletion({
         scene: 'typing_autocomplete',
         sceneLabel: '打字补全',
@@ -148,6 +153,7 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
         temperature: autocompleteTemperature(payload.mode),
         messages: buildAutocompleteMessages({
           preText: localPreText,
+          characterContext,
           sceneAnchor,
           chapterTitle: activeChapterTitle.value || '',
           chapterSummary: activeChapterSummary.value || '',
@@ -173,8 +179,8 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
       console.warn('AI Copilot fetch failed', error)
       return null
     } finally {
-      if (nextBeatController.value === controller) {
-        nextBeatController.value = null
+      if (autocompleteController.value === controller) {
+        autocompleteController.value = null
       }
       setAiBusy(false)
     }
@@ -240,6 +246,8 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
       const localPreText = extractAutocompletePrefix(context, 3, 220)
       const sceneAnchor = extractSceneTailAnchor(localPreText, 2, 160)
 
+      const characterContext = await loadCharacterContext(options.bookId(), [context, activeChapterTitle.value, activeChapterSummary.value].join('\n'))
+      if (controller.signal.aborted || activeChapterId.value !== chapterIdAtStart) return
       const startPos = from
       let insertPos = from
       let accumulated = ''
@@ -260,6 +268,7 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
             signal: controller.signal,
             messages: buildAutocompleteMessages({
               preText: localPreText,
+              characterContext,
               sceneAnchor,
               chapterTitle: activeChapterTitle.value || '',
               chapterSummary: activeChapterSummary.value || '',
@@ -310,8 +319,8 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
       }
     } finally {
       setAiBusy(false)
-      if (autocompleteController.value === controller) {
-        autocompleteController.value = null
+      if (nextBeatController.value === controller) {
+        nextBeatController.value = null
       }
     }
   }
@@ -323,6 +332,7 @@ export const useAiAutocomplete = (options: AiAutocompleteOptions) => {
     aiShortcutTip,
     aiStatusText,
     isAiThinking,
+    isAiStreaming: computed(() => nextBeatController.value !== null),
     abortAiRequests,
     setAiBusy,
     fetchAiSuggestion,

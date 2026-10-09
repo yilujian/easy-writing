@@ -1022,7 +1022,7 @@ onMounted(() => {
   border-radius: 999px;
 }
 
-@media (max-width: 1200px) {
+@include content-max(920px) {
   .upload-success {
     flex-direction: column;
   }
@@ -1036,7 +1036,7 @@ onMounted(() => {
 
 }
 
-@media (max-width: 960px) {
+@include content-max(680px) {
   .hero {
     flex-direction: column;
     align-items: flex-start;

@@ -1,9 +1,10 @@
+import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import type { Inspiration, InspirationInsights } from '@/types'
 
 /**
  * 灵感便签本地库：替代旧服务端 /writing/inspiration 数据通道。
  * 界面功能与数据形状保持与服务端接口一致（用户将来要改造该功能，这里只换通道）。
- * 存 localStorage 单键 JSON；灵感是短文本，量级很小。
+ * 桌面端存 SQLite 设置记录；网页端使用 localStorage。
  */
 
 const STORAGE_KEY = 'ew-local-inspirations'
@@ -16,22 +17,19 @@ const nowText = () => {
 
 const loadAll = (): Inspiration[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = appSettings.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter(item => item && typeof item.id === 'number') : []
+    if (!Array.isArray(parsed) || parsed.some(item=>!item || typeof item.id !== 'number')) throw new Error('灵感数据格式无效')
+    return parsed
   } catch (error) {
-    console.warn('读取本地灵感失败', error)
-    return []
+    throw new Error(`读取本地灵感失败，未覆盖原数据：${String(error)}`)
   }
 }
 
-const saveAll = (list: Inspiration[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-  } catch (error) {
-    console.warn('写入本地灵感失败', error)
-  }
+const saveAll = async (list: Inspiration[]) => {
+  appSettings.setItem(STORAGE_KEY, JSON.stringify(list))
+  await flushAppSettings()
 }
 
 // 与本地书库同规约：本地实体用负 ID
@@ -58,7 +56,7 @@ export const listLocalInspirations = (params?: { tag?: string; keyword?: string 
   return list
 }
 
-export const addLocalInspiration = (data: { content?: string; tag?: string; isPinned?: number }): Inspiration => {
+export const addLocalInspiration = async (data: { content?: string; tag?: string; isPinned?: number }): Promise<Inspiration> => {
   const list = loadAll()
   const item: Inspiration = {
     id: nextLocalId(list),
@@ -69,11 +67,11 @@ export const addLocalInspiration = (data: { content?: string; tag?: string; isPi
     updateTime: nowText()
   }
   list.unshift(item)
-  saveAll(list)
+  await saveAll(list)
   return item
 }
 
-export const updateLocalInspiration = (data: Partial<Inspiration> & { id: number }): Inspiration | null => {
+export const updateLocalInspiration = async (data: Partial<Inspiration> & { id: number }): Promise<Inspiration | null> => {
   const list = loadAll()
   const index = list.findIndex(item => Number(item.id) === Number(data.id))
   if (index < 0) return null
@@ -84,14 +82,14 @@ export const updateLocalInspiration = (data: Partial<Inspiration> & { id: number
     updateTime: nowText()
   }
   list[index] = next
-  saveAll(list)
+  await saveAll(list)
   return next
 }
 
-export const deleteLocalInspirations = (ids: number[]) => {
+export const deleteLocalInspirations = async (ids: number[]) => {
   const idSet = new Set(ids.map(Number))
   const list = loadAll().filter(item => !idSet.has(Number(item.id)))
-  saveAll(list)
+  await saveAll(list)
 }
 
 /** 热门标签从本地灵感统计；每日推荐属 AI 能力，待第二步接本地模型 */

@@ -101,21 +101,26 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="!workflowSafetyLocked" class="warning-overlay" :class="{ show: isWarning }">
-        <div class="warning-title">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-          <div>系统即将自毁</div>
+      <Transition name="warning-overlay">
+        <!-- 隐藏后卸载，避免透明的全屏模糊层与循环动画持续参与合成。 -->
+        <div v-if="!workflowSafetyLocked && isWarning" class="warning-overlay">
+          <div class="warning-title">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>系统即将自毁</div>
+          </div>
+          <div class="countdown-text">{{ countdownValue }}</div>
+          <div class="warning-tips">
+            快写点什么！！！
+          </div>
         </div>
-        <div class="countdown-text">{{ countdownValue }}</div>
-        <div class="warning-tips">
-          快写点什么！！！
-        </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { appSettings } from '@/storage/app-settings'
+
 import { calcLocalBookStats } from '@/storage/local-library-utils'
 import type { JsonRecord } from '@/types/json'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
@@ -682,6 +687,7 @@ const loadLoreHighlights = async (bookId?: string) => {
           id: item.id,
           kind: 'character' as const,
           name: item.name,
+          aliases: item.aliases,
           label: characterRoleLabels[Number(item.role)] || '角色',
           summary: buildCharacterSummary(item)
         })),
@@ -1392,7 +1398,7 @@ watch(
       return
     }
     try {
-      const raw = window.localStorage.getItem(key)
+      const raw = appSettings.getItem(key)
       const parsed = raw ? (JSON.parse(raw) as unknown) : []
       dismissedIssueKeys.value = Array.isArray(parsed)
         ? parsed.filter((value): value is string => typeof value === 'string')
@@ -1409,9 +1415,9 @@ const persistDismissedIssueKeys = () => {
   if (!key) return
   try {
     if (dismissedIssueKeys.value.length) {
-      window.localStorage.setItem(key, JSON.stringify(dismissedIssueKeys.value))
+      appSettings.setItem(key, JSON.stringify(dismissedIssueKeys.value))
     } else {
-      window.localStorage.removeItem(key)
+      appSettings.removeItem(key)
     }
   } catch {
     // 本地存储失败只影响刷新后的忽略记忆，不阻断交互
@@ -1908,14 +1914,17 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  pointer-events: none;
+}
+
+.warning-overlay-enter-active,
+.warning-overlay-leave-active {
   transition: opacity 0.2s;
 }
 
-.warning-overlay.show {
-  opacity: 1;
-  pointer-events: auto;
+.warning-overlay-enter-from,
+.warning-overlay-leave-to {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .post-blast-msg {

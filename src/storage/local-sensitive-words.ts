@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 /**
  * 敏感词本地词库：替代旧服务端 /writing/utility/check 数据通道。
  *
@@ -143,7 +144,7 @@ export interface UserSensitiveLexicon {
 export const loadUserSensitiveLexicon = (): UserSensitiveLexicon => {
   const empty: UserSensitiveLexicon = { version: 1, custom: [], disabled: [] }
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '')
+    const parsed = JSON.parse(appSettings.getItem(STORAGE_KEY) || '')
     if (!parsed || parsed.version !== 1) return empty
     return {
       version: 1,
@@ -164,7 +165,7 @@ export const SENSITIVE_LEXICON_UPDATED_EVENT = 'ew-sensitive-lexicon-updated'
 
 const saveUserSensitiveLexicon = (lexicon: UserSensitiveLexicon) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lexicon))
+    appSettings.setItem(STORAGE_KEY, JSON.stringify(lexicon))
     window.dispatchEvent(new CustomEvent(SENSITIVE_LEXICON_UPDATED_EVENT))
   } catch (error) {
     console.warn('写入敏感词自定义层失败', error)

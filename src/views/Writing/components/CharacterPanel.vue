@@ -50,6 +50,16 @@
 
         <div class="character-form-container">
           <div class="form-item">
+            <label>别名</label>
+            <CharacterAliasesInput
+              :model-value="currentCharacter.aliases"
+              :name="currentCharacter.name"
+              :character-id="currentCharacter.id"
+              :characters="characterTree.flatMap(folder => folder.children)"
+              @update:model-value="saveCharacterAliases"
+            />
+          </div>
+          <div class="form-item">
             <label>身份/角色</label>
             <el-select v-model="currentCharacter.role" placeholder="请选择" @change="saveCurrentCharacter" class="ink-select" popper-class="ink-select-popper">
               <el-option v-for="option in ROLE_OPTIONS" :key="option.value" :label="option.label" :value="option.value" />
@@ -140,7 +150,7 @@ v-if="canUndoCharacterPolish('background')" class="ai-btn undo-btn" type="button
         <!-- 搜索栏 -->
         <div class="tree-header">
           <div class="search-wrapper">
-            <input type="text" placeholder="搜索角色..." class="tree-search" v-model="searchText">
+            <input type="text" placeholder="搜索姓名或别名..." class="tree-search" v-model="searchText">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
           </div>
           <button class="add-button" title="新建分组" @click="handleAddFolder">
@@ -158,14 +168,14 @@ v-if="canUndoCharacterPolish('background')" class="ai-btn undo-btn" type="button
 
         <!-- 树状列表 -->
         <div class="tree-list" @dragover.prevent>
-          <div v-for="(folder, fIndex) in characterTree" :key="folder.id" class="folder-group">
+          <div v-for="(folder, fIndex) in filteredCharacterTree" :key="folder.id" class="folder-group">
             <!-- 文件夹行 -->
             <div
 class="tree-item folder"
               :class="{
                 'drag-over': dragTarget?.id === folder.id && dragTarget?.type === 'folder',
                 'force-hover': contextMenu.visible && contextMenu.type === 'folder' && contextMenu.item?.id === folder.id
-              }" draggable="true"
+              }" :draggable="!searchText.trim()"
               @click="toggleFolder(folder)" @contextmenu.prevent.stop="handleContextMenu($event, folder, 'folder')"
               @dragstart.stop="onDragStart($event, { type: 'folder', index: fIndex, item: folder })"
               @drop.stop="onDrop($event, { type: 'folder', index: fIndex, item: folder })" @dragover.prevent>
@@ -187,13 +197,13 @@ class="fa-solid fa-plus action-btn" @click.stop="handleAddCharacterToFolder(fold
             </div>
 
             <!-- 角色列表 -->
-            <div v-if="folder.isOpen" class="outline-list">
+            <div v-if="folder.isOpen || searchText.trim()" class="outline-list">
               <div
-v-for="(item, iIndex) in folder.children" :key="item.id" class="tree-item child" :class="{
+v-for="(item, iIndex) in visibleCharacters(folder)" :key="item.id" class="tree-item child" :class="{
                 'active': currentCharacter?.id === item.id,
                 'drag-over': dragTarget?.id === item.id && dragTarget?.type === 'file',
                 'force-hover': contextMenu.visible && contextMenu.item?.id === item.id
-              }" draggable="true" @click="selectCharacter(item)" @dblclick.stop="startEdit(item)"
+              }" :draggable="!searchText.trim()" @click="selectCharacter(item)" @dblclick.stop="startEdit(item)"
                 @contextmenu.prevent.stop="handleContextMenu($event, item)"
                 @dragstart.stop="onDragStart($event, { type: 'file', fIndex: fIndex, iIndex: iIndex, item: item })"
                 @drop.stop="onDrop($event, { type: 'file', fIndex: fIndex, iIndex: iIndex, item: item })"
@@ -242,6 +252,8 @@ v-if="contextMenu.visible" class="context-menu"
 </template>
 
 <script setup lang="ts">
+import CharacterAliasesInput from '@/components/CharacterAliasesInput.vue'
+import { getCharacterNames } from '@/utils/character-aliases'
 import { ref, watch, nextTick, onBeforeUnmount, computed, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { inkConfirm } from '@/utils/ink-confirm'
@@ -359,6 +371,15 @@ const characterUndoSnapshots = reactive<Record<CharacterField, { characterId: nu
 })
 
 const searchText = ref('')
+const filteredCharacterTree = computed(() => {
+  const query = searchText.value.trim().toLocaleLowerCase()
+  if (!query) return characterTree.value
+  return characterTree.value.filter(folder => visibleCharacters(folder).length)
+})
+const visibleCharacters = (folder: CharacterFolder) => {
+  const query = searchText.value.trim().toLocaleLowerCase()
+  return query ? folder.children.filter(character => getCharacterNames(character).some(name => name.toLocaleLowerCase().includes(query))) : folder.children
+}
 const characterTree = ref<CharacterFolder[]>([])
 const currentCharacter = ref<CharacterCard | null>(null)
 const activeCharacterId = ref<number | null>(null)
@@ -528,7 +549,8 @@ watch(
   { immediate: true }
 )
 
-const selectCharacter = (item: CharacterCard) => {
+const selectCharacter = async (item: CharacterCard) => {
+  if (currentCharacter.value && currentCharacter.value.id !== item.id && !(await saveCurrentCharacter())) return
   clearInvalidCharacterUndoSnapshots(item.id)
   currentCharacter.value = item
   activeCharacterId.value = item.id
@@ -906,12 +928,13 @@ const handleUndoCharacterPolish = async (field: CharacterField) => {
 }
 
 const saveCurrentCharacter = async () => {
-  if (!currentCharacter.value) return false
+  if (!currentCharacter.value) return true
   try {
     const payload: Partial<Character> = {
       id: currentCharacter.value.id,
       groupId: currentCharacter.value.groupId,
       name: currentCharacter.value.name,
+      aliases: [...(currentCharacter.value.aliases || [])],
       role: currentCharacter.value.role,
       gender: currentCharacter.value.gender,
       age: currentCharacter.value.age,
@@ -924,26 +947,31 @@ const saveCurrentCharacter = async () => {
     return true
   } catch (error) {
     console.error('保存角色信息失败:', error)
+    ElMessage.error('角色资料保存失败，请重试')
     return false
   }
 }
 
-const flushPendingSave = async () => {
+const saveCharacterAliases = async (aliases: string[]) => {
+  if (!currentCharacter.value) return
+  currentCharacter.value.aliases = aliases
   await saveCurrentCharacter()
 }
 
+const flushPendingSave = async () => saveCurrentCharacter()
+
 const handlePopout = async () => {
-  await flushPendingSave()
+  if (!(await flushPendingSave())) return
   emit('popout')
 }
 
 const handleDock = async () => {
-  await flushPendingSave()
+  if (!(await flushPendingSave())) return
   emit('dock')
 }
 
 const handleClose = async () => {
-  await flushPendingSave()
+  if (!(await flushPendingSave())) return
   emit('close')
 }
 

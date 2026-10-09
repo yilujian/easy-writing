@@ -1,3 +1,11 @@
+import { usesUnifiedStorage, STORAGE_MODE_KEY } from './storage-mode'
+import { encodeImportedBookAssets, decodeBookAssets, prepareBackupBook } from './book-assets'
+import { desktopInvoke, decodeDesktopValue, encodeRecords, type PersistedStore } from './desktop-records'
+import { libraryImportStatements, writingImportStatements } from './desktop-import'
+import { validateBackupData } from './backup-validation'
+import { beginStorageMaintenance, endStorageMaintenance } from './storage-maintenance'
+import { hasLiveLocalTasks } from '@/utils/local-workflow-runtime'
+import { appSettings, flushAppSettings, SETTINGS_NAMESPACE } from '@/storage/app-settings'
 /**
  * 一键备份 / 一键恢复（桌面端，单个 zip）。
  *
@@ -7,11 +15,13 @@
  *   writing.json         正文草稿、章节历史版本、sync_settings 键值
  *   local-storage.json   全部 ew-* 本地键（模型配置含 API Key、提示词偏好、统计、界面设置……）
  *   fonts.json + fonts/  导入的自定义字体
+ *   idb/<name>.json      IndexedDB 各库（参考资料、工作流、妙笔对话、AI 记录、拆书、生图、背景图、榜单缓存），
+ *   idb-blobs/           其中的 Blob 字段（生图）拆出的二进制条目；见 full-backup-idb.ts
  *   prompts/             提示词文档（Rust 侧直接从 Documents/易创提示词 进出）
  *
  * 恢复两种模式：
  *   overwrite  先清空再写入，工作台整体回到备份时的状态（可先自动做一次安全备份）
- *   merge      备份里的作品作为新记录加入；与本机冲突的 id 重映射，正文/版本/统计/位置随之改键；
+ *   merge      备份里的作品作为新记录加入；与本机冲突的 id 重映射，正文/版本/统计/位置/参考资料/工作流/对话/生图随之改键；
  *              设置类以备份为准，模型按 id 补缺，其余本机已有的保留
  */
 
@@ -27,12 +37,28 @@ import {
 import type { LocalLibraryDump } from './local-library-types'
 import { createLocalEntityId } from './local-library-utils'
 import { clearImportedFonts, listImportedFonts, readImportedFontFile, saveImportedFont } from './local-fonts'
+import {
+  IDB_STORES,
+  countIdbRecords,
+  dumpIdbStore,
+  extractIdbBlobs,
+  idbEntryPath,
+  listIdbKeys,
+  mergeIdbRecords,
+  planIdbIdRemap,
+  remapIdFields,
+  remapIdbRecords,
+  restoreIdbBlobs,
+  restoreIdbStore,
+  type IdbDumpFile,
+  type IdbRecord,
+} from './full-backup-idb'
 import type { ImportedFont } from '@/types/imported-font'
 
 export type FullRestoreMode = 'overwrite' | 'merge'
 
 export const FULL_BACKUP_FORMAT = 'ew-full-backup'
-export const FULL_BACKUP_VERSION = 1
+export const FULL_BACKUP_VERSION = 2
 
 export interface FullBackupManifest {
   format: typeof FULL_BACKUP_FORMAT
@@ -49,6 +75,8 @@ export interface FullBackupManifest {
     versions: number
     fonts: number
     localStorageKeys: number
+    /** IndexedDB 各库计数（键为 full-backup-idb 里的 name）；旧版备份没有这一项 */
+    idb?: Record<string, number>
   }
 }
 
@@ -56,6 +84,8 @@ export interface FullBackupSummary {
   path: string
   bytes: number
   entries: number
+  /** 备份完成但有内容因附件损坏未包含（封面、生图等）；备份本身有效 */
+  warnings?: string[]
 }
 
 export interface FullBackupEntry {
@@ -71,18 +101,21 @@ export interface FullBackupInspection {
 }
 
 export interface FullRestoreReport {
+  warnings?: string[]
   mode: FullRestoreMode
   books: number
   chapters: number
   versions: number
   fonts: number
   prompts: number
+  /** IndexedDB 各库写入计数（键为 full-backup-idb 里的 name） */
+  idb: Record<string, number>
   safetyBackupPath: string
 }
 
 const LOCAL_STORAGE_PREFIX = 'ew-'
 /** 会话级临时键，不进备份也不恢复 */
-const LOCAL_STORAGE_SKIP = new Set(['ew-workflow-active-run'])
+const LOCAL_STORAGE_SKIP = new Set(['ew-workflow-active-run', STORAGE_MODE_KEY])
 /** 合并模式下"以备份为准"的设置类键 */
 const SETTINGS_KEYS = new Set([
   'ew-ui-preferences',
@@ -114,7 +147,7 @@ const parseJson = <T>(raw: string | null | undefined, fallback: T): T => {
 // 纯函数：localStorage 快照
 // ---------------------------------------------------------------------------
 
-export const snapshotLocalStorage = (storage: StorageLike = localStorage): Record<string, string> => {
+export const snapshotLocalStorage = (storage: StorageLike = appSettings): Record<string, string> => {
   const out: Record<string, string> = {}
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index)
@@ -129,7 +162,7 @@ export const snapshotLocalStorage = (storage: StorageLike = localStorage): Recor
 export const applyLocalStorageSnapshot = (
   next: Record<string, string>,
   mode: FullRestoreMode,
-  storage: StorageLike = localStorage
+  storage: StorageLike = appSettings
 ) => {
   if (mode === 'overwrite') {
     const keys: string[] = []
@@ -154,9 +187,25 @@ export interface IdRemap {
   books: Map<number, number>
   volumes: Map<number, number>
   chapters: Map<number, number>
+  /** 工作流 run / 任务 / 妙笔会话 / 生图：与本机冲突时换号（见 full-backup-idb.planIdbIdRemap） */
+  runs: Map<number, number>
+  tasks: Map<number, number>
+  chatSessions: Map<number, number>
+  images: Map<number, number>
+  referenceEntities: Map<string, Map<number, number>>
 }
 
-export const emptyIdRemap = (): IdRemap => ({ groups: new Map(), books: new Map(), volumes: new Map(), chapters: new Map() })
+export const emptyIdRemap = (): IdRemap => ({
+  groups: new Map(),
+  books: new Map(),
+  volumes: new Map(),
+  chapters: new Map(),
+  runs: new Map(),
+  tasks: new Map(),
+  chatSessions: new Map(),
+  images: new Map(),
+  referenceEntities: new Map(),
+})
 
 export const collectLibraryIds = (dump: LocalLibraryDump) => {
   const ids = new Set<number>()
@@ -168,14 +217,13 @@ export const collectLibraryIds = (dump: LocalLibraryDump) => {
 }
 
 /** 本地 id 是负的时间戳；从当前时刻往下逐个分配，保证不撞本机已有 id */
-export const createIdAllocator = (taken: Set<number>, seed = createLocalEntityId()) => {
+export const createIdAllocator = (taken: Set<number>, seed?: number) => {
   let cursor = seed
   return () => {
-    do {
-      cursor -= 1
-    } while (taken.has(cursor))
-    taken.add(cursor)
-    return cursor
+    let id: number
+    do { id = cursor === undefined ? createLocalEntityId() : --cursor } while (taken.has(id))
+    taken.add(id)
+    return id
   }
 }
 
@@ -207,17 +255,21 @@ export const remapLibraryDump = (dump: LocalLibraryDump, remap: IdRemap): LocalL
     id: Number(mapId(remap.books, book.id)),
     groupId: book.groupId == null || book.groupId === '' ? book.groupId : mapIdString(remap.groups, book.groupId),
     lastChapterId: book.lastChapterId == null ? book.lastChapterId : Number(mapId(remap.chapters, book.lastChapterId)),
+    // 工作流建书把 { workflowRunId } 记在这里（对象或 JSON 字符串），run 换号后要跟着改
+    globalInstruction: (remapIdFields({ globalInstruction: book.globalInstruction }, remap) as { globalInstruction: typeof book.globalInstruction }).globalInstruction,
   })),
   volumes: dump.volumes.map(volume => ({
     ...volume,
     id: Number(mapId(remap.volumes, volume.id)),
     bookId: mapIdString(remap.books, volume.bookId),
+    planMeta: remapIdFields(volume.planMeta, remap) as typeof volume.planMeta,
   })),
   chapters: dump.chapters.map(chapter => ({
     ...chapter,
     id: Number(mapId(remap.chapters, chapter.id)),
     bookId: mapIdString(remap.books, chapter.bookId),
     volumeId: mapIdString(remap.volumes, chapter.volumeId),
+    planMeta: remapIdFields(chapter.planMeta, remap) as typeof chapter.planMeta,
   })),
 })
 
@@ -378,12 +430,13 @@ export const preserveMachineSettings = (
 
 export const buildFullBackupFileName = (date = new Date()) => {
   const pad = (value: number) => String(value).padStart(2, '0')
-  return `易创全量备份-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}.zip`
+  return `易创全量备份-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}-${String(date.getMilliseconds()).padStart(3,'0')}.zip`
 }
 
 export const parseFullBackupManifest = (raw: string): FullBackupManifest => {
   const manifest = parseJson<Partial<FullBackupManifest> | null>(raw, null)
   if (!manifest || manifest.format !== FULL_BACKUP_FORMAT) throw new Error('这不是易创的一键备份文件')
+  if (!Number.isInteger(manifest.version) || Number(manifest.version) < 1) throw new Error('备份版本无效')
   if (Number(manifest.version) > FULL_BACKUP_VERSION) throw new Error('备份文件由更新版本的易创生成，请先升级应用再恢复')
   return manifest as FullBackupManifest
 }
@@ -395,7 +448,7 @@ export const parseFullBackupManifest = (raw: string): FullBackupManifest => {
 export const isFullBackupSupported = () => isTauriRuntime()
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
+const decoder = new TextDecoder('utf-8', { fatal: true })
 
 const getInvoke = async () => (await import('@tauri-apps/api/core')).invoke
 
@@ -420,7 +473,32 @@ export async function createFullBackup(
   targetPath: string,
   onProgress?: (text: string) => void
 ): Promise<FullBackupSummary> {
+  await flushAppSettings()
   const invoke = await getInvoke()
+  let snapshot: { library: LocalLibraryDump; writing: WritingStorageDump; stores: PersistedStore[] } | null = null
+  // 单个附件文件损坏不该让整份备份做不成：封面按无封面导出，生图等按缺失导出，最后一并告知
+  const warnings: string[] = []
+  const brokenAssets = new Set<string>()
+  if (usesUnifiedStorage()) {
+    await getLocalLibraryStorage().getLocalBookDetail(0)
+    await getWritingStorage().getLocalWritingSettings()
+    snapshot = await desktopInvoke('desktop_storage_snapshot')
+    snapshot!.library.books = await Promise.all(
+      snapshot!.library.books.map(book =>
+        decodeBookAssets(book, () => warnings.push(`《${book.title}》的封面文件损坏，备份里不含该封面`))
+      )
+    )
+  }
+  const snapshotRecords = async (namespace: string): Promise<IdbRecord[]> => Promise.all(
+    (snapshot?.stores.find(store => store.namespace === namespace)?.records || []).map(async record => ({
+      key: record.key,
+      value: await decodeDesktopValue(JSON.parse(record.value), {
+        onAssetError: asset => {
+          brokenAssets.add(asset.path)
+          return null
+        },
+      }),
+    })))
   const session = await invoke<string>('full_backup_begin')
   const add = async (entry: string, data: Uint8Array | string) => {
     const bytes = typeof data === 'string' ? encoder.encode(data) : data
@@ -430,26 +508,50 @@ export async function createFullBackup(
   }
   try {
     onProgress?.('导出作品库…')
-    const library = await getLocalLibraryStorage().exportAllRecords()
+    const library = snapshot?.library ?? await getLocalLibraryStorage().exportAllRecords()
+    library.books = library.books.map(book => prepareBackupBook(book, message => warnings.push(message)))
     await add('library.json', JSON.stringify(library))
 
     onProgress?.('导出正文与版本历史…')
-    const writing = await getWritingStorage().exportAllRecords()
+    const writing = snapshot?.writing ?? await getWritingStorage().exportAllRecords()
     await add('writing.json', JSON.stringify(writing))
 
     onProgress?.('导出配置与统计…')
-    const localStorageSnapshot = snapshotLocalStorage()
+    const localStorageSnapshot: Record<string,string> = snapshot
+      ? Object.fromEntries((await snapshotRecords(SETTINGS_NAMESPACE)).filter(record=>String(record.key).startsWith('ew-')&&!LOCAL_STORAGE_SKIP.has(String(record.key))).map(record=>[String(record.key),String(record.value)]))
+      : snapshotLocalStorage()
     await add('local-storage.json', JSON.stringify(localStorageSnapshot))
 
     onProgress?.('导出字体…')
     const fonts: ImportedFont[] = []
-    for (const font of await listImportedFonts()) {
-      const data = await readImportedFontFile(font.id)
-      if (!data) continue
+    const fontMetadata = snapshot ? (await snapshotRecords('ew-font-store/metadata')).map(record=>record.value as ImportedFont) : await listImportedFonts()
+    const fontRecords = snapshot?.stores.find(store=>store.namespace==='ew-font-store/files')?.records || []
+    for (const font of fontMetadata) {
+      let data: ArrayBuffer | undefined
+      try {
+        const raw = fontRecords.find(record=>record.key===font.id)
+        data = snapshot ? (raw ? await decodeDesktopValue(JSON.parse(raw.value)) as ArrayBuffer : undefined) : await readImportedFontFile(font.id)
+        if (!(data instanceof ArrayBuffer) || data.byteLength === 0) throw new Error('字体文件缺失或无效')
+      } catch {
+        warnings.push(`字体「${font.name}」的文件缺失或损坏，未包含在本次备份中；本机原记录保留`)
+        continue
+      }
+      // 只对源文件读取容错；备份写入失败必须中止，不能误报备份成功。
       await add(`fonts/${font.id}`, new Uint8Array(data))
       fonts.push(font)
     }
     await add('fonts.json', JSON.stringify(fonts))
+
+    onProgress?.('导出参考资料、工作流与其它记录…')
+    const idbCounts: Record<string, number> = {}
+    for (const spec of IDB_STORES) {
+      const records = snapshot ? await snapshotRecords(`${spec.db}/${spec.store}`) : await dumpIdbStore(spec)
+      const { records: serializable, blobs } = extractIdbBlobs(spec.name, records)
+      for (const item of blobs) await add(item.entry, new Uint8Array(await item.blob.arrayBuffer()))
+      const file: IdbDumpFile = { db: spec.db, store: spec.store, keyPath: spec.keyPath ?? null, records: serializable }
+      await add(idbEntryPath(spec.name), JSON.stringify(file))
+      idbCounts[spec.name] = countIdbRecords(spec, records)
+    }
 
     const manifest: FullBackupManifest = {
       format: FULL_BACKUP_FORMAT,
@@ -466,12 +568,16 @@ export async function createFullBackup(
         versions: writing.versions.length,
         fonts: fonts.length,
         localStorageKeys: Object.keys(localStorageSnapshot).length,
+        idb: idbCounts,
       },
     }
+    validateBackupData(library, writing, localStorageSnapshot, fonts, manifest)
     await add('manifest.json', JSON.stringify(manifest, null, 2))
 
     onProgress?.('压缩打包…')
-    return await invoke<FullBackupSummary>('full_backup_finish', { session, targetPath, includePrompts: true })
+    if (brokenAssets.size) warnings.push(`有 ${brokenAssets.size} 个图片附件文件损坏，对应的生图或背景图未包含在备份中`)
+    const summary = await invoke<FullBackupSummary>('full_backup_finish', { session, targetPath, includePrompts: true })
+    return { ...summary, warnings }
   } catch (error) {
     await invoke('full_restore_close', { session }).catch(() => undefined)
     throw error
@@ -508,10 +614,45 @@ const readEntryBytes = async (session: string, path: string) => {
   return new Uint8Array(data)
 }
 
-const readEntryJson = async <T>(session: string, path: string, fallback: T) =>
-  parseJson<T>(decoder.decode(await readEntryBytes(session, path)), fallback)
+const readEntryJson = async <T>(session: string, path: string): Promise<T> => {
+  const bytes = await readEntryBytes(session, path)
+  try { return JSON.parse(decoder.decode(bytes)) as T }
+  catch { throw new Error(`备份条目损坏：${path}，未修改本机数据`) }
+}
+
+export class RestoreRestartRequiredError extends Error {
+  constructor(cause: unknown) {
+    super(`恢复操作已停止，需要重新启动确认数据状态；继续写入已暂停。${cause instanceof Error ? cause.message : String(cause)}`)
+    this.name = 'RestoreRestartRequiredError'
+  }
+}
 
 export async function applyFullBackup(
+  inspection: FullBackupInspection,
+  mode: FullRestoreMode,
+  options: { safetyBackupPath?: string; onProgress?: (text: string) => void } = {}
+): Promise<FullRestoreReport> {
+  if (hasLiveLocalTasks()) throw new Error('还有生成任务在运行，请先停止任务再恢复备份')
+  await flushAppSettings()
+  const { getLocalBackupService } = await import('./local-backup-service')
+  if (!await getLocalBackupService().snapshotActiveWritingEditor(4000,true)) throw new Error('当前编辑内容尚未保存，已停止恢复')
+  await flushAppSettings()
+  if (!isTauriRuntime()) return performFullBackup(inspection,mode,options)
+  // Finish schema initialization before blocking every ordinary writer.
+  await getLocalLibraryStorage().getLocalBookDetail(0)
+  await getWritingStorage().getLocalWritingSettings()
+  await beginStorageMaintenance()
+  try {
+    const result = await performFullBackup(inspection,mode,options)
+    // Keep writers blocked until restart: in-memory editor/workflow state belongs to the old DB.
+    return result
+  } catch (error) {
+    if (!(error instanceof RestoreRestartRequiredError)) endStorageMaintenance()
+    throw error
+  }
+}
+
+async function performFullBackup(
   inspection: FullBackupInspection,
   mode: FullRestoreMode,
   options: { safetyBackupPath?: string; onProgress?: (text: string) => void } = {}
@@ -529,17 +670,47 @@ export async function applyFullBackup(
   }
 
   onProgress?.('读取备份内容…')
-  const emptyLibrary: LocalLibraryDump = { groups: [], books: [], volumes: [], chapters: [] }
-  const emptyWriting: WritingStorageDump = { chapters: [], versions: [], settings: [] }
-  let libraryDump = await readEntryJson<LocalLibraryDump>(session, 'library.json', emptyLibrary)
-  let writingDump = await readEntryJson<WritingStorageDump>(session, 'writing.json', emptyWriting)
-  const backupLocalStorage = await readEntryJson<Record<string, string>>(session, 'local-storage.json', {})
-  const fonts = await readEntryJson<ImportedFont[]>(session, 'fonts.json', [])
+  let libraryDump = await readEntryJson<LocalLibraryDump>(session, 'library.json')
+  let writingDump = await readEntryJson<WritingStorageDump>(session, 'writing.json')
+  const backupLocalStorage = await readEntryJson<Record<string, string>>(session, 'local-storage.json')
+  const fonts = await readEntryJson<ImportedFont[]>(session, 'fonts.json')
+  validateBackupData(libraryDump, writingDump, backupLocalStorage, fonts, inspection.manifest)
+  const warnings: string[] = []
+  libraryDump.books = libraryDump.books.map(book => prepareBackupBook(book, message => warnings.push(message)))
+  // 旧版备份没有 idb/ 条目：对应库保持本机现状，不清空
+  const entryPaths = new Set(inspection.entries.map(entry => entry.path))
+  const idbFiles: Record<string, IdbRecord[]> = {}
+  for (const spec of IDB_STORES) {
+    const path = idbEntryPath(spec.name)
+    if (!entryPaths.has(path)) {
+      if (inspection.manifest.counts.idb && spec.name in inspection.manifest.counts.idb) throw new Error(`备份缺少资料文件：${path}`)
+      continue
+    }
+    const file = await readEntryJson<IdbDumpFile | null>(session, path)
+    if (!file || !Array.isArray(file.records) || file.db !== spec.db || file.store !== spec.store
+      || file.records.some(record => !record || !['string','number'].includes(typeof record.key) || !('value' in record))
+      || new Set(file.records.map(record=>JSON.stringify(record.key))).size !== file.records.length) throw new Error(`备份资料结构无效：${path}`)
+    if (inspection.manifest.counts.idb?.[spec.name] !== undefined && countIdbRecords(spec,file.records) !== inspection.manifest.counts.idb[spec.name]) throw new Error(`备份资料数量不匹配：${path}`)
+    idbFiles[spec.name] = await restoreIdbBlobs(file.records, entry => readEntryBytes(session, entry))
+  }
 
   let remap = emptyIdRemap()
   if (mode === 'merge') {
     const existing = collectLibraryIds(await library.exportAllRecords())
-    remap = planIdRemap(libraryDump, existing, createIdAllocator(existing))
+    const allocate = createIdAllocator(new Set([...existing, ...collectLibraryIds(libraryDump)]))
+    remap = planIdRemap(libraryDump, existing, allocate)
+    const currentIdbKeys: Record<string, Set<string>> = {}
+    for (const spec of IDB_STORES) {
+      if ((spec.name === 'workflow' || spec.name === 'chat' || spec.name === 'ai-images') && idbFiles[spec.name]) {
+        currentIdbKeys[spec.name] = await listIdbKeys(spec)
+        if (spec.name === 'chat') for (const record of await dumpIdbStore(spec)) {
+          if (String(record.key).startsWith('sessions:') && Array.isArray(record.value)) {
+            for (const session of record.value) currentIdbKeys.chat.add(`messages:${session.id}`)
+          }
+        }
+      }
+    }
+    planIdbIdRemap(idbFiles, currentIdbKeys, allocate, remap)
     libraryDump = remapLibraryDump(libraryDump, remap)
     writingDump = remapWritingDump(writingDump, remap)
     // 书级字数缓存按 userId 分桶：备份里的桶要和本机同桶合并，本机值优先
@@ -552,6 +723,67 @@ export async function applyFullBackup(
     )
   }
   writingDump.settings = preserveMachineSettings(writingDump.settings, await writing.getLocalWritingSettings())
+
+  // Validate/read every font before touching ANY live store.
+  const fontData = new Map<string,ArrayBuffer>()
+  for (const font of fonts) {
+    const bytes = await readEntryBytes(session, `fonts/${font.id}`)
+    fontData.set(font.id,bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
+  }
+  if (isTauriRuntime()) {
+    const stores: PersistedStore[] = []
+    const nextSettings = mode === 'overwrite' ? backupLocalStorage : mergeLocalStorage(snapshotLocalStorage(),backupLocalStorage,remap)
+    stores.push({namespace:SETTINGS_NAMESPACE,records:await encodeRecords(SETTINGS_NAMESPACE,Object.entries(nextSettings).filter(([key])=>!LOCAL_STORAGE_SKIP.has(key)).map(([key,value])=>({key,value})))})
+    const known = new Set(mode === 'merge' ? (await listImportedFonts()).map(font=>font.id) : [])
+    const selected = fonts.filter(font=>!known.has(font.id))
+    stores.push({namespace:'ew-font-store/metadata',records:await encodeRecords('ew-font-store/metadata',selected.map(font=>({key:font.id,value:font})))})
+    stores.push({namespace:'ew-font-store/files',records:await encodeRecords('ew-font-store/files',selected.map(font=>({key:font.id,value:fontData.get(font.id)})))})
+    const idb: Record<string,number> = {}
+    for (const spec of IDB_STORES) {
+      let records = idbFiles[spec.name]
+      if (!records) continue // Legacy packages lack these stores; preserve current records.
+      if (mode === 'merge') records = mergeIdbRecords(spec,remapIdbRecords(spec.name,records,remap),await dumpIdbStore(spec))
+      const namespace = `${spec.db}/${spec.store}`
+      stores.push({namespace,records:await encodeRecords(namespace,records)})
+      idb[spec.name] = countIdbRecords(spec,records)
+    }
+    onProgress?.('校验完成，正在提交数据库和附件…')
+    const storedLibrary = { ...libraryDump, books: await Promise.all(libraryDump.books.map(book => encodeImportedBookAssets(book, true))) }
+    let legacyBase: { statements: ReturnType<typeof libraryImportStatements>; stores: PersistedStore[] } | undefined
+    if (!usesUnifiedStorage()) {
+      legacyBase = { statements: [], stores: [] }
+      if (mode === 'merge') {
+        const currentLibrary = await library.exportAllRecords()
+        currentLibrary.books = await Promise.all(currentLibrary.books.map(book => encodeImportedBookAssets(prepareBackupBook(book, message => warnings.push(message)), true)))
+        legacyBase.statements = [...libraryImportStatements(currentLibrary, false), ...writingImportStatements(await writing.exportAllRecords(), false)]
+        const currentFonts = await listImportedFonts()
+        legacyBase.stores.push({ namespace: 'ew-font-store/metadata', records: await encodeRecords('ew-font-store/metadata', currentFonts.map(font => ({ key: font.id, value: font }))) })
+        const files = []
+        for (const font of currentFonts) {
+          const value = await readImportedFontFile(font.id)
+          if (!value) throw new Error(`本机字体文件缺失：${font.name}，未开始恢复`)
+          files.push({ key: font.id, value })
+        }
+        legacyBase.stores.push({ namespace: 'ew-font-store/files', records: await encodeRecords('ew-font-store/files', files) })
+      }
+      for (const spec of IDB_STORES) {
+        // Old backup packages may omit modules. Preserve those current legacy records too.
+        if (mode === 'overwrite' && idbFiles[spec.name]) continue
+        const namespace = `${spec.db}/${spec.store}`
+        legacyBase.stores.push({ namespace, records: await encodeRecords(namespace, await dumpIdbStore(spec)) })
+      }
+    }
+    let prompts: number
+    try {
+      prompts = await desktopInvoke<number>('desktop_restore_apply',{
+
+      statements:[...libraryImportStatements(storedLibrary,mode==='overwrite'),...writingImportStatements(writingDump,mode==='overwrite')],
+      stores,replace:mode==='overwrite',session,mode,legacyBase,
+      })
+    } catch (error) { throw new RestoreRestartRequiredError(error) }
+    await closeFullBackup(session)
+    return {mode,books:libraryDump.books.filter(book=>!book.deletedAt).length,chapters:libraryDump.chapters.filter(chapter=>!chapter.deletedAt).length,versions:writingDump.versions.length,fonts:selected.length,prompts,idb,safetyBackupPath,...(warnings.length ? {warnings} : {})}
+  }
 
   onProgress?.(mode === 'overwrite' ? '写入作品库（覆盖）…' : '写入作品库（合并）…')
   await library.importAllRecords(libraryDump, { replace: mode === 'overwrite' })
@@ -569,9 +801,20 @@ export async function applyFullBackup(
   let fontCount = 0
   for (const font of fonts) {
     if (knownFonts.has(font.id)) continue
-    const bytes = await readEntryBytes(session, `fonts/${font.id}`)
-    await saveImportedFont(font, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
+    await saveImportedFont(font, fontData.get(font.id)!)
     fontCount += 1
+  }
+
+  onProgress?.('写入参考资料、工作流与其它记录…')
+  const idbReport: Record<string, number> = {}
+  for (const spec of IDB_STORES) {
+    let records = idbFiles[spec.name]
+    if (!records) continue
+    if (mode === 'merge') {
+      records = mergeIdbRecords(spec, remapIdbRecords(spec.name, records, remap), await dumpIdbStore(spec))
+    }
+    await restoreIdbStore(spec, records, { replace: mode === 'overwrite' })
+    idbReport[spec.name] = countIdbRecords(spec, records)
   }
 
   onProgress?.('写入提示词…')
@@ -585,6 +828,8 @@ export async function applyFullBackup(
     versions: writingDump.versions.length,
     fonts: fontCount,
     prompts,
+    idb: idbReport,
     safetyBackupPath,
+    ...(warnings.length ? { warnings } : {}),
   }
 }

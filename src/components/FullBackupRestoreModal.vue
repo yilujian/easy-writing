@@ -1,24 +1,25 @@
 <template>
   <EwModal
     v-model:visible="visibleProxy" title="一键恢复" width="640px" max-height="85vh"
-    custom-class="full-restore-modal" :close-on-click-modal="false" :show-close="!busy"
+    custom-class="full-restore-modal" :close-on-click-modal="false" :show-close="!busy && !restartRequired && !done"
   >
     <div class="full-restore-body">
       <p class="restore-hint">选择由“一键备份”生成的 .zip 文件。恢复完成后应用会重新启动。</p>
       <div class="restore-file">
         <span :title="filePath">{{ filePath || '尚未选择备份文件' }}</span>
-        <button class="ink-btn ink-btn-outline" type="button" :disabled="busy || done" @click="chooseFile">
+        <button class="ink-btn ink-btn-outline" type="button" :disabled="busy || done || restartRequired" @click="chooseFile">
           <i :class="opening ? 'fa-solid fa-spinner fa-spin' : 'fa-regular fa-folder-open'"></i>
           {{ opening ? '读取中…' : '选择文件' }}
         </button>
       </div>
       <p v-if="error" class="restore-error" role="alert">{{ error }}</p>
 
-      <template v-if="inspection && !done">
+      <template v-if="inspection && !done && !restartRequired">
         <dl class="restore-summary">
           <div><dt>备份时间</dt><dd>{{ formatLocaleDateTime(inspection.manifest.createdAt, '未知') }}</dd></div>
           <div><dt>来源版本</dt><dd>{{ inspection.manifest.appVersion || '未知' }} · {{ inspection.manifest.platform }}</dd></div>
           <div><dt>作品</dt><dd>{{ counts.books }} 本 · {{ counts.chapters }} 章 · 版本历史 {{ counts.versions }} 条</dd></div>
+          <div><dt>资料</dt><dd>{{ idbSummary }}</dd></div>
           <div><dt>其它</dt><dd>字体 {{ counts.fonts }} 个 · 提示词文档 {{ inspection.promptCount }} 个 · 配置项 {{ counts.localStorageKeys }} 项</dd></div>
         </dl>
 
@@ -34,7 +35,7 @@
             <input v-model="mode" type="radio" value="merge" :disabled="busy" />
             <span>
               <strong>合并到现有数据</strong>
-              <small>备份里的作品作为新记录加入，本机作品不动；编号冲突自动换号。界面与写作设置以备份为准，模型配置按编号补缺，本机已有的灵感、敏感词等保留。</small>
+              <small>备份里的作品连同参考资料、工作流、妙笔对话作为新记录加入，本机作品不动；编号冲突自动换号。界面与写作设置、自定义背景以备份为准，模型配置、AI 记录、拆书项目按编号补缺，本机已有的灵感、敏感词等保留。</small>
             </span>
           </label>
         </div>
@@ -47,14 +48,16 @@
 
       <div v-if="done && report" class="restore-done">
         <p><i class="fa-solid fa-circle-check"></i> 恢复完成：作品 {{ report.books }} 本、章节 {{ report.chapters }} 章、版本历史 {{ report.versions }} 条、字体 {{ report.fonts }} 个、提示词文档 {{ report.prompts }} 个。</p>
+        <p v-if="reportIdbSummary">{{ reportIdbSummary }}</p>
+        <p v-for="warning in report.warnings" :key="warning" class="restore-done-path">{{ warning }}</p>
         <p v-if="report.safetyBackupPath" class="restore-done-path">恢复前的安全备份：{{ report.safetyBackupPath }}</p>
         <p>需要重新启动应用才能加载恢复后的数据。</p>
       </div>
     </div>
     <template #footer>
       <div class="restore-footer">
-        <button v-if="!done" class="ink-btn ink-btn-outline" type="button" :disabled="busy" @click="close">取消</button>
-        <button v-if="!done" class="ink-btn ink-btn-primary" type="button" :disabled="!inspection || busy" @click="restore">
+        <button v-if="!done && !restartRequired" class="ink-btn ink-btn-outline" type="button" :disabled="busy" @click="close">取消</button>
+        <button v-if="!done && !restartRequired" class="ink-btn ink-btn-primary" type="button" :disabled="!inspection || busy" @click="restore">
           <i v-if="restoring" class="fa-solid fa-spinner fa-spin"></i>
           {{ restoring ? '恢复中…' : '开始恢复' }}
         </button>
@@ -74,6 +77,7 @@ import { formatLocaleDateTime } from '@/utils/format'
 import { getLocalBackupService } from '@/storage/local-backup-service'
 import {
   applyFullBackup,
+  RestoreRestartRequiredError,
   buildFullBackupFileName,
   closeFullBackup,
   openFullBackup,
@@ -81,6 +85,7 @@ import {
   type FullRestoreMode,
   type FullRestoreReport,
 } from '@/storage/full-backup'
+import { IDB_STORES } from '@/storage/full-backup-idb'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
@@ -89,6 +94,7 @@ const filePath = ref('')
 const opening = ref(false)
 const restoring = ref(false)
 const error = ref('')
+const restartRequired = ref(false)
 const progress = ref('')
 const mode = ref<FullRestoreMode>('overwrite')
 const safetyBackup = ref(true)
@@ -97,6 +103,24 @@ const report = shallowRef<FullRestoreReport | null>(null)
 const done = computed(() => Boolean(report.value))
 const busy = computed(() => opening.value || restoring.value)
 const counts = computed(() => inspection.value?.manifest.counts || { books: 0, chapters: 0, versions: 0, fonts: 0, localStorageKeys: 0 })
+/** 清单里 IndexedDB 各库的计数拼成一行，如"参考资料 2 本 · 工作流 1 条"；全为 0 的库不显示 */
+const describeIdbCounts = (values: Record<string, number> | undefined) => {
+  if (!values) return ''
+  const units: Record<string, string> = { reference: '本', workflow: '条', chat: '个', 'ai-records': '条', breakdown: '个', 'ai-images': '张', skin: '张', rank: '份' }
+  return IDB_STORES
+    .filter(spec => (values[spec.name] || 0) > 0)
+    .map(spec => `${spec.label} ${values[spec.name]} ${units[spec.name] || '条'}`)
+    .join(' · ')
+}
+const idbSummary = computed(() => {
+  const values = inspection.value?.manifest.counts.idb
+  if (!values) return '旧版本生成的备份，不含参考资料、工作流等资料'
+  return describeIdbCounts(values) || '无'
+})
+const reportIdbSummary = computed(() => {
+  const text = describeIdbCounts(report.value?.idb)
+  return text ? `已写入：${text}。` : ''
+})
 const visibleProxy = computed({
   get: () => props.visible,
   set: (value: boolean) => {
@@ -166,6 +190,7 @@ const restore = async () => {
     })
     inspection.value = null
   } catch (cause) {
+    restartRequired.value = cause instanceof RestoreRestartRequiredError
     error.value = cause instanceof Error ? cause.message : String(cause)
   } finally {
     restoring.value = false

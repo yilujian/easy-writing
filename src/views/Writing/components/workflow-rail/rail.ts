@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import type {
   WorkflowRuntimeEffectiveScope,
   WorkflowRuntimeSettings,
@@ -10,6 +11,7 @@ export type WorkflowRailToolId =
   | 'rules'
   | 'rewrite'
   | 'characters'
+  | 'words'
   | 'world'
   | 'work'
 
@@ -28,6 +30,7 @@ export const WORKFLOW_RAIL_TOOLS: WorkflowRailTool[] = [
   { id: 'rules', name: '规则', icon: 'fa-solid fa-scale-balanced' },
   { id: 'rewrite', name: '重写', icon: 'fa-solid fa-rotate' },
   { id: 'characters', name: '角色', icon: 'fa-solid fa-users', dividerBefore: true },
+  { id: 'words', name: '词库', icon: 'fa-solid fa-book-bookmark' },
   { id: 'world', name: '世界', icon: 'fa-solid fa-globe' },
   { id: 'work', name: '作品', icon: 'fa-solid fa-book' },
 ]
@@ -60,7 +63,7 @@ export const clampWorkflowRailPanelWidth = (value: number) =>
 
 export const readStoredWorkflowRailPanelWidth = (): number => {
   try {
-    const raw = Number(window.localStorage.getItem(WORKFLOW_RAIL_WIDTH_STORAGE_KEY))
+    const raw = Number(appSettings.getItem(WORKFLOW_RAIL_WIDTH_STORAGE_KEY))
     if (!Number.isFinite(raw) || raw <= 0) return WORKFLOW_RAIL_PANEL_DEFAULT_WIDTH
     return clampWorkflowRailPanelWidth(raw)
   } catch {
@@ -70,7 +73,7 @@ export const readStoredWorkflowRailPanelWidth = (): number => {
 
 export const persistWorkflowRailPanelWidth = (width: number) => {
   try {
-    window.localStorage.setItem(
+    appSettings.setItem(
       WORKFLOW_RAIL_WIDTH_STORAGE_KEY,
       String(clampWorkflowRailPanelWidth(width))
     )

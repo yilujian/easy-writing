@@ -24,6 +24,7 @@ export interface LiveLocalTaskHandle {
 }
 
 const liveTasks = new Map<number, LiveLocalTaskHandle>()
+export const hasLiveLocalTasks = () => liveTasks.size > 0
 
 export const registerLiveLocalTask = (handle: LiveLocalTaskHandle) => {
   liveTasks.set(Number(handle.taskId), handle)

@@ -1,3 +1,5 @@
+import { trackIndexedDbTransaction } from './storage-maintenance'
+import { validateStoredChapter } from './stored-record'
 import { countTextWords } from '@/utils/word-count'
 import { recordWriteJournal } from './write-journal'
 import {
@@ -82,7 +84,7 @@ export class IndexedDbWritingStorage implements WritingStorage {
 
   private async store<T extends StoreName>(name: T, mode: IDBTransactionMode) {
     const db = await this.getDb()
-    const transaction = db.transaction(name, mode)
+    const transaction = trackIndexedDbTransaction(db.transaction(name, mode))
     return {
       objectStore: transaction.objectStore(name),
       transaction,
@@ -92,13 +94,15 @@ export class IndexedDbWritingStorage implements WritingStorage {
   async getChapter(chapterId: number) {
     const { objectStore } = await this.store(STORE_CHAPTERS, 'readonly')
     const index = objectStore.index('chapterId')
-    return await requestToPromise<StoredLocalChapterDraft | undefined>(index.get(Number(chapterId))) ?? null
+    const value = await requestToPromise<StoredLocalChapterDraft | undefined>(index.get(Number(chapterId)))
+    return value === undefined ? null : validateStoredChapter(value)
   }
 
   async getChapterByIdentity(userId: string, bookId: string | number, chapterId: number) {
     const { objectStore } = await this.store(STORE_CHAPTERS, 'readonly')
     const key = buildChapterStorageKey(userId, bookId, chapterId)
-    return await requestToPromise<StoredLocalChapterDraft | undefined>(objectStore.get(key)) ?? null
+    const value = await requestToPromise<StoredLocalChapterDraft | undefined>(objectStore.get(key))
+    return value === undefined ? null : validateStoredChapter(value, key)
   }
 
   async saveChapterLocal(payload: LocalChapterDraft) {
@@ -282,7 +286,7 @@ export class IndexedDbWritingStorage implements WritingStorage {
     const settings = await this.getAllFrom<{ key: string; value: unknown }>(STORE_SETTINGS)
     // IndexedDB 里 value 存的是对象，导出统一成 JSON 文本，与 SQLite 口径一致
     return {
-      chapters,
+      chapters: chapters.map(chapter => validateStoredChapter(chapter)),
       versions,
       settings: settings.map(item => ({ key: String(item.key), value: JSON.stringify(item.value ?? null) })),
     }
@@ -291,7 +295,7 @@ export class IndexedDbWritingStorage implements WritingStorage {
   async importAllRecords(dump: WritingStorageDump, options: { replace: boolean }) {
     const db = await this.getDb()
     const stores: StoreName[] = [STORE_CHAPTERS, STORE_VERSIONS, STORE_SETTINGS]
-    const transaction = db.transaction(stores, 'readwrite')
+    const transaction = trackIndexedDbTransaction(db.transaction(stores, 'readwrite'))
     if (options.replace) stores.forEach(name => transaction.objectStore(name).clear())
     for (const chapter of dump.chapters) {
       const normalized = normalizeLocalChapterDraft(chapter)

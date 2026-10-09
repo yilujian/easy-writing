@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { navigationGroups } from '@/config/navigation'
@@ -8,7 +9,7 @@ export const defaultUiPreferences = (): UiPreferences => ({ hiddenMenus: [], wor
 
 export function readUiPreferences(): UiPreferences {
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const value = JSON.parse(appSettings.getItem(STORAGE_KEY) || '{}')
     const ids = new Set(navigationGroups.flatMap(group => group.items.map(item => item.id)))
     return {
       hiddenMenus: Array.isArray(value?.hiddenMenus)
@@ -35,7 +36,7 @@ export const useUiPreferencesStore = defineStore('ui-preferences', () => {
       restoreWritingPosition: value.restoreWritingPosition !== false,
     }
     // 先持久化再更新页面；写入失败时由设置中心统一提示，不伪装成已保存。
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    appSettings.setItem(STORAGE_KEY, JSON.stringify(next))
     hiddenMenus.value = next.hiddenMenus
     wordCountMode.value = next.wordCountMode
     restoreWritingPosition.value = next.restoreWritingPosition

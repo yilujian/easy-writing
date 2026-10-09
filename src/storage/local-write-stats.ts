@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import dayjs from 'dayjs'
 import { readUiPreferences } from '@/stores/ui-preferences'
 import type { WordCountMode } from '@/types/ui-preferences'
@@ -11,8 +12,8 @@ import type { WordCountMode } from '@/types/ui-preferences'
  * 退出后再进来删旧字也不会把已入账的数字扣回去。
  * 章节字数基线（chapterBase）现在只服务 AI 记账，手写落盘不再按基线差记账。
  *
- * 存储：localStorage 单键 JSON。数据量小（每天每本书一条数字），
- * 桌面端 WebView 的 localStorage 同样跟随应用数据目录持久化。
+ * 存储：桌面端 SQLite 设置记录，网页端 localStorage。数据量小（每天每本书一条数字），
+ * 桌面设置写入失败会提示，退出和备份前等待写入完成。
  *
  * AI 记账：AI 文字进正文的口子各自调 recordAiWordsAdded（编辑器内插字）或
  * recordAiChapterLanding（工作流整章落稿）。两者都会同步抬高该章基线，
@@ -92,10 +93,10 @@ const emptyFile = (): StatsFile => ({
 
 const loadFile = (): StatsFile => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = appSettings.getItem(STORAGE_KEY)
     if (!raw) return emptyFile()
     const parsed = JSON.parse(raw)
-    if (!parsed || parsed.version !== 1) return emptyFile()
+    if (!parsed || parsed.version !== 1) throw new Error('统计数据版本无效')
     return {
       version: 1,
       targets: {
@@ -108,8 +109,7 @@ const loadFile = (): StatsFile => {
         parsed.chapterTextBase && typeof parsed.chapterTextBase === 'object' ? parsed.chapterTextBase : {}
     }
   } catch (error) {
-    console.warn('读取本地码字统计失败，重建空账本', error)
-    return emptyFile()
+    throw new Error(`读取码字统计失败，未重建或覆盖原账本：${String(error)}`)
   }
 }
 
@@ -122,7 +122,7 @@ const saveFile = (file: StatsFile) => {
     }
   }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(file))
+    appSettings.setItem(STORAGE_KEY, JSON.stringify(file))
   } catch (error) {
     console.warn('写入本地码字统计失败', error)
   }

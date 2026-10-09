@@ -85,6 +85,7 @@ export interface Character {
   bookId: string;
   groupId?: string | number | null;
   name: string;
+  aliases?: string[];
   role: number; // 0-主角 1-主要配角 2-反派 3-路人
   gender: number; // 0-女 1-男 2-其他
   age?: string;

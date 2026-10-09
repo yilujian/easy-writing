@@ -30,6 +30,7 @@ export const summarizeBookReference = (data: BookReferenceExport): string => {
   }
   push('大纲', data.outlineNodes?.filter(node => node.nodeType === 1).length)
   push('角色', data.characters?.length)
+  push('常用词', data.commonWords?.length)
   push('角色关系', data.characterRelations?.length)
   push('设定', data.worldSettings?.length)
   push('时间线事件', data.timelineEvents?.length)
@@ -91,6 +92,7 @@ export const importLocalBookReference = async (
   })
 
   return mutateDoc(bookId, doc => {
+    doc.commonWords.push(...list(data.commonWords).map(word => ({ ...word, id: nextLocalId() })))
     doc.outlineNodes.push(...list(data.outlineNodes).map(node => ({
       ...rebased(node),
       // 父级映射不到（备份里就悬空）则挂根，条目不丢

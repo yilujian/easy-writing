@@ -116,6 +116,9 @@ watch(() => route.fullPath, closeMobileSidebar)
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  // 页面布局按"内容区实际宽度"响应（@container content），不再关心窗口宽和侧栏宽
+  container-type: inline-size;
+  container-name: content;
 
   // &::-webkit-scrollbar {
   //   width: 4px;

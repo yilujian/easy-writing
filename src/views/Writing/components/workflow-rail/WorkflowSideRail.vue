@@ -89,6 +89,7 @@
               :book-id="bookId"
               @lore-updated="emit('loreUpdated')"
             />
+            <WordLibraryPanel v-else-if="activeToolId === 'words'" key="words" :book-id="bookId" />
             <WorkflowWorldPanel
               v-else-if="activeToolId === 'world'"
               key="world"
@@ -116,12 +117,13 @@
         :key="tool.id"
         type="button"
         class="rail-tool"
-        :class="{ active: tool.id === activeToolId, 'has-divider': tool.dividerBefore }"
+        :class="{ active: tool.id === activeToolId, 'has-divider': tool.dividerBefore, 'word-library-tool': tool.id === 'words' }"
         :aria-pressed="tool.id === activeToolId"
         :title="tool.id === activeToolId ? `收起${tool.name}` : `展开${tool.name}`"
         @click="selectTool(tool.id)"
       >
-        <i :class="tool.icon"></i>
+        <Notebook v-if="tool.id === 'words'" class="word-library-tool-icon" aria-hidden="true" />
+        <i v-else :class="tool.icon"></i>
         <span>{{ tool.name }}</span>
         <em v-if="toolBadge(tool.id)" class="rail-tool-dot" :class="`is-${toolBadge(tool.id)}`"></em>
       </button>
@@ -130,7 +132,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Notebook } from '@element-plus/icons-vue'
+import { defineAsyncComponent, computed, onBeforeUnmount, onMounted, ref } from 'vue'
+const WordLibraryPanel = defineAsyncComponent(() => import('../WordLibraryPanel.vue'))
 import { useWritingEditorStore } from '@/stores/writing-editor'
 import { getLocalAiModelDisplayName } from '@/storage/local-ai-models'
 import type {
@@ -583,4 +587,10 @@ onBeforeUnmount(() => {
 
 /* 小窗口自适应由 effectivePanelWidth 的视口比例钳制统一处理，不再叠加 CSS max-width，
    避免固定宽度面板被二次裁切。 */
+.rail-tool.word-library-tool {
+  width: calc(100% - 6px); margin: 0 auto; border-radius: 6px;
+  .word-library-tool-icon { width: 20px; height: 20px; }
+  &.active { color: var(--word-library-accent, var(--ink-accent)); background: var(--accent-soft); }
+  &::after { display: none; }
+}
 </style>

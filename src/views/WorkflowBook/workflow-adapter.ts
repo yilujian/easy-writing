@@ -1,3 +1,4 @@
+import { normalizeCharacterAliases } from '@/utils/character-aliases'
 import type { JsonRecord } from '@/types/json'
 import type {
   WorkflowArtifact,
@@ -380,6 +381,7 @@ export const SETTING_NEW_STORYLINE_TITLE = '新阶段'
 export const createNewSettingCharacter = (): WorkflowSettingCharacter => ({
   id: `char-${Date.now()}`,
   name: SETTING_NEW_CHARACTER_NAME,
+  aliases: [],
   gender: '其他',
   identity: '',
   background: '',
@@ -404,6 +406,7 @@ const isBlank = (value?: string) => !String(value ?? '').trim()
  * 用户手打过名字就保留——哪怕只填了名字，也不该替他删掉。
  */
 const isUntouchedCharacter = (item: WorkflowSettingCharacter) =>
+  !item.aliases?.length &&
   isBlank(item.identity) &&
   isBlank(item.background) &&
   isBlank(item.keywords) &&
@@ -871,6 +874,7 @@ const normalizeCharacterRows = (rows: JsonRecord[]): WorkflowSettingCharacter[] 
   rows.map((item, index) => ({
     id: asText(item?.id) || `char-${index + 1}`,
     name: asText(item?.name),
+    aliases: normalizeCharacterAliases(asText(item?.name), item?.aliases),
     gender: normalizeCharacterGender(item?.gender),
     identity: asText(item?.identity) || asText(item?.title),
     background: asText(item?.background) || asText(item?.backstory) || asText(item?.description),

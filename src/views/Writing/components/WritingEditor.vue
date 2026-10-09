@@ -162,6 +162,11 @@
               <span class="btn-text">取名</span>
             </button>
           </el-tooltip>
+          <el-tooltip :content="`快捷取词（${getWordLibraryShortcutTitle()}）`" placement="bottom">
+            <button class="toolbar-btn" type="button" :aria-label="`快捷取词（${getWordLibraryShortcutTitle()}）`" :disabled="!canInsertLibraryWord" @mousedown.prevent @click="openWordLibrary">
+              <Notebook class="word-library-toolbar-icon" aria-hidden="true" /><span class="btn-text">取词</span>
+            </button>
+          </el-tooltip>
           <el-tooltip
             v-if="!workflowMode"
             content="画师"
@@ -212,7 +217,7 @@
           v-if="hasActiveChapter"
           class="chapter-title-input"
           v-model="chapterTitleModel"
-          :disabled="workflowLocked"
+          :disabled="workflowLocked || !chapterContentReady"
           placeholder="请输入章节标题"
         />
 
@@ -230,7 +235,12 @@
           @mouseover="handleEntityMouseOver"
           @mouseout="handleEntityMouseOut"
         >
-          <EditorContent :editor="editor" class="editor-content-area" />
+          <div v-if="chapterLoadError" class="chapter-load-error" role="alert">
+            <strong>暂时无法读取这一章</strong>
+            <p>{{ chapterLoadError }}</p>
+            <button class="ink-btn ink-btn-outline" type="button" @click="loadChapterContent(Number(activeChapterId))">重新读取</button>
+          </div>
+          <EditorContent v-show="!chapterLoadError" :editor="editor" class="editor-content-area" />
           <div
             v-show="webkitCaretVisible"
             class="webkit-editor-caret"
@@ -239,7 +249,7 @@
 
           <Teleport to="body">
             <div
-              v-if="!showFontImport && bubbleMenuAllowed && quickPolishToolbarEnabled && isBubbleMenuVisible && editor"
+              v-if="!wordLibraryVisible && !showFontImport && bubbleMenuAllowed && quickPolishToolbarEnabled && isBubbleMenuVisible && editor"
               ref="bubbleMenuRef"
               class="custom-bubble-menu"
               :class="{ 'is-visible': isBubbleMenuAnimating }"
@@ -252,6 +262,7 @@
                 :chapter-title="activeChapterTitle || ''"
                 :chapter-summary="activeChapterSummary || ''"
                 :mode="bubbleMenuMode"
+                @add-to-word-library="addSelectionToWordLibrary"
                 @done="handleAiDone"
                 @add-to-chat="handleAddToChat"
                 @loading="handleAiTaskLoading"
@@ -399,6 +410,7 @@
             class="entity-hover-item"
           >
             <div class="entity-hover-meta">
+              <strong>{{ item.name }}</strong>
               <span class="entity-hover-kind" :class="`is-${item.kind}`">{{
                 getEntityKindText(item.kind)
               }}</span>
@@ -482,7 +494,7 @@
           v-if="!workflowMode"
           class="sync-now-btn"
           type="button"
-          :disabled="workflowLocked || !hasActiveChapter || isManualSyncing"
+          :disabled="workflowLocked || !chapterContentReady || !hasActiveChapter || isManualSyncing"
           title="保存到本机"
           @click="syncCurrentChapterNow"
         >
@@ -588,14 +600,23 @@
       </div>
     </div>
 
+    <WordLibraryPicker
+v-if="wordLibraryVisible" :entries="wordLibraryEntries" :loading="wordLibraryLoading"
+      :error="wordLibraryError" :position="wordLibraryPosition" @close="closeWordLibrary" @insert="insertWord" />
     <WritingPlanPanel v-if="!workflowMode" />
 
   </main>
 </template>
 
 <script setup lang="ts">
+import { usesSqliteCore } from '@/storage/storage-mode'
+import { Notebook } from '@element-plus/icons-vue'
+import { useWordLibrary } from '../composables/useWordLibrary'
+import { WORD_LIBRARY_INSERT } from '../editor-utils/word-library'
+import { getWordLibraryShortcutTitle, isWordLibraryShortcut } from '@/utils/platform'
+const WordLibraryPicker = defineAsyncComponent(() => import('./WordLibraryPicker.vue'))
 import { workflowContentVersion } from '@/utils/workflow-local-draft'
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { defineAsyncComponent, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { markWritingSnapshotProvider } from '@/storage/local-backup-service'
 import { EditorContent, Editor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -789,7 +810,7 @@ const saveStatusIconMeta = computed<{ icon: string; label: string } | null>(
     if (state === 'local_only')
       return { icon: 'fa-solid fa-hard-drive', label: '本地保存' }
     if (state === 'error')
-      return { icon: 'fa-solid fa-circle-exclamation', label: '云端保存失败' }
+      return { icon: 'fa-solid fa-circle-exclamation', label: chapterLoadError.value ? '正文读取失败' : '本地保存失败' }
     if (state === 'conflict')
       return { icon: 'fa-solid fa-circle-exclamation', label: '版本冲突' }
     if (state === 'dirty')
@@ -1022,6 +1043,7 @@ const suppressAutoSave = ref(false)
 // 输入法组词进行中。此时文档里是拼音而不是最终汉字，任何落盘都会存下半成品。
 const isComposingInput = ref(false)
 const chapterContentReady = ref(false)
+const chapterLoadError = ref('')
 
 // ---- 写作位置记忆：光标与滚动位置随保存/切章/离开写入本机，进入章节时恢复 ----
 let lastCaretPos = 0
@@ -1158,7 +1180,7 @@ const buildCurrentDraftSnapshot = () => {
     recordWriteJournal({
       at: Date.now(),
       op: 'guard',
-      backend: isTauriRuntime() ? 'sqlite' : 'indexeddb',
+      backend: usesSqliteCore() ? 'sqlite' : 'indexeddb',
       storageKey: buildChapterStorageKey(
         resolveChapterStorageUserId(),
         bookId,
@@ -1317,6 +1339,7 @@ const {
   aiShortcutTip,
   aiStatusText,
   isAiThinking,
+  isAiStreaming,
   abortAiRequests,
   setAiBusy,
   fetchAiSuggestion,
@@ -1324,6 +1347,7 @@ const {
   triggerAiShortcut,
 } = useAiAutocomplete({
   editor,
+  bookId: () => props.bookId,
   workflowMode,
   workflowLocked,
   workflowManualEditUnlocked,
@@ -1334,6 +1358,16 @@ const {
   onDraftDirty: () => markDraftDirty(),
   onSelectionMenu: () => updateBubbleMenuPosition(),
   onAiTextInserted: text => recordAiInsert(countWords(text), countTextWords(text)),
+})
+
+const canInsertLibraryWord = computed(() => chapterContentReady.value && workflowManualEditUnlocked.value && !isAiStreaming.value)
+const {
+  visible: wordLibraryVisible, entries: wordLibraryEntries, loading: wordLibraryLoading,
+  error: wordLibraryError, position: wordLibraryPosition, open: openWordLibrary,
+  close: closeWordLibrary, insert: insertWord, addSelection: addSelectionToWordLibrary,
+} = useWordLibrary({
+  editor, bookId: () => props.bookId, chapterId: () => activeChapterId.value,
+  canInsert: () => canInsertLibraryWord.value,
 })
 
 const {
@@ -1787,6 +1821,7 @@ const localSnapshotRequestHandler = async () => {
 
 const loadChapterContent = async (chapterId: number) => {
   const requestId = ++latestChapterRequestId
+  chapterLoadError.value = ''
   suppressAutoSave.value = true
   workflowPreviewActive.value = false
   currentChapterLocalVersion.value = 0
@@ -1809,7 +1844,7 @@ const loadChapterContent = async (chapterId: number) => {
     // 取证：把"打开这一章时用什么键去读、读到没有、读到多少字"落盘。
     // 与保存侧的 save 行对照，就能直接看出是没写、写失败、还是读写用了不同的键。
     recordChapterLoadJournal({
-      backend: isTauriRuntime() ? 'sqlite' : 'indexeddb',
+      backend: usesSqliteCore() ? 'sqlite' : 'indexeddb',
       storageKey: buildChapterStorageKey(userId, bookId, chapterId),
       chars: String(localDraft?.textContent || '').length,
       found: Boolean(localDraft),
@@ -1855,9 +1890,10 @@ const loadChapterContent = async (chapterId: number) => {
     }
     if (!isStaleChapterRequest(requestId)) {
       console.error('加载章节内容失败:', error)
+      chapterLoadError.value = error instanceof Error ? error.message : '本地正文读取失败，原记录未修改，请重试或通过备份恢复。'
       showApiError(error, '加载章节内容失败')
       editorStore.setChapterSaveState('error', '加载失败')
-      suppressAutoSave.value = false
+      suppressAutoSave.value = true
     }
   }
 }
@@ -1879,6 +1915,7 @@ watch(
     // 离开旧章前把它的光标/滚动位置记下来（此时编辑器里还是旧章内容）
     if (prevId && prevId !== chapterId) persistWritingPosition(prevId)
     if (!chapterId) {
+      chapterLoadError.value = ''
       // 清空章节时废弃仍在返回中的旧章节请求。
       latestChapterRequestId += 1
       resetAiReviewState()
@@ -1939,9 +1976,9 @@ watch(workflowManualEditUnlocked, unlocked => {
   isBubbleMenuAnimating.value = false
 })
 
-watch(workflowLocked, locked => {
-  editor.value?.setEditable(!locked)
-  if (locked) {
+watch([workflowLocked, chapterContentReady], ([locked, ready]) => {
+  editor.value?.setEditable(!locked && ready)
+  if (locked || !ready) {
     // 工作流识别或生成锁定期间，终止所有可能回写正文的普通编辑器异步入口。
     cancelAiSuggestion()
     clearLocalDraftTimer()
@@ -2025,7 +2062,7 @@ const createEditorInstance = (content: unknown) => {
         AICopilotExtension.configure({
           // 工作流生书正文只能由工作流与确认面板改写，普通实时续写补全始终关闭。
           enabled: () =>
-            !workflowMode.value && workflowManualEditUnlocked.value,
+            !workflowMode.value && workflowManualEditUnlocked.value && !wordLibraryVisible.value,
           onFetchSuggestion: fetchAiSuggestion,
           onCancelRequest: cancelAiSuggestion,
           onAcceptSuggestion: text => recordAiInsert(countWords(text), countTextWords(text)),
@@ -2043,7 +2080,7 @@ const createEditorInstance = (content: unknown) => {
         SensitiveExtension,
       ],
       content: sanitizedContent,
-      editable: !workflowLocked.value,
+      editable: !workflowLocked.value && chapterContentReady.value,
       editorProps: {
         attributes: { class: 'prosemirror-content' },
         handlePaste: handleEditorPaste,
@@ -2092,7 +2129,7 @@ const createEditorInstance = (content: unknown) => {
         const isKeyboardRecent = now - lastEditorKeydownAt <= 1500
         const isTrustedInputRecent = now - lastEditorTrustedInputAt <= 1500
         const isUserSourceRecent = isKeyboardRecent || isTrustedInputRecent
-        const isPasteDrop = uiEvent === 'paste' || uiEvent === 'drop'
+        const isPasteDrop = uiEvent === 'paste' || uiEvent === 'drop' || transaction.getMeta(WORD_LIBRARY_INSERT) === true
         const isCut = uiEvent === 'cut'
         const insertedChars = transaction?.docChanged
           ? countInsertedCharsFromTransaction(transaction)
@@ -2644,6 +2681,14 @@ onMounted(() => {
   window.addEventListener('keydown', unlockAudioByUserGesture, true)
 
   keydownHandler = (e: KeyboardEvent) => {
+    if (isWordLibraryShortcut(e)) {
+      if (!e.isComposing && e.target instanceof Node && editor.value?.view.dom.contains(e.target)) {
+        e.preventDefault()
+        void openWordLibrary()
+      }
+      return
+    }
+    if (wordLibraryVisible.value) return
     // 1. AI 快捷键
     if (
       !workflowMode.value &&
@@ -2771,6 +2816,7 @@ onBeforeUnmount(() => {
 <!-- 全局样式：Tiptap 编辑器核心样式 -->
 <style lang="scss">
 @use '../index.scss' as *;
+.toolbar-btn .word-library-toolbar-icon { width: 17px; height: 17px; flex-shrink: 0; }
 </style>
 
 <!-- Scoped 样式：组件布局样式 -->

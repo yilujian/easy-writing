@@ -24,7 +24,7 @@
                 </div>
               </div>
 
-              <div ref="scrollRef" class="reader-scroll" @scroll="handlePreviewScroll">
+              <div ref="scrollRef" class="reader-scroll" :style="readerStyle" @scroll="handlePreviewScroll">
                 <template v-if="activeChapterId">
                   <h1>{{ activeChapterTitle || '未命名章节' }}</h1>
                   <div v-if="paragraphs.length" class="reader-content">
@@ -120,6 +120,11 @@ const {
   chapterWordCount,
   mobilePreviewWidth,
   mobilePreviewScreenType,
+  fontFamily,
+  fontSize,
+  fontBold,
+  fontColor,
+  fontLineHeight,
   writingScrollRatio,
   writingScrollSource
 } = storeToRefs(store)
@@ -154,6 +159,14 @@ const phoneStyle = computed(() => ({
   height: `${Math.round(previewWidth.value * (812 / 375) + 18)}px`
 }))
 const screenStyle = computed(() => ({ width: `${previewWidth.value}px` }))
+// 阅读正文与编辑器共用字体设置；状态栏、页脚及手机外框保留自身样式。
+const readerStyle = computed(() => ({
+  fontFamily: fontFamily.value,
+  fontSize: `${fontSize.value}px`,
+  fontWeight: fontBold.value ? '700' : '400',
+  color: fontColor.value || 'var(--preview-reader-text)',
+  lineHeight: String(fontLineHeight.value)
+}))
 const paragraphs = computed(() =>
   activeChapterTextContent.value
     .split(/\r?\n/)
@@ -206,12 +219,14 @@ const syncPreviewScroll = () => {
   }, 80)
 }
 
-watch([activeChapterId, activeChapterTextContent, previewWidth], () => {
+const schedulePreviewLayout = () => {
   requestAnimationFrame(() => {
     syncPreviewScroll()
     updateScrollProgress()
   })
-})
+}
+
+watch([activeChapterId, activeChapterTextContent, previewWidth, readerStyle], schedulePreviewLayout, { flush: 'post' })
 
 watch([writingScrollRatio, writingScrollSource], () => {
   requestAnimationFrame(syncPreviewScroll)
@@ -219,14 +234,15 @@ watch([writingScrollRatio, writingScrollSource], () => {
 
 onMounted(() => {
   scheduleTimeUpdate()
-  requestAnimationFrame(() => {
-    syncPreviewScroll()
-    updateScrollProgress()
-  })
+  schedulePreviewLayout()
+  // 内置/导入字体加载完成后会重新排版，需要同步更新阅读进度。
+  void document.fonts?.ready.then(schedulePreviewLayout)
+  document.fonts?.addEventListener('loadingdone', schedulePreviewLayout)
 })
 
 onBeforeUnmount(() => {
   window.clearTimeout(timeTimer)
+  document.fonts?.removeEventListener('loadingdone', schedulePreviewLayout)
 })
 </script>
 
@@ -608,7 +624,7 @@ onBeforeUnmount(() => {
 
   h1 {
     margin: 0 0 24px;
-    color: var(--preview-reader-title);
+    color: inherit;
     font-size: 21px;
     line-height: 1.35;
     font-weight: 700;
@@ -618,9 +634,11 @@ onBeforeUnmount(() => {
 .reader-content {
   p {
     margin: 0 0 18px;
-    color: var(--preview-reader-text);
-    font-size: 17px;
-    line-height: 1.85;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
     text-indent: 2em;
     letter-spacing: 0;
     word-break: break-word;

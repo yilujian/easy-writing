@@ -37,6 +37,7 @@
             class="crawl-mode-btn"
             :class="{ active: crawlMode === option.value }"
             :title="option.desc"
+            :disabled="crawling && option.value !== 'off'"
             @click="handleCrawlModeChange(option.value)"
           >
             {{ option.label }}
@@ -45,19 +46,13 @@
         <button
           class="ink-btn ink-btn-primary crawl-now-btn"
           type="button"
-          :disabled="crawlMode === 'off' || crawling || !crawlTargetSourceId"
-          :title="crawlTargetSourceId ? '用你的网络抓取当前榜单（数据只存本机）' : '选择具体榜单分类后可抓取'"
+          :disabled="crawlButtonDisabled"
           @click="handleCrawlNow"
         >
-          <i :class="['fa-solid', crawling ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-down']"></i>
-          {{ crawling ? '抓取中…' : '抓取本榜' }}
+          <i aria-hidden="true" :class="['fa-solid', crawling ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-down']"></i>
+          {{ crawlButtonText }}
         </button>
-        <!-- 按钮因未选中具体榜单而禁用时，把原因摆在明面上，不靠悬浮提示 -->
-        <span v-if="crawlMode !== 'off' && !crawling && !crawlTargetSourceId" class="crawl-status crawl-tip">
-          <i class="fa-solid fa-circle-info"></i>
-          「全部」是本机聚合视图，选择具体分类后可抓取
-        </span>
-        <span v-if="crawlStatusText" class="crawl-status">{{ crawlStatusText }}</span>
+        <span v-if="crawlStatusText" class="crawl-status" role="status">{{ crawlStatusText }}</span>
       </div>
     </div>
 
@@ -597,6 +592,7 @@ v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
+import { inkConfirm } from '@/utils/ink-confirm'
 import { echarts, type EChartsInstance, type EChartsOption } from '@/utils/echarts'
 import { useRoute, useRouter } from 'vue-router'
 import { useNovelRankStore } from '@/stores/novel-rank'
@@ -967,12 +963,31 @@ const crawling = ref(false)
 const crawlStatusText = ref('')
 const crawlModeOptions: Array<{ value: RankCrawlMode; label: string; desc: string }> = [
   { value: 'off', label: '关闭', desc: '不发出任何抓取请求，仅查看已有本机数据' },
-  { value: 'manual', label: '手动', desc: '点击"抓取本榜"时才抓取' },
+  { value: 'manual', label: '手动', desc: '点击抓取按钮时才抓取' },
   { value: 'auto', label: '自动', desc: '每天自动补抓最近看过的榜单，趋势与分析随之积累' },
 ]
 
-// 抓取目标 = 当前具体榜单源；番茄"全部分类"是聚合视图，需选中具体分类
+// 番茄的“全部”没有单独来源，确认后抓取当前频段和榜单类型下的分类来源。
 const crawlTargetSourceId = computed(() => analysisSourceId.value)
+const crawlConfirming = ref(false)
+let crawlStopRequested = false
+let rankPageActive = true
+const crawlAllCategories = computed(() =>
+  selectedPlatform.value === 'fanqie' && !crawlTargetSourceId.value && categorySources.value.length > 0
+)
+const crawlButtonDisabled = computed(() =>
+  crawlMode.value === 'off' || crawling.value || crawlConfirming.value || sourcesLoading.value || !!sourcesError.value
+  || (!crawlTargetSourceId.value && !crawlAllCategories.value)
+)
+const crawlButtonText = computed(() => {
+  if (crawling.value) return '抓取中…'
+  if (crawlMode.value === 'off') return '抓取已关闭'
+  if (sourcesLoading.value) return '正在加载分类…'
+  if (sourcesError.value) return '榜单来源加载失败'
+  if (crawlAllCategories.value) return '抓取全部分类'
+  const source = currentSelectedSource.value || currentAllSource.value
+  return source ? `抓取「${source.categoryName || source.title || '当前榜单'}」` : '暂无可抓取榜单'
+})
 
 const loadCrawlSettings = async () => {
   try {
@@ -985,36 +1000,98 @@ const loadCrawlSettings = async () => {
 }
 
 const handleCrawlModeChange = async (mode: RankCrawlMode) => {
+  if (crawling.value && mode !== 'off') return
+  if (mode === 'off') crawlStopRequested = true
   crawlMode.value = mode
   await saveLocalRankSettings({ mode })
   if (mode === 'auto') {
     crawlStatusText.value = '自动模式已开启：每天自动补抓最近看过的榜单'
     void maybeAutoCrawlLocalRank().then(loadCrawlSettings)
   } else if (mode === 'off') {
-    crawlStatusText.value = '抓取已关闭，仅展示已有本机数据'
+    crawlStatusText.value = crawling.value
+      ? '已请求停止，当前分类结束后不再抓取后续分类'
+      : '抓取已关闭，仅展示已有本机数据'
   } else {
     crawlStatusText.value = ''
   }
 }
 
 const handleCrawlNow = async () => {
-  const sourceId = crawlTargetSourceId.value
-  if (!sourceId || crawling.value) return
+  if (crawlButtonDisabled.value) return
+  const batch = crawlAllCategories.value
+  const targets = batch
+    ? [...categorySources.value]
+    : sourcesAll.value.filter(source => Number(source.id) === Number(crawlTargetSourceId.value))
+  if (!targets.length) return
+  const scopeKey = `${selectedPlatform.value}:${gender.value}:${rankType.value}`
+  const scopeLabel = `${platforms.value.find(platform => platform.code === selectedPlatform.value)?.name || selectedPlatform.value} · ${gender.value === 'male' ? '男频' : '女频'} · ${rankTypeOptions.value.find(option => option.value === rankType.value)?.label || rankType.value}`
+
+  if (batch) {
+    crawlConfirming.value = true
+    try {
+      await inkConfirm(
+        `当前未选择具体分类，是否抓取「${scopeLabel}」的全部 ${targets.length} 个分类？将依次抓取，耗时较长。`,
+        '抓取全部分类',
+        { confirmButtonText: '确认抓取全部', cancelButtonText: '取消', type: 'warning', closeOnClickModal: false }
+      )
+    } catch {
+      return
+    } finally {
+      crawlConfirming.value = false
+    }
+    if (!rankPageActive || crawlButtonDisabled.value || scopeKey !== `${selectedPlatform.value}:${gender.value}:${rankType.value}`) return
+  }
+
   crawling.value = true
+  crawlStopRequested = false
+  let updated = 0
+  let cached = 0
+  let processed = 0
+  let lastMessage = ''
+  const failures: Array<{ name: string; message: string }> = []
   try {
-    const outcome = await crawlLocalRankSource(sourceId, { manual: true })
-    crawlStatusText.value = outcome.message
-    if (outcome.crawled) {
-      ElMessage.success(outcome.message)
+    for (const [index, source] of targets.entries()) {
+      if (crawlStopRequested || !rankPageActive) break
+      const name = source.categoryName || source.title || '当前榜单'
+      crawlStatusText.value = batch
+        ? `${scopeLabel}：正在抓取 ${index + 1}/${targets.length} · ${name}`
+        : `正在抓取「${name}」…`
+      let waitBeforeNext = true
+      try {
+        const outcome = await crawlLocalRankSource(Number(source.id), { manual: true })
+        lastMessage = outcome.message
+        if (outcome.crawled) updated += 1
+        else if (outcome.snapshotDate) { cached += 1; waitBeforeNext = false }
+        else { crawlStopRequested = true; break }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || '抓取失败，请稍后重试')
+        failures.push({ name, message })
+      }
+      processed += 1
+      // 顺序处理并保留请求间隔；缓存命中不额外等待。
+      if (batch && waitBeforeNext && index < targets.length - 1 && !crawlStopRequested && rankPageActive) {
+        await new Promise(resolve => setTimeout(resolve, 1200))
+      }
+    }
+    if (!rankPageActive) return
+    const stopped = processed < targets.length
+    const summary = batch
+      ? `${scopeLabel}：${stopped ? '已停止' : '抓取完成'}（${processed}/${targets.length}）：更新 ${updated} 个分类${cached ? `，使用已有数据 ${cached} 个` : ''}${failures.length ? `，失败 ${failures.length} 个（${failures.map(item => item.name).join('、')}）` : ''}`
+      : failures[0]?.message || lastMessage
+    crawlStatusText.value = summary
+    if (updated || cached) {
       await loadLatest()
       await refreshAnalysis()
-    } else {
-      ElMessage.info(outcome.message)
     }
+    if (failures.length) (updated || cached ? ElMessage.warning : ElMessage.error)(summary)
+    else if (stopped || !updated) ElMessage.info(summary)
+    else ElMessage.success(summary)
   } catch (error) {
     const message = String(error?.message || '抓取失败，请稍后重试')
-    crawlStatusText.value = message
-    ElMessage.error(message)
+    if (rankPageActive) {
+      crawlStatusText.value = message
+      ElMessage.error(message)
+    }
   } finally {
     crawling.value = false
   }
@@ -2134,6 +2211,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  rankPageActive = false
+  crawlStopRequested = true
   analysisResizeObserver?.disconnect()
   analysisThemeObserver?.disconnect()
   categoryChart?.dispose()
@@ -2159,11 +2238,13 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  flex: 1 1 360px;
+  min-width: 0;
 }
 
 .crawl-mode-group {
   display: inline-flex;
+  flex-shrink: 0;
   padding: 3px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--ink-main) 6%, transparent);
@@ -2185,6 +2266,11 @@ onBeforeUnmount(() => {
     background: var(--surface-0, rgb(255 255 255 / 60%));
     box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
     font-weight: 600;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
@@ -2211,6 +2297,8 @@ onBeforeUnmount(() => {
 
 .page-header {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   align-items: center;
   // justify-content: flex-end;
   margin-bottom: 24px;
@@ -2225,6 +2313,9 @@ onBeforeUnmount(() => {
 
 .platform-selector {
   display: flex;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow-x: auto;
   background: var(--toggle-btn-bg);
   padding: 4px;
   border-radius: 8px;
@@ -2232,6 +2323,8 @@ onBeforeUnmount(() => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
   .platform-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
     padding: 6px 16px;
     border-radius: 6px;
     font-size: 14px;
@@ -3129,7 +3222,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1200px) {
+@include content-max(920px) {
 
   .analysis-grid,
   .analysis-grid-wide {

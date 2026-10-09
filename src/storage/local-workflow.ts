@@ -1,3 +1,4 @@
+import { withRecordStore } from './desktop-records'
 import type { JsonRecord } from '@/types/json'
 import type {
   WorkflowArtifact,
@@ -42,37 +43,8 @@ export interface LocalAdjustCandidate {
 const DB_NAME = 'ew-local-workflow'
 const STORE_NAME = 'kv'
 
-const openDb = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
-      }
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const withStore = async <T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-  const db = await openDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const request = run(tx.objectStore(STORE_NAME))
-      tx.oncomplete = () => resolve(request.result)
-      tx.onerror = () => reject(tx.error || request.error)
-      tx.onabort = () => reject(tx.error || new Error('工作流数据保存失败'))
-    })
-  } finally {
-    db.close()
-  }
-}
+const withStore = <T>(mode: IDBTransactionMode, run: Parameters<typeof withRecordStore>[4]) =>
+  withRecordStore<T>(DB_NAME, STORE_NAME, undefined, mode, run)
 
 const runKey = (id: number | string) => `run:${id}`
 const taskKey = (id: number | string) => `task:${id}`

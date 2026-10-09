@@ -70,6 +70,9 @@
     </div>
 
     <div v-if="!isLoading && activePanel === 'more'" class="expand-panel more-panel">
+      <button type="button" @click="emit('add-to-word-library')">
+        <i class="fa-solid fa-spell-check"></i><span>加入常用词</span>
+      </button>
       <button type="button" @click="addSelectionToInspiration">
         <i class="fa-regular fa-lightbulb"></i>
         <span>加入灵感</span>
@@ -116,6 +119,7 @@ const emit = defineEmits<{
   (e: 'bind-storyline'): void
   (e: 'bind-timeline'): void
   (e: 'create-plot-node'): void
+  (e: 'add-to-word-library'): void
 }>()
 
 const props = defineProps<{

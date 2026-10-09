@@ -13,6 +13,16 @@
               </div>
             </section>
 
+            <section v-if="usingLegacyStorage" class="settings-card">
+              <div class="settings-card-title"><i class="fa-solid fa-database"></i><strong>正在使用原有数据</strong></div>
+              <p class="hint-line">上次数据升级未完成，作品仍按原来的方式保存。你可以继续写作，也可以保存后重新尝试升级。</p>
+              <div class="action-row">
+                <button class="ink-btn ink-btn-outline" type="button" :disabled="retryingUpgrade" @click="retryUpgrade">
+                  {{ retryingUpgrade ? '正在保存并重启…' : '重试数据升级' }}
+                </button>
+              </div>
+            </section>
+
             <section class="settings-card local-backup-card">
               <div class="settings-card-title">
                 <i class="fa-solid fa-database"></i>
@@ -85,6 +95,9 @@
 </template>
 
 <script setup lang="ts">
+import { getStorageMode } from '@/storage/storage-mode'
+import { retryStorageUpgrade } from '@/storage/storage-upgrade'
+import { inkConfirm } from '@/utils/ink-confirm'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BackupRestoreModal from '@/components/BackupRestoreModal.vue'
@@ -98,6 +111,18 @@ import { useSettingsCenterCtx } from '../settings-context'
 const ctx = useSettingsCenterCtx()
 const { settingsDraft, loading } = ctx
 const desktopSupported = ctx.desktopSupported
+const usingLegacyStorage = desktopSupported && getStorageMode().mode === 'legacy'
+const retryingUpgrade = ref(false)
+const retryUpgrade = async () => {
+  try {
+    await inkConfirm('将先保存当前内容，再重启尝试升级数据。升级未完成时仍可继续使用原有数据。', '重试数据升级', {
+      confirmButtonText: '保存并重启', cancelButtonText: '取消', type: 'info',
+    })
+  } catch { return }
+  retryingUpgrade.value = true
+  try { await retryStorageUpgrade() }
+  catch (error) { ElMessage.error(error instanceof Error ? error.message : String(error)); retryingUpgrade.value = false }
+}
 const backupService = getLocalBackupService()
 const router = useRouter()
 const restoreVisible = ref(false)
@@ -141,9 +166,12 @@ const backupEverything = async () => {
     })
     settingsDraft.value = await backupService.saveSettings({ ...settingsDraft.value, lastBackupAt: Date.now() })
     ElMessage.success(`已备份到 ${summary.path}（${(summary.bytes / 1024 / 1024).toFixed(1)} MB）`)
+    if (summary.warnings?.length) {
+      ElMessage.warning({ message: `备份已完成，但有内容未包含：${summary.warnings.join('；')}`, duration: 10000, showClose: true })
+    }
   } catch (error) {
     console.error('full backup failed', error)
-    fullBackupError.value = error instanceof Error ? error.message : '一键备份失败'
+    fullBackupError.value = error instanceof Error ? error.message : String(error)
   } finally {
     fullBackingUp.value = false
     fullProgress.value = ''

@@ -1045,14 +1045,14 @@ onUnmounted(() => {
 }
 
 /* ---------- 响应式 ---------- */
-@media (max-width: 1420px) {
+@include content-max(1140px) {
   .wf-row {
     grid-template-columns: 68px minmax(0, 1fr) 180px 160px auto;
     gap: 16px;
   }
 }
 
-@media (max-width: 1240px) {
+@include content-max(960px) {
   .wf-history__stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

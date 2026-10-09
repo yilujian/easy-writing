@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import { PersistedStateOptions } from "pinia-plugin-persistedstate";
 
 /**
@@ -9,7 +10,7 @@ import { PersistedStateOptions } from "pinia-plugin-persistedstate";
 const piniaPersistConfig = (key: string, paths?: string[]) => {
   const persist: PersistedStateOptions = {
     key,
-    storage: localStorage,
+    storage: appSettings,
     // storage: sessionStorage,
     paths
   };

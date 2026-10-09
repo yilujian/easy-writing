@@ -1,3 +1,4 @@
+import { trackIndexedDbTransaction } from './storage-maintenance'
 import type { TextCounts } from '@/types/ui-preferences'
 import type { JsonRecord } from '@/types/json'
 import type {
@@ -93,7 +94,7 @@ export class IndexedDbLocalLibraryStorage implements LocalLibraryStorage {
 
   private async store<T extends StoreName>(name: T, mode: IDBTransactionMode) {
     const db = await this.getDb()
-    const transaction = db.transaction(name, mode)
+    const transaction = trackIndexedDbTransaction(db.transaction(name, mode))
     return {
       objectStore: transaction.objectStore(name),
       transaction,
@@ -129,7 +130,7 @@ export class IndexedDbLocalLibraryStorage implements LocalLibraryStorage {
   async importAllRecords(dump: LocalLibraryDump, options: { replace: boolean }) {
     const db = await this.getDb()
     const stores: StoreName[] = [STORE_GROUPS, STORE_BOOKS, STORE_VOLUMES, STORE_CHAPTERS]
-    const transaction = db.transaction(stores, 'readwrite')
+    const transaction = trackIndexedDbTransaction(db.transaction(stores, 'readwrite'))
     if (options.replace) stores.forEach(name => transaction.objectStore(name).clear())
     dump.groups.forEach(group => transaction.objectStore(STORE_GROUPS).put(normalizeLocalGroup(group)))
     dump.books.forEach(book => transaction.objectStore(STORE_BOOKS).put(normalizeLocalBook(book)))

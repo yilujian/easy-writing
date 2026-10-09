@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey, type EditorState } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
+import { SUPPRESS_AI_SUGGESTION } from '../editor-utils/word-library'
 
 export interface AICopilotOptions {
   enabled?: boolean | (() => boolean);
@@ -111,17 +112,20 @@ export default Extension.create<AICopilotOptions>({
         key,
         state: {
           init() {
-            return { suggestion: null, loading: false, decoration: DecorationSet.empty }
+            return { suggestion: null, loading: false, decoration: DecorationSet.empty, skipAutocomplete: false }
           },
           apply(tr, value, oldState, newState) {
+            if (tr.getMeta(SUPPRESS_AI_SUGGESTION)) {
+              return { ...value, suggestion: null, loading: false, decoration: DecorationSet.empty, skipAutocomplete: true }
+            }
             // 1. 用户按 Tab 采纳
             if (tr.getMeta('ACCEPT_SUGGESTION')) {
-              return { suggestion: null, loading: false, decoration: DecorationSet.empty }
+              return { ...value, suggestion: null, loading: false, decoration: DecorationSet.empty }
             }
 
             // 2. 用户打字或光标移动 -> 立即清除当前建议
             if (tr.docChanged || tr.selectionSet) {
-              return { suggestion: null, loading: false, decoration: DecorationSet.empty }
+              return { suggestion: null, loading: false, decoration: DecorationSet.empty, skipAutocomplete: false }
             }
 
             // 3. API 返回新建议
@@ -156,7 +160,7 @@ export default Extension.create<AICopilotOptions>({
 
                 deco = DecorationSet.create(newState.doc, [widget])
               }
-              return { suggestion: newSuggestion, loading: false, decoration: deco }
+              return { ...value, suggestion: newSuggestion, loading: false, decoration: deco }
             }
 
             return value
@@ -166,7 +170,7 @@ export default Extension.create<AICopilotOptions>({
         view(_editorView) {
           return {
             update: (view, prevState) => {
-              if (!isEnabled()) {
+              if (!isEnabled() || key.getState(view.state)?.skipAutocomplete) {
                 if (debounceTimer) clearTimeout(debounceTimer)
                 debounceTimer = null
                 typingVersion++
@@ -241,7 +245,13 @@ export default Extension.create<AICopilotOptions>({
 
                 debounceTimer = setTimeout(runAutocomplete, getDebounceDelay())
               }
-            }
+            },
+            destroy: () => {
+              if (debounceTimer) clearTimeout(debounceTimer)
+              debounceTimer = null
+              typingVersion++
+              onCancelRequest?.()
+            },
           }
         },
         props: {

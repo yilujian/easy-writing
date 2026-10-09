@@ -1,3 +1,6 @@
+import { trackStorageWrite } from './storage-maintenance'
+import { usesUnifiedStorage } from './storage-mode'
+import { desktopInvoke, encodeRecords, decodeDesktopValue, readDesktopRecords, type PersistedRecord } from './desktop-records'
 import type { ImportedFont } from '@/types/imported-font'
 
 const DB_NAME = 'ew-font-store'
@@ -31,10 +34,22 @@ async function read<T>(storeName: string, run: (store: IDBObjectStore) => IDBReq
 }
 
 // 启动时只读名称；字体二进制在选用时加载，避免所有字体同时占用内存。
-export const listImportedFonts = () => read<ImportedFont[]>(METADATA, (store) => store.getAll())
-export const readImportedFontFile = (id: string) => read<ArrayBuffer | undefined>(FILES, (store) => store.get(id))
+export const listImportedFonts = async (): Promise<ImportedFont[]> => usesUnifiedStorage()
+  ? (await readDesktopRecords(`${DB_NAME}/${METADATA}`)).map(record => JSON.parse(record.value) as ImportedFont)
+  : read<ImportedFont[]>(METADATA, store => store.getAll())
+export const readImportedFontFile = async (id: string): Promise<ArrayBuffer | undefined> => {
+  if (!usesUnifiedStorage()) return read<ArrayBuffer | undefined>(FILES, store => store.get(id))
+  const raw = await desktopInvoke<string|null>('desktop_store_get',{namespace:`${DB_NAME}/${FILES}`,key:id})
+  return raw == null ? undefined : await decodeDesktopValue(JSON.parse(raw)) as ArrayBuffer
+}
 
-export async function saveImportedFont(font: ImportedFont, data: ArrayBuffer): Promise<void> {
+async function saveImportedFontInternal(font: ImportedFont, data: ArrayBuffer): Promise<void> {
+  if (usesUnifiedStorage()) {
+    const metadata: PersistedRecord[] = [{key:font.id,value:JSON.stringify(font)}]
+    const files = await encodeRecords(`${DB_NAME}/${FILES}`,[{key:font.id,value:data}])
+    await trackStorageWrite(() => desktopInvoke('desktop_store_batch',{stores:[{namespace:`${DB_NAME}/${METADATA}`,records:metadata},{namespace:`${DB_NAME}/${FILES}`,records:files}],replace:false}))
+    return
+  }
   const db = await openDb()
   try {
     await new Promise<void>((resolve, reject) => {
@@ -57,7 +72,11 @@ export async function saveImportedFont(font: ImportedFont, data: ArrayBuffer): P
 }
 
 /** 一键恢复（覆盖模式）用：清空全部已导入字体 */
-export async function clearImportedFonts(): Promise<void> {
+async function clearImportedFontsInternal(): Promise<void> {
+  if (usesUnifiedStorage()) {
+    await trackStorageWrite(() => desktopInvoke('desktop_store_batch',{stores:[{namespace:`${DB_NAME}/${METADATA}`,records:[]},{namespace:`${DB_NAME}/${FILES}`,records:[]}],replace:true}))
+    return
+  }
   const db = await openDb()
   try {
     await new Promise<void>((resolve, reject) => {
@@ -72,3 +91,7 @@ export async function clearImportedFonts(): Promise<void> {
     db.close()
   }
 }
+
+export const saveImportedFont = (font: ImportedFont, data: ArrayBuffer) =>
+  trackStorageWrite(() => saveImportedFontInternal(font, data))
+export const clearImportedFonts = () => trackStorageWrite(clearImportedFontsInternal)

@@ -33,7 +33,7 @@ import AiModelSettingsPane from '@/views/Writing/components/AiModelSettingsPane.
   grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
 }
 
-@media (max-width: 900px) {
+@include content-max(620px) {
   .ai-model-manage-page {
     padding: 20px 12px 28px;
   }

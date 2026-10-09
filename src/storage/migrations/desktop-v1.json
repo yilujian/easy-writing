@@ -1,0 +1,111 @@
+{
+  "id": "desktop-unified-storage-v1",
+  "fromVersion": 0,
+  "toVersion": 1,
+  "stores": [
+    {
+      "db": "ew-local-reference",
+      "store": "book-reference",
+      "namespace": "ew-local-reference/book-reference",
+      "label": "人物、大纲与设定"
+    },
+    {
+      "db": "ew-local-workflow",
+      "store": "kv",
+      "namespace": "ew-local-workflow/kv",
+      "label": "工作流与任务记录"
+    },
+    {
+      "db": "ew-local-ai-chat",
+      "store": "kv",
+      "namespace": "ew-local-ai-chat/kv",
+      "label": "妙笔对话"
+    },
+    {
+      "db": "ew-local-ai-records",
+      "store": "records",
+      "namespace": "ew-local-ai-records/records",
+      "label": "AI 调用记录"
+    },
+    {
+      "db": "ew-local-breakdown",
+      "store": "kv",
+      "namespace": "ew-local-breakdown/kv",
+      "label": "拆书项目"
+    },
+    {
+      "db": "ew-local-ai-images",
+      "store": "images",
+      "namespace": "ew-local-ai-images/images",
+      "label": "生成图片"
+    },
+    {
+      "db": "ew-skin-store",
+      "store": "kv",
+      "namespace": "ew-skin-store/kv",
+      "label": "自定义背景"
+    },
+    {
+      "db": "ew-local-rank",
+      "store": "kv",
+      "namespace": "ew-local-rank/kv",
+      "label": "榜单数据"
+    },
+    {
+      "db": "ew-font-store",
+      "store": "metadata",
+      "namespace": "ew-font-store/metadata",
+      "label": "字体信息"
+    },
+    {
+      "db": "ew-font-store",
+      "store": "files",
+      "namespace": "ew-font-store/files",
+      "label": "字体文件"
+    },
+    {
+      "db": "ew-local-library",
+      "store": "local_books",
+      "namespace": "legacy-core/local_books",
+      "label": "旧版书籍"
+    },
+    {
+      "db": "ew-local-library",
+      "store": "local_book_groups",
+      "namespace": "legacy-core/local_book_groups",
+      "label": "作品分组"
+    },
+    {
+      "db": "ew-local-library",
+      "store": "local_volumes",
+      "namespace": "legacy-core/local_volumes",
+      "label": "分卷目录"
+    },
+    {
+      "db": "ew-local-library",
+      "store": "local_chapters",
+      "namespace": "legacy-core/local_chapters",
+      "label": "章节目录"
+    },
+    {
+      "db": "ew-writing-local",
+      "store": "chapter_contents",
+      "namespace": "legacy-core/chapter_contents",
+      "label": "章节正文与排版"
+    },
+    {
+      "db": "ew-writing-local",
+      "store": "chapter_versions",
+      "namespace": "legacy-core/chapter_versions",
+      "label": "章节历史版本"
+    },
+    {
+      "db": "ew-writing-local",
+      "store": "sync_settings",
+      "namespace": "legacy-core/sync_settings",
+      "label": "旧版写作设置"
+    }
+  ],
+  "settingsNamespace": "app-settings",
+  "coverNamespace": "core-cover-assets"
+}

@@ -1,3 +1,4 @@
+import { getCharacterNames, isCharacterNameBoundary } from '@/utils/character-aliases'
 import { Extension } from '@tiptap/core'
 import { Node } from 'prosemirror-model'
 import { Plugin, PluginKey } from 'prosemirror-state'
@@ -9,6 +10,9 @@ export interface EntityHighlightItem {
   id: number | string
   kind: EntityHighlightKind
   name: string
+  aliases?: string[]
+  /** 仅用于展示过滤，角色正式姓名始终保留。 */
+  matchNames?: string[]
   label?: string
   summary?: string
 }
@@ -47,18 +51,16 @@ const getPrimaryKind = (group: EntityHighlightGroup) =>
 export const buildEntityHighlightGroups = (entities: EntityHighlightItem[]) => {
   const map = new Map<string, EntityHighlightGroup>()
   entities.forEach(item => {
-    const name = normalizeName(item.name)
-    if (!name.replace(/\s+/g, '')) return
-    const group = map.get(name)
-    if (group) {
-      group.items.push({ ...item, name })
-      return
+    for (const name of item.matchNames || getCharacterNames(item)) {
+      if (!name.replace(/\s+/g, '')) continue
+      const group = map.get(name)
+      const identity = { ...item, name: normalizeName(item.name) }
+      if (group) {
+        if (!group.items.some(candidate => candidate.kind === item.kind && String(candidate.id) === String(item.id))) group.items.push(identity)
+      } else {
+        map.set(name, { key: name, name, items: [identity] })
+      }
     }
-    map.set(name, {
-      key: name,
-      name,
-      items: [{ ...item, name }]
-    })
   })
   return Array.from(map.values())
     .map(group => ({
@@ -89,6 +91,7 @@ function buildDecorations(doc: Node, groups: EntityHighlightGroup[], matcher: Re
     matcher.lastIndex = 0
     let match: RegExpExecArray | null
     while ((match = matcher.exec(node.text))) {
+      if (!isCharacterNameBoundary(node.text, match[0], match.index)) continue
       const group = groupMap.get(match[0])
       if (!group) continue
       const kind = getPrimaryKind(group)

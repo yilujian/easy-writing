@@ -1,3 +1,7 @@
+import { parseStoredRecord, parseStoredChapter } from './stored-record'
+import { trackStorageWrite } from './storage-maintenance'
+import { writingImportStatements } from './desktop-import'
+import { desktopInvoke } from './desktop-records'
 import { countTextWords } from '@/utils/word-count'
 import { recordWriteJournal } from './write-journal'
 import {
@@ -75,7 +79,11 @@ export class SqliteWritingStorage implements WritingStorage {
         const mod = await import('@tauri-apps/plugin-sql')
         type SqlPluginModule = { load: (path: string) => Promise<unknown> }
         const Database = ((mod as { default?: SqlPluginModule }).default || mod) as SqlPluginModule
-        const db = await Database.load('sqlite:ew-writing.db') as TauriDatabase
+        const connection = await Database.load('sqlite:ew-writing.db') as TauriDatabase
+        const db: TauriDatabase = {
+          select: (sql, params) => connection.select(sql, params),
+          execute: (sql, params) => trackStorageWrite(() => connection.execute(sql, params)),
+        }
         await this.ensureSchema(db)
         this.db = db
         if (this.unavailable) {
@@ -189,15 +197,15 @@ export class SqliteWritingStorage implements WritingStorage {
 
   async getChapter(chapterId: number) {
     const db = await this.getDb()
-    const rows = await db.select<SqlRow>('SELECT payload FROM chapter_contents WHERE chapterId = $1 LIMIT 1', [Number(chapterId)])
-    return safeJsonParse<StoredLocalChapterDraft | null>(rows[0]?.payload, null)
+    const rows = await db.select<SqlRow>('SELECT storageKey, payload FROM chapter_contents WHERE chapterId = $1 LIMIT 1', [Number(chapterId)])
+    return rows.length ? parseStoredChapter(rows[0].payload, String(rows[0].storageKey)) : null
   }
 
   async getChapterByIdentity(userId: string, bookId: string | number, chapterId: number) {
     const db = await this.getDb()
     const key = buildChapterStorageKey(userId, bookId, chapterId)
-    const rows = await db.select<SqlRow>('SELECT payload FROM chapter_contents WHERE storageKey = $1 LIMIT 1', [key])
-    return safeJsonParse<StoredLocalChapterDraft | null>(rows[0]?.payload, null)
+    const rows = await db.select<SqlRow>('SELECT storageKey, payload FROM chapter_contents WHERE storageKey = $1 LIMIT 1', [key])
+    return rows.length ? parseStoredChapter(rows[0].payload, key) : null
   }
 
   async saveChapterLocal(payload: LocalChapterDraft) {
@@ -251,7 +259,7 @@ export class SqliteWritingStorage implements WritingStorage {
       [Number(chapterId)]
     )
     return rows
-      .map(row => safeJsonParse<StoredChapterVersion | null>(row.payload, null))
+      .map(row => parseStoredRecord<StoredChapterVersion>(row.payload, '章节历史版本'))
       .filter((item): item is StoredChapterVersion => Boolean(item))
       .filter(
         item =>
@@ -400,10 +408,10 @@ export class SqliteWritingStorage implements WritingStorage {
     // 原 JS 判定化简后等价于 lastBackedUpAt=0 或 updatedAt>lastBackedUpAt。
     // 列值由 saveChapterLocal/markChapterBackedUp 维护；旧行列值 0 会全量备份一次后收敛。
     const rows = await db.select<SqlRow>(
-      'SELECT payload FROM chapter_contents WHERE lastBackedUpAt = 0 OR updatedAt > lastBackedUpAt ORDER BY updatedAt ASC'
+      'SELECT storageKey, payload FROM chapter_contents WHERE lastBackedUpAt = 0 OR updatedAt > lastBackedUpAt ORDER BY updatedAt ASC'
     )
     return rows
-      .map(row => safeJsonParse<StoredLocalChapterDraft | null>(row.payload, null))
+      .map(row => parseStoredChapter(row.payload, String(row.storageKey)))
       .filter(Boolean)
       .filter(item => !normalizedUserId || String((item as StoredLocalChapterDraft).userId) === normalizedUserId)
       .filter(item => !normalizedBookId || String((item as StoredLocalChapterDraft).bookId) === normalizedBookId)
@@ -428,44 +436,23 @@ export class SqliteWritingStorage implements WritingStorage {
 
   async exportAllRecords(): Promise<WritingStorageDump> {
     const db = await this.getDb()
-    const chapterRows = await db.select<SqlRow>('SELECT payload FROM chapter_contents')
+    const chapterRows = await db.select<SqlRow>('SELECT storageKey, payload FROM chapter_contents')
     const versionRows = await db.select<SqlRow>('SELECT payload FROM chapter_versions')
     const settingRows = await db.select<SqlRow>('SELECT key, value FROM sync_settings')
     return {
       chapters: chapterRows
-        .map(row => safeJsonParse<StoredLocalChapterDraft | null>(row.payload, null))
+        .map(row => parseStoredChapter(row.payload, String(row.storageKey)))
         .filter((item): item is StoredLocalChapterDraft => Boolean(item)),
       versions: versionRows
-        .map(row => safeJsonParse<StoredChapterVersion | null>(row.payload, null))
+        .map(row => parseStoredRecord<StoredChapterVersion>(row.payload, '章节历史版本'))
         .filter((item): item is StoredChapterVersion => Boolean(item)),
       settings: settingRows.map(row => ({ key: String(row.key), value: String(row.value ?? '') })),
     }
   }
 
   async importAllRecords(dump: WritingStorageDump, options: { replace: boolean }) {
-    const db = await this.getDb()
-    if (options.replace) {
-      for (const table of ['chapter_contents', 'chapter_versions', 'sync_settings']) {
-        await db.execute(`DELETE FROM ${table}`)
-      }
-    }
-    for (const chapter of dump.chapters) {
-      const normalized = normalizeLocalChapterDraft(chapter)
-      await this.upsertChapterRow(db, {
-        ...normalized,
-        storageKey: buildChapterStorageKey(normalized.userId, normalized.bookId, normalized.chapterId),
-        lastBackedUpAt: Number(chapter.lastBackedUpAt || 0),
-      })
-    }
-    for (const version of dump.versions) {
-      await db.execute(
-        'INSERT OR REPLACE INTO chapter_versions (id, payload, chapterId, createdAt) VALUES ($1, $2, $3, $4)',
-        [version.id, JSON.stringify(version), Number(version.chapterId), Number(version.createdAt || Date.now())]
-      )
-    }
-    for (const item of dump.settings) {
-      await db.execute('INSERT OR REPLACE INTO sync_settings (key, value) VALUES ($1, $2)', [item.key, item.value])
-    }
+    await this.getDb()
+    await trackStorageWrite(() => desktopInvoke('desktop_sql_transaction', { statements: writingImportStatements(dump, options.replace) }))
   }
 
   async getLocalWritingSettings() {

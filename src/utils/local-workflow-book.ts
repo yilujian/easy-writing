@@ -70,6 +70,7 @@ const importSettingCharacters = async (bookId: number, setting: JsonRecord) => {
     await addLocalCharacter({
       bookId: String(bookId),
       name,
+      aliases: item.aliases,
       role: index === 0 ? 0 : 1,
       gender: mapGender(item?.gender),
       tags: asText(item?.keywords) ? asText(item?.keywords).split(/[、,，\s]+/).filter(Boolean) : [],

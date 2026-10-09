@@ -1531,7 +1531,7 @@ onBeforeUnmount(() => {
   color: var(--ink-accent);
 }
 
-@media (max-width: 1200px) {
+@include content-max(1200px, 1200px) {
   .split-view {
     grid-template-columns: 220px minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -1545,7 +1545,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 900px) {
+@include content-max(900px, 900px) {
   .workbench-header {
     flex-direction: column;
     align-items: flex-start;

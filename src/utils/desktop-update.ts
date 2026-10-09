@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import { isTauriRuntime } from '@/storage'
 import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 
@@ -68,7 +69,7 @@ const toUpdateInfo = (update: { currentVersion: string; version: string; date?: 
 
 const savePendingUpdateNotes = (info: DesktopUpdateInfo) => {
   // 先缓存目标版本说明，安装重启后再按当前版本匹配展示。
-  window.localStorage.setItem(
+  appSettings.setItem(
     DESKTOP_UPDATE_NOTES_KEY,
     JSON.stringify({ ...info, shown: false, installedAt: new Date().toISOString() } satisfies StoredDesktopUpdateNotes)
   )
@@ -76,10 +77,10 @@ const savePendingUpdateNotes = (info: DesktopUpdateInfo) => {
 
 const readPendingUpdateNotes = () => {
   try {
-    const raw = window.localStorage.getItem(DESKTOP_UPDATE_NOTES_KEY)
+    const raw = appSettings.getItem(DESKTOP_UPDATE_NOTES_KEY)
     return raw ? JSON.parse(raw) as StoredDesktopUpdateNotes : null
   } catch {
-    window.localStorage.removeItem(DESKTOP_UPDATE_NOTES_KEY)
+    appSettings.removeItem(DESKTOP_UPDATE_NOTES_KEY)
     return null
   }
 }
@@ -122,7 +123,7 @@ export const consumePendingDesktopUpdateNotes = async (): Promise<DesktopUpdateI
     // 只有应用实际启动到目标版本后，才展示该版本的更新说明。
     if (currentVersion !== notes.version) return null
 
-    window.localStorage.setItem(
+    appSettings.setItem(
       DESKTOP_UPDATE_NOTES_KEY,
       JSON.stringify({ ...notes, shown: true } satisfies StoredDesktopUpdateNotes)
     )
@@ -191,7 +192,7 @@ export const installDesktopUpdate = async (options: DesktopUpdateOptions & {
       emit('installed', '更新已安装，重启后生效。')
     } catch (error) {
       const message = errorMessage(error)
-      window.localStorage.removeItem(DESKTOP_UPDATE_NOTES_KEY)
+      appSettings.removeItem(DESKTOP_UPDATE_NOTES_KEY)
       options.onStateChange?.({ phase: 'error', info, message, error: message })
     } finally {
       pendingUpdate = null

@@ -63,3 +63,9 @@ export const isAddToChatShortcut = (e: KeyboardEvent): boolean => {
   // Mac 用 Meta(Command), Windows 用 Ctrl
   return isMac() ? e.metaKey : e.ctrlKey;
 };
+
+export const getWordLibraryShortcutTitle = () => isMac() ? '⌘⇧L' : 'Ctrl+Shift+L';
+
+export const isWordLibraryShortcut = (event: KeyboardEvent) =>
+  !event.altKey && event.shiftKey && (isMac() ? event.metaKey : event.ctrlKey)
+  && (event.code === 'KeyL' || event.key.toLowerCase() === 'l');

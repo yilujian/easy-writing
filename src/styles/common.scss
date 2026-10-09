@@ -35,7 +35,9 @@ body {
 }
 
 body.desktop-runtime {
-  min-width: 1200px;
+  // 与主窗口最小宽度（window_state.rs MIN_WIDTH）保持一致：页面永远不比窗口宽。
+  // 之前写 1200 时，窗口在 1100～1200 之间页面比窗口宽，右侧内容被切掉。
+  min-width: 1100px;
   overflow-x: auto;
 }
 

@@ -35,6 +35,13 @@
           </div>
 
           <div class="setting-character-field">
+            <span class="setting-field-label">别名</span>
+            <CharacterAliasesInput
+              :model-value="character.aliases" :name="character.name"
+              :character-id="character.id" :characters="characters"
+              @update:model-value="updateCharacter(character.id, { aliases: $event })" />
+          </div>
+          <div class="setting-character-field">
             <span class="setting-field-label">身份</span>
             <WorkflowInlineEdit
               block
@@ -79,6 +86,8 @@
 </template>
 
 <script setup lang="ts">
+import CharacterAliasesInput from '@/components/CharacterAliasesInput.vue'
+import { normalizeCharacterAliases } from '@/utils/character-aliases'
 import { nextTick, ref, watch } from 'vue'
 import WorkflowInlineEdit from '../WorkflowInlineEdit.vue'
 import { createNewSettingCharacter } from '../../workflow-adapter'
@@ -106,7 +115,11 @@ watch(
 )
 
 const updateCharacter = (id: string, payload: Partial<WorkflowSettingCharacter>) => {
-  emit('update', props.characters.map(item => (item.id === id ? { ...item, ...payload } : item)))
+  emit('update', props.characters.map(item => {
+    if (item.id !== id) return item
+    const updated = { ...item, ...payload }
+    return { ...updated, aliases: normalizeCharacterAliases(updated.name, updated.aliases) }
+  }))
 }
 
 const removeCharacter = (id: string) => {

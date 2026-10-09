@@ -14,6 +14,13 @@ const fileDate = (filename: string) => {
   const m = filename.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/)
   return m ? new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`).getTime() || 0 : 0
 }
+/** 备份里记录的目录位置；缺失、非正数一律当作没有 */
+const orderOf = (value: unknown) => {
+  const numeric = Number(value)
+  return value != null && Number.isFinite(numeric) && numeric > 0 ? numeric : null
+}
+/** 两边都有位置信息才比较；任一缺失就交给后面的标题排序 */
+const orderCompare = (a: number | null, b: number | null) => (a != null && b != null ? a - b : 0)
 const headingNo = (title: string) => {
   const m = title.match(/^第([零一二三四五六七八九十百千万两\d]+)[卷部篇章节回]/)
   return m ? parseTxtHeadingNo(m[1]) : null
@@ -60,6 +67,7 @@ export function buildBackupRestorePreview(scan: BackupScan): BackupRestorePrevie
           sourceId: String(data.chapterId), volumeId: String(data.volumeId),
           volumeTitle: folder(parts[parts.length - 3] || '', String(data.volumeId)) || '默认分卷',
           title: data.title, textContent: data.textContent, contentJson, backupAt: date, sourcePath: file.path,
+          orderNo: orderOf(data.orderNo), volumeOrderNo: orderOf(data.volumeOrderNo),
         })
       } else {
         const volumeFolder = parts[parts.length - 3] || '', bookFolder = parts[parts.length - 4] || ''
@@ -68,12 +76,16 @@ export function buildBackupRestorePreview(scan: BackupScan): BackupRestorePrevie
         const date = fileDate(filename)
         const book = getBook(bookId, folder(bookFolder, bookId), date)
         addChapter(book, { sourceId: chapterId, volumeId, volumeTitle: folder(volumeFolder, volumeId),
-          title: folder(parent, chapterId), textContent: file.content, contentJson: null, backupAt: date, sourcePath: file.path })
+          title: folder(parent, chapterId), textContent: file.content, contentJson: null, backupAt: date, sourcePath: file.path,
+          orderNo: null, volumeOrderNo: null })
         warnings.push(`${file.path}：使用 TXT 恢复正文，原排版无法恢复`)
       }
     } catch (error) {
       warnings.push(`跳过 ${file.path}：${error instanceof Error ? error.message : '格式不正确'}`)
     }
+  }
+  if ([...books.values()].some(book => book.chapters.some(chapter => chapter.orderNo == null))) {
+    warnings.push('部分旧备份未记录章节顺序，只能按标题章号恢复，请核对目录；原备份文件不会被修改。')
   }
   for (const book of books.values()) {
     const volumes = new Map<string, BackupRestoreChapter>()
@@ -81,8 +93,15 @@ export function buildBackupRestorePreview(scan: BackupScan): BackupRestorePrevie
       const current = volumes.get(chapter.volumeId)
       if (!current || chapter.backupAt > current.backupAt) volumes.set(chapter.volumeId, chapter)
     }
-    for (const chapter of book.chapters) chapter.volumeTitle = volumes.get(chapter.volumeId)!.volumeTitle
-    book.chapters.sort((a, b) => titleOrder(a.volumeTitle, b.volumeTitle) || a.volumeId.localeCompare(b.volumeId)
+    for (const chapter of book.chapters) {
+      const latest = volumes.get(chapter.volumeId)!
+      chapter.volumeTitle = latest.volumeTitle
+      chapter.volumeOrderNo = latest.volumeOrderNo
+    }
+    // 优先用备份里记的目录位置（新备份都有），没有才退回按标题章号排序
+    book.chapters.sort((a, b) => orderCompare(a.volumeOrderNo, b.volumeOrderNo)
+      || titleOrder(a.volumeTitle, b.volumeTitle) || a.volumeId.localeCompare(b.volumeId)
+      || orderCompare(a.orderNo, b.orderNo)
       || titleOrder(a.title, b.title) || a.sourceId.localeCompare(b.sourceId, undefined, { numeric: true }))
   }
   return { books: [...books.values()].filter(book => book.chapters.length || book.reference).sort((a, b) => titleOrder(a.title, b.title)), warnings }

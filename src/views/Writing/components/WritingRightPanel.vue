@@ -27,6 +27,7 @@ v-else-if="activeToolId === 'magic'" key="magic" :title="currentPanel.title" :bo
         <InspirationPanel
 v-else-if="activeToolId === 'inspiration'" key="inspiration" :title="currentPanel.title"
           :book-id="bookId" @close="closePanel" />
+        <WordLibraryPanel v-else-if="activeToolId === 'words'" key="words" :book-id="bookId" />
         <MobilePreviewPanel
 v-else-if="activeToolId === 'preview'" key="preview" :title="currentPanel.title"
           @close="closePanel" />
@@ -36,9 +37,10 @@ v-else-if="activeToolId === 'preview'" key="preview" :title="currentPanel.title"
     <!-- 右侧工具栏 -->
     <div class="tool-sidebar">
       <div
-v-for="tool in visibleTools" :key="tool.id" :class="['tool-item', { active: tool.active }]"
+v-for="tool in visibleTools" :key="tool.id" :class="['tool-item', { active: tool.active, 'word-library-tool': tool.id === 'words' }]"
         @click="selectTool(tool)">
-        <i :class="tool.icon"></i>
+        <Notebook v-if="tool.id === 'words'" class="word-library-tool-icon" aria-hidden="true" />
+        <i v-else :class="tool.icon"></i>
         <span>{{ tool.name }}</span>
       </div>
     </div>
@@ -89,7 +91,8 @@ v-for="tool in visibleTools" :key="tool.id" :class="['tool-item', { active: tool
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { Notebook } from '@element-plus/icons-vue'
+import { defineAsyncComponent, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import EwModal from '@/components/EwModal/index.vue'
 import { isTauriRuntime } from '@/storage'
@@ -108,6 +111,7 @@ import {
   isReferencePanelTool,
   type ReferencePanelToolId,
 } from './reference-panel'
+const WordLibraryPanel = defineAsyncComponent(() => import('./WordLibraryPanel.vue'))
 const store = useWritingEditorStore()
 
 const props = defineProps<{
@@ -137,6 +141,7 @@ const tools = ref<Tool[]>([
   { id: 'settings', name: '设定', icon: 'fa-solid fa-gear', active: false },
   { id: 'timeline', name: '时间线', icon: 'fa-solid fa-timeline', active: false },
   { id: 'storyline', name: '故事线', icon: 'fa-solid fa-diagram-project', active: false },
+  { id: 'words', name: '词库', icon: 'fa-solid fa-spell-check', active: false },
   { id: 'inspiration', name: '灵感', icon: 'fa-regular fa-lightbulb', active: false },
 ])
 const visibleTools = computed(() => tools.value)
@@ -593,5 +598,11 @@ onBeforeUnmount(() => {
     box-shadow: -18px 0 42px rgba(15, 23, 42, 0.18);
     backdrop-filter: blur(16px);
   }
+}
+.writing-right-panel .tool-sidebar .tool-item.word-library-tool {
+  width: calc(100% - 6px); padding: 6px 0; border-radius: 6px;
+  .word-library-tool-icon { width: 20px; height: 20px; }
+  &.active { color: var(--word-library-accent, var(--ink-accent)); background: var(--accent-soft); }
+  &.active::after { display: none; }
 }
 </style>

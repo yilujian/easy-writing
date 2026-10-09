@@ -54,7 +54,7 @@ export const WORKFLOW_PROMPT_FILES: PromptFileDef[] = [
           '"acquired":{"icon":"fa-solid fa-hammer","title":"后天","desc":"说明"},"dimensions":["能力维度"]},',
           '"mechanics":{"intro":"世界机制概述","items":[{"icon":"fa-solid fa-gears","title":"机制","desc":"说明"}]},',
           '"resources":{"intro":"资源体系概述","items":[{"icon":"fa-solid fa-gem","title":"资源","desc":"说明"}]}},',
-          '"characters":[{"id":"p1","name":"姓名","gender":"男","identity":"身份","background":"背景","keywords":"关键词","motivation":"动机"}],',
+          '"characters":[{"id":"p1","name":"姓名","aliases":[],"gender":"男","identity":"身份","background":"背景","keywords":"关键词","motivation":"动机"}],',
           '"storylines":[{"id":"s1","icon":"fa-solid fa-route","title":"线名","desc":"概述","keyEvent":"关键事件"}],',
           '"assistActions":[],"records":[]}',
         ].join(''),

@@ -17,8 +17,8 @@ export const LOCAL_USER_ID = 'guest'
 let localIdSeed = 0
 
 export const createLocalEntityId = () => {
-  localIdSeed = (localIdSeed + 1) % 1000
-  return -(Date.now() * 1000 + localIdSeed)
+  localIdSeed = Math.max(Date.now() * 1000, localIdSeed) + 1
+  return -localIdSeed
 }
 
 export const isLocalEntityId = (id?: number | string | null) => {

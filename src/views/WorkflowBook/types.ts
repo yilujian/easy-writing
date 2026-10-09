@@ -259,6 +259,7 @@ export interface WorkflowSettingCore {
 export interface WorkflowSettingCharacter {
   id: string
   name: string
+  aliases?: string[]
   gender: '男' | '女' | '其他'
   identity: string
   background: string

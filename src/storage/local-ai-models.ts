@@ -1,3 +1,4 @@
+import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import type { AiModelGroupCode, AiModelOption } from '@/types/ai-model'
 import type { AiThinkingMode, UserAiModelSavePayload } from '@/types/user-ai-model'
 import { createLocalEntityId, nowIso } from './local-library-utils'
@@ -5,7 +6,7 @@ import { createLocalEntityId, nowIso } from './local-library-utils'
 /**
  * BYOK 模型本地库：替代旧服务端 /ai/user_model/* 数据通道。
  *
- * - 模型配置（含 API Key）只存本机 localStorage，永不上传；界面与文档同口径提示。
+ * - 模型配置（含 API Key）桌面端只存本机 SQLite，永不上传；界面与文档同口径提示。
  * - 列表函数返回的选项一律剥离 apiKey（明文密钥只经 getLocalAiModelSecret 交给请求层）。
  * - 编辑保存时 apiKey 传空串 = 保留原密钥（与旧服务端"编辑不回显密钥"语义一致）。
  * - 各场景默认模型偏好（原 /ai/model/preference）也归这里，一并本地化。
@@ -49,24 +50,23 @@ const emptyStore = (): LocalAiModelStore => ({ version: 1, models: [], preferenc
 
 const loadStore = (): LocalAiModelStore => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '')
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.models)) return emptyStore()
+    const raw = appSettings.getItem(STORAGE_KEY)
+    if (raw === null) return emptyStore()
+    const parsed = JSON.parse(raw)
+    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.models)) throw new Error('模型配置结构或版本不受支持')
     return {
       version: 1,
       models: parsed.models.filter((item: LocalAiModel) => item && typeof item.id === 'number'),
       preferences: parsed.preferences && typeof parsed.preferences === 'object' ? parsed.preferences : {},
     }
-  } catch {
-    return emptyStore()
+  } catch (error) {
+    throw new Error(`读取模型配置失败，未覆盖原配置：${String(error)}`)
   }
 }
 
-const saveStore = (store: LocalAiModelStore) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-  } catch (error) {
-    console.warn('写入本地模型库失败', error)
-  }
+const saveStore = async (store: LocalAiModelStore) => {
+  appSettings.setItem(STORAGE_KEY, JSON.stringify(store))
+  await flushAppSettings()
 }
 
 /** 老数据没有 thinking 字段时按供应商给默认：能用参数关思考的供应商默认关，与模型管理的预设一致。
@@ -129,7 +129,7 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     if (payload.extraParams !== undefined) model.extraParams = String(payload.extraParams || '').trim()
     model.status = payload.status
     if (payload.sort != null) model.sort = payload.sort
-    saveStore(store)
+    await saveStore(store)
     return { data: toOption(model) }
   }
   const model: LocalAiModel = {
@@ -150,7 +150,7 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     extraParams: String(payload.extraParams || '').trim(),
   }
   store.models.push(model)
-  saveStore(store)
+  await saveStore(store)
   return { data: toOption(model) }
 }
 
@@ -159,7 +159,7 @@ export const setLocalAiModelStatus = async (id: number, status: number) => {
   const model = store.models.find(item => item.id === id)
   if (!model) throw new Error('模型不存在')
   model.status = status
-  saveStore(store)
+  await saveStore(store)
   return { data: toOption(model) }
 }
 
@@ -175,7 +175,7 @@ export const recordLocalAiModelTest = async (
   model.lastTestAt = result.testedAt || nowIso()
   model.lastLatency = result.latency ?? null
   model.lastError = result.ok ? '' : String(result.message || '')
-  saveStore(store)
+  await saveStore(store)
   return { data: toOption(model) }
 }
 
@@ -186,7 +186,7 @@ export const deleteLocalAiModel = async (id: number) => {
   for (const key of Object.keys(store.preferences) as AiModelGroupCode[]) {
     if (store.preferences[key] === localAiModelCode(id)) delete store.preferences[key]
   }
-  saveStore(store)
+  await saveStore(store)
   return { data: true }
 }
 
@@ -215,12 +215,12 @@ export const getLocalAiPreference = (groupCode: AiModelGroupCode): string => {
   return loadStore().preferences[groupCode] || ''
 }
 
-export const saveLocalAiPreference = (groupCode: AiModelGroupCode, modelCode: string) => {
+export const saveLocalAiPreference = async (groupCode: AiModelGroupCode, modelCode: string) => {
   const store = loadStore()
   if (String(modelCode || '').trim()) {
     store.preferences[groupCode] = String(modelCode).trim()
   } else {
     delete store.preferences[groupCode]
   }
-  saveStore(store)
+  await saveStore(store)
 }

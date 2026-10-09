@@ -49,7 +49,7 @@ const resolveWorkflowModel = async (run: { modelCode?: string; config?: JsonReco
   const aiModelStore = useAiModelStore()
   const explicit = String(run.modelCode || run.config?.modelCode || '').trim()
   if (explicit) return explicit
-  return await aiModelStore.ensureTextModel()
+  return await aiModelStore.ensureWorkflowModel()
 }
 
 const describeBaseConfig = (config: JsonRecord | null | undefined) => {

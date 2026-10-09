@@ -1,3 +1,4 @@
+import { withRecordStore } from './desktop-records'
 import type {
   AiRecordListItem,
   AiRecordPageQuery,
@@ -41,36 +42,8 @@ const STORE_NAME = 'records'
 const MAX_RECORDS = 1000
 const TEXT_KEEP_CHARS = 2000
 
-const openDb = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-      }
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const withStore = async <T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-  const db = await openDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const request = run(tx.objectStore(STORE_NAME))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
-}
+const withStore = <T>(mode: IDBTransactionMode, run: Parameters<typeof withRecordStore>[4]) =>
+  withRecordStore<T>(DB_NAME, STORE_NAME, 'id', mode, run)
 
 /** 拿不到真实 usage 时的估算口径：中文 ≈ 1.7 字/token */
 export const estimateTokens = (text: string) => Math.round(String(text || '').length / 1.7)

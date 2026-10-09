@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 
 import { defineStore } from "pinia";
 import piniaPersistConfig from "@/stores/helper/persist";
@@ -40,7 +41,7 @@ const ENTITY_HIGHLIGHT_DISMISS_STORAGE_KEY = 'ew-writing-entity-highlight-dismis
 const readDismissedEntityHighlightKeys = (): Record<string, string[]> => {
   if (typeof window === 'undefined') return {};
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(ENTITY_HIGHLIGHT_DISMISS_STORAGE_KEY) || '{}');
+    const parsed = JSON.parse(appSettings.getItem(ENTITY_HIGHLIGHT_DISMISS_STORAGE_KEY) || '{}');
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return Object.fromEntries(
       Object.entries(parsed).map(([bookId, keys]) => [
@@ -55,7 +56,7 @@ const readDismissedEntityHighlightKeys = (): Record<string, string[]> => {
 
 const writeDismissedEntityHighlightKeys = (value: Record<string, string[]>) => {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(ENTITY_HIGHLIGHT_DISMISS_STORAGE_KEY, JSON.stringify(value));
+  appSettings.setItem(ENTITY_HIGHLIGHT_DISMISS_STORAGE_KEY, JSON.stringify(value));
 };
 
 export interface WritingEditorState {

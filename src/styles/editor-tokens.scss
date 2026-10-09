@@ -19,3 +19,20 @@
   --statusbar-bg: rgba(43, 41, 36, 0.85);
   --editor-paper-bg: rgba(33, 31, 27, 0.94);
 }
+
+/* 词库的浅选中态直接复用 accent-soft；暗色主题的细线图标与文字提高亮度。 */
+.theme-new, .theme-yellow, .theme-green, .theme-dark {
+  --word-library-accent: var(--ink-accent);
+  --word-library-panel-bg: var(--popover-bg);
+}
+.theme-dark {
+  --word-library-accent: var(--ink-main);
+}
+@supports (background: color-mix(in srgb, red, transparent)) {
+  .theme-new, .theme-yellow, .theme-green, .theme-dark {
+    --word-library-panel-bg: color-mix(in srgb, var(--popover-bg) 94%, transparent);
+  }
+  .theme-dark {
+    --word-library-accent: color-mix(in srgb, var(--ink-accent) 45%, var(--ink-main));
+  }
+}

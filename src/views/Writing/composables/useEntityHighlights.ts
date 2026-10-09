@@ -1,3 +1,4 @@
+import { getCharacterNames } from '@/utils/character-aliases'
 import { computed, ref, watch, type Ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
 import { ElMessage } from 'element-plus'
@@ -39,9 +40,11 @@ export const useEntityHighlights = (options: EntityHighlightsOptions) => {
     if (!dismissedEntityHighlightKeys.value.length)
       return entityHighlights() || []
     const dismissedKeys = new Set(dismissedEntityHighlightKeys.value)
-    return (entityHighlights() || []).filter(
-      (item) => !dismissedKeys.has(normalizeEntityHighlightKey(item.name)),
-    )
+    return (entityHighlights() || []).flatMap(item => {
+      const names = getCharacterNames(item).filter(name => !dismissedKeys.has(normalizeEntityHighlightKey(name)))
+      // 保留角色正式姓名用于展示；忽略的称呼通过分组过滤，不改写角色身份。
+      return names.length ? [{ ...item, matchNames: names }] : []
+    })
   })
   const entityGroups = computed(() =>
     buildEntityHighlightGroups(visibleEntityHighlights.value),
@@ -61,7 +64,7 @@ export const useEntityHighlights = (options: EntityHighlightsOptions) => {
   })
 
   const activeEntityItems = computed(
-    () => activeEntityGroup.value?.items.slice(0, 4) || [],
+    () => activeEntityGroup.value?.items || [],
   )
 
   const entityHoverStyle = computed(() => ({

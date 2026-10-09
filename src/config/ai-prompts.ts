@@ -171,9 +171,11 @@ export const buildAutocompleteMessages = (params: {
   chapterTitle?: string
   chapterSummary?: string
   mode: 'inline' | 'next_beat'
+  characterContext?: string
 }): LocalChatMessageInput[] => {
   const modeLine = promptText('editor-autocomplete', params.mode === 'next_beat' ? 'nextBeat' : 'inline')
   const parts = [
+    params.characterContext || '',
     params.chapterTitle ? `【本章】${params.chapterTitle}` : '',
     params.chapterSummary ? `【本章目标】${params.chapterSummary}` : '',
     params.sceneAnchor ? `【场景锚点】${params.sceneAnchor}` : '',

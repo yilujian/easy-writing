@@ -96,11 +96,11 @@ const handleCustomBgChange = async (event: Event) => {
       ElMessage.error('图片读取失败，请换一张试试')
       return
     }
-    themeStore.setCustomSkin(dataUrl)
+    await themeStore.setCustomSkin(dataUrl)
     ElMessage.success('自定义背景已应用')
   } catch (error: unknown) {
-    console.error('read custom background failed', error)
-    ElMessage.error('图片读取失败，请换一张试试')
+    console.error('apply custom background failed', error)
+    ElMessage.error('背景图片读取或保存失败，请换一张试试')
   } finally {
     input.value = ''
   }

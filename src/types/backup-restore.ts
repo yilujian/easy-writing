@@ -10,6 +10,9 @@ export interface BackupRestoreChapter {
   contentJson: unknown
   backupAt: number
   sourcePath: string
+  /** 备份时目录里的实际位置（从 1 起）；旧备份文件没有，为 null */
+  orderNo: number | null
+  volumeOrderNo: number | null
 }
 export interface BackupRestoreBook {
   sourceId: string

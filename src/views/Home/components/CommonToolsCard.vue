@@ -114,7 +114,8 @@ const handleToolClick = (tool: ToolItem) => {
 
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  // 每格至少 180，放不下自动减列，不需要断点
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 14px;
 }
 
@@ -169,16 +170,4 @@ const handleToolClick = (tool: ToolItem) => {
   text-overflow: ellipsis;
 }
 
-
-@media (max-width: 720px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 540px) {
-  .tools-grid {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

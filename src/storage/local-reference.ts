@@ -1,3 +1,4 @@
+import { normalizeCharacterAliases } from '@/utils/character-aliases'
 import type {
   Character,
   CharacterGroup,
@@ -133,6 +134,7 @@ export const addLocalCharacter = async (payload: Partial<Character>) => {
       bookId: String(payload.bookId),
       groupId: payload.groupId ?? null,
       name: payload.name ?? '',
+      aliases: normalizeCharacterAliases(payload.name ?? '', payload.aliases),
       role: payload.role ?? 0,
       gender: payload.gender ?? 0,
       age: payload.age ?? '',
@@ -158,6 +160,7 @@ export const updateLocalCharacter = async (payload: Partial<Character> & { id?: 
     if (!character) throw new Error('角色不存在')
     const { id: _id, bookId: _bookId, ...fields } = payload
     applyDefined(character, fields)
+    character.aliases = normalizeCharacterAliases(character.name, character.aliases)
     return ok(character)
   })
 }

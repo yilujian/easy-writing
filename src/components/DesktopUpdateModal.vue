@@ -56,7 +56,7 @@
             <div class="desktop-update-actions">
               <template v-if="state.phase === 'available' && !releaseNotesOnly">
                 <button class="ink-btn" type="button" @click="$emit('close')">稍后再说</button>
-                <button class="ink-btn ink-btn-primary" type="button" @click="$emit('update')">立即更新</button>
+                <button class="ink-btn ink-btn-primary" type="button" @click="confirmUpdate">立即更新</button>
               </template>
               <button v-else-if="releaseNotesOnly" class="ink-btn ink-btn-primary" type="button" @click="$emit('close')">
                 知道了
@@ -82,6 +82,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import type { DesktopUpdateSnapshot } from '@/utils/desktop-update'
+import { inkConfirm } from '@/utils/ink-confirm'
 
 const props = defineProps<{
   visible: boolean
@@ -97,6 +98,25 @@ const emit = defineEmits<{
 }>()
 
 const dialogRef = ref<HTMLElement | null>(null)
+let updateConfirmationOpen = false
+const confirmUpdate = async () => {
+  if (updateConfirmationOpen || !props.visible || props.releaseNotesOnly || props.state.phase !== 'available') return
+  updateConfirmationOpen = true
+  try {
+    await inkConfirm('确认后将开始下载更新，安装前会保存并备份作品。更新开始后无法取消，安装时应用可能退出，是否继续？', '确认更新', {
+      confirmButtonText: '确认更新',
+      cancelButtonText: '暂不更新',
+      type: 'warning',
+      closeOnClickModal: false,
+      modalClass: 'desktop-update-confirm-overlay',
+    })
+    if (props.visible && !props.releaseNotesOnly && props.state.phase === 'available') emit('update')
+  } catch {
+    // 取消、关闭或按 Escape 时保留更新说明，不开始下载。
+  } finally {
+    updateConfirmationOpen = false
+  }
+}
 let previousFocus: HTMLElement | null = null
 watch(() => props.visible, async visible => {
   if (visible) {
@@ -188,6 +208,11 @@ const downloadText = computed(() => {
 </script>
 
 <style scoped lang="scss">
+// 更新说明弹窗使用 20000，确认框必须显示在它上方。
+:global(.desktop-update-confirm-overlay) {
+  z-index: 20001 !important;
+}
+
 .desktop-update-overlay {
   position: fixed;
   inset: 0;

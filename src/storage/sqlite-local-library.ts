@@ -1,3 +1,8 @@
+import { parseStoredEntity } from './stored-record'
+import { encodeBookAssets, encodeImportedBookAssets, decodeBookAssets } from './book-assets'
+import { trackStorageWrite } from './storage-maintenance'
+import { libraryImportStatements } from './desktop-import'
+import { desktopInvoke } from './desktop-records'
 import type { TextCounts } from '@/types/ui-preferences'
 import type { JsonRecord } from '@/types/json'
 import type {
@@ -44,14 +49,6 @@ const TABLE_GROUPS = 'local_book_groups'
 const TABLE_VOLUMES = 'local_volumes'
 const TABLE_CHAPTERS = 'local_chapters'
 
-const safeJsonParse = <T>(value: unknown, fallback: T): T => {
-  if (value === undefined || value === null || value === '') return fallback
-  try {
-    return JSON.parse(String(value)) as T
-  } catch {
-    return fallback
-  }
-}
 
 export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
   private db: TauriDatabase | null = null
@@ -78,7 +75,11 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
         const mod = await import('@tauri-apps/plugin-sql')
         type SqlPluginModule = { load: (path: string) => Promise<unknown> }
         const Database = ((mod as { default?: SqlPluginModule }).default || mod) as SqlPluginModule
-        const db = await Database.load('sqlite:ew-writing.db') as TauriDatabase
+        const connection = await Database.load('sqlite:ew-writing.db') as TauriDatabase
+        const db: TauriDatabase = {
+          select: (sql, params) => connection.select(sql, params),
+          execute: (sql, params) => trackStorageWrite(() => connection.execute(sql, params)),
+        }
         await this.ensureSchema(db)
         this.db = db
         if (this.unavailable) {
@@ -144,21 +145,24 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
   private async all<T>(table: string) {
     const db = await this.getDb()
     const rows = await db.select<{ payload: string }>(`SELECT payload FROM ${table}`)
-    return rows.map(row => safeJsonParse<T | null>(row.payload, null)).filter(Boolean) as T[]
+    const records = rows.map(row => parseStoredEntity<T>(row.payload, table)).filter(Boolean) as T[]
+    return table === TABLE_BOOKS ? Promise.all(records.map(book => decodeBookAssets(book))) : records
   }
 
   private async get<T>(table: string, id: number | string) {
     const db = await this.getDb()
     const rows = await db.select<{ payload: string }>(`SELECT payload FROM ${table} WHERE id = $1 LIMIT 1`, [Number(id)])
-    return safeJsonParse<T | null>(rows[0]?.payload, null)
+    const record = rows.length ? parseStoredEntity<T>(rows[0].payload, table) : null
+    return table === TABLE_BOOKS ? decodeBookAssets(record) : record
   }
 
   private async putBook(book: LocalBook) {
+    const storedBook = await encodeBookAssets(book)
     const db = await this.getDb()
     await db.execute(
       `INSERT OR REPLACE INTO ${TABLE_BOOKS} (id, payload, title, groupId, mergeStatus, deletedAt, updateTime)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [book.id, JSON.stringify(book), book.title, book.groupId || null, book.mergeStatus || 'local', book.deletedAt || null, book.updateTime || nowIso()]
+      [book.id, JSON.stringify(storedBook), book.title, book.groupId || null, book.mergeStatus || 'local', book.deletedAt || null, book.updateTime || nowIso()]
     )
     return book
   }
@@ -198,7 +202,8 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
       `SELECT payload FROM ${table} WHERE bookId = $1`,
       [String(bookId)]
     )
-    return rows.map(row => safeJsonParse<T | null>(row.payload, null)).filter(Boolean) as T[]
+    const records = rows.map(row => parseStoredEntity<T>(row.payload, table)).filter(Boolean) as T[]
+    return table === TABLE_BOOKS ? Promise.all(records.map(book => decodeBookAssets(book))) : records
   }
 
   private async listBookVolumes(bookId: number | string) {
@@ -255,16 +260,9 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
   }
 
   async importAllRecords(dump: LocalLibraryDump, options: { replace: boolean }) {
-    const db = await this.getDb()
-    if (options.replace) {
-      for (const table of [TABLE_CHAPTERS, TABLE_VOLUMES, TABLE_BOOKS, TABLE_GROUPS]) {
-        await db.execute(`DELETE FROM ${table}`)
-      }
-    }
-    for (const group of dump.groups) await this.putGroup(normalizeLocalGroup(group))
-    for (const book of dump.books) await this.putBook(normalizeLocalBook(book))
-    for (const volume of dump.volumes) await this.putVolume(normalizeLocalVolume(volume))
-    for (const chapter of dump.chapters) await this.putChapter(normalizeLocalChapter(chapter))
+    await this.getDb()
+    const stored = { ...dump, books: await Promise.all(dump.books.map(book => encodeImportedBookAssets(book))) }
+    await trackStorageWrite(() => desktopInvoke('desktop_sql_transaction', { statements: libraryImportStatements(stored, options.replace) }))
   }
 
   async listLocalBooks(query: LocalBookListQuery = {}) {

@@ -1,4 +1,5 @@
-import { getWritingStorage, isTauriRuntime } from '@/storage'
+import { getWritingStorage } from '@/storage'
+import { usesSqliteCore } from './storage-mode'
 import { saveBlobFile } from '@/utils/download'
 import { IndexedDbLocalLibraryStorage } from './indexeddb-local-library'
 import { SqliteLocalLibraryStorage } from './sqlite-local-library'
@@ -31,7 +32,7 @@ let localLibraryStorage: LocalLibraryStorage | null = null
 
 export const getLocalLibraryStorage = () => {
   if (!localLibraryStorage) {
-    localLibraryStorage = isTauriRuntime()
+    localLibraryStorage = usesSqliteCore()
       ? new SqliteLocalLibraryStorage()
       : new IndexedDbLocalLibraryStorage()
   }

@@ -555,6 +555,8 @@
 }
 
 .entity-hover-list {
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -566,6 +568,8 @@
 }
 
 .entity-hover-meta {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: 8px;

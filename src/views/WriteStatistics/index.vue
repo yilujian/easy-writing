@@ -1342,7 +1342,7 @@ onBeforeUnmount(() => {
   color: var(--ink-sec);
 }
 
-@media (max-width: 1500px) {
+@include content-max(1220px) {
   .statistics-page {
     padding-inline: 12px;
   }
@@ -1385,7 +1385,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1280px) {
+@include content-max(1000px) {
   .source-split {
     grid-template-columns: 1fr;
   }
@@ -1396,7 +1396,7 @@ onBeforeUnmount(() => {
 
 }
 
-@media (max-width: 1180px) {
+@include content-max(900px) {
   .statistics-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto;

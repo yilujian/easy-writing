@@ -1,15 +1,16 @@
+import { appSettings } from '@/storage/app-settings'
 const STORAGE_KEY = 'ew-workflow-active-run'
 
 // 记住「用户当前正在编辑的工作流」，让切到别的功能模块再回来时无缝续上，
 // 而不是新建一条空 run、把进行中的流程丢进历史记录里。
 //
 // 按 userId 分区：同一浏览器换账号不会串到别人的 run（服务端 requireRun 还会再校验一次归属）。
-// 用 localStorage 而非 sessionStorage：关标签页、刷新后仍能续上。
+// 统一设置存储：关窗、刷新后仍能续上，桌面端持久化到 SQLite。
 type ActiveRunMap = Record<string, number>
 
 const readMap = (): ActiveRunMap => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = appSettings.getItem(STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : null
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
     return parsed as ActiveRunMap
@@ -21,7 +22,7 @@ const readMap = (): ActiveRunMap => {
 
 const writeMap = (map: ActiveRunMap) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+    appSettings.setItem(STORAGE_KEY, JSON.stringify(map))
   } catch {
     // 同上：写不进去只是失去恢复能力
   }

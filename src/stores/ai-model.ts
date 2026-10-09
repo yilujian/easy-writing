@@ -56,7 +56,7 @@ export const useAiModelStore = defineStore('ai-model', () => {
 
   const setGroupModel = async (groupCode: AiModelGroupCode, value: string) => {
     const modelCode = normalizeSelectedModel(groupCode, value)
-    saveLocalAiPreference(groupCode, modelCode)
+    await saveLocalAiPreference(groupCode, modelCode)
     applyGroupModelValue(groupCode, modelCode)
     return true
   }
@@ -94,6 +94,11 @@ export const useAiModelStore = defineStore('ai-model', () => {
     return textModel.value
   }
   const loadWorkflowModels = (force = false) => loadGroup('workflow_book', force)
+  /** 工作流使用自己的默认偏好，与页面“跟随默认”的展示保持一致。 */
+  const ensureWorkflowModel = async (): Promise<string> => {
+    if (!workflowModel.value) await loadWorkflowModels()
+    return workflowModel.value
+  }
   const loadImageModels = (force = false) => loadGroup('image_generation', force)
   const loadAll = async (force = false) => {
     await Promise.all([loadTextModels(force), loadWorkflowModels(force), loadImageModels(force)])
@@ -119,6 +124,7 @@ export const useAiModelStore = defineStore('ai-model', () => {
     loadTextModels,
     ensureTextModel,
     loadWorkflowModels,
+    ensureWorkflowModel,
     loadImageModels,
     loadAll,
   }

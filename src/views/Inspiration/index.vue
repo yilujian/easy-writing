@@ -428,7 +428,7 @@ const handleSubmit = async () => {
   if (submitting.value) return
   submitting.value = true
   try {
-    addLocalInspiration({ content, tag: persistTag(parsed.tag) })
+    await addLocalInspiration({ content, tag: persistTag(parsed.tag) })
     ElMessage.success('灵感已保存')
     draft.value = ''
     draftTag.value = ''
@@ -587,7 +587,7 @@ const updateOverflow = () => {
 
 const deleteInspiration = async (item: Inspiration) => {
   try {
-    deleteLocalInspirations([item.id])
+    await deleteLocalInspirations([item.id])
     inspirations.value = inspirations.value.filter(row => row.id !== item.id)
     const nextExpanded = new Set(expandedIds.value)
     nextExpanded.delete(item.id)
@@ -669,7 +669,7 @@ const commitEdit = async (forceClose: boolean) => {
     return
   }
   try {
-    const updated = updateLocalInspiration({
+    const updated = await updateLocalInspiration({
       id: editingId.value,
       content,
       tag
@@ -1210,7 +1210,7 @@ watch(
   gap: 6px;
 }
 
-@media (max-width: 1200px) {
+@include content-max(920px) {
   .inspiration-grid {
     grid-template-columns: 1fr;
   }

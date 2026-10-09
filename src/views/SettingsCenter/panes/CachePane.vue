@@ -31,6 +31,8 @@
 </template>
 
 <script setup lang="ts">
+import { appSettings } from '@/storage/app-settings'
+
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { inkConfirm } from '@/utils/ink-confirm'
@@ -46,9 +48,9 @@ const refreshLocalStorageSize = () => {
     return
   }
   let total = 0
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index) || ''
-    const value = window.localStorage.getItem(key) || ''
+  for (let index = 0; index < appSettings.length; index += 1) {
+    const key = appSettings.key(index) || ''
+    const value = appSettings.getItem(key) || ''
     total += (key.length + value.length) * 2
   }
   localStorageBytes.value = total
@@ -66,11 +68,11 @@ const clearLocalCache = async () => {
   }
   // 只清理明确的缓存前缀，避免误删用户设置与作品数据
   const removableKeys: string[] = []
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const item = window.localStorage.key(index)
+  for (let index = 0; index < appSettings.length; index += 1) {
+    const item = appSettings.key(index)
     if (item?.startsWith('ew-cache-')) removableKeys.push(item)
   }
-  removableKeys.forEach(item => window.localStorage.removeItem(item))
+  removableKeys.forEach(item => appSettings.removeItem(item))
   refreshLocalStorageSize()
   ElMessage.success('缓存已清理')
 }

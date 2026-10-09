@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 import { defineStore } from 'pinia'
 import { clearCustomSkinImage, loadCustomSkinImage, saveCustomSkinImage } from '@/storage/local-skin'
 import { ref, watch } from 'vue'
@@ -155,32 +156,39 @@ export const useThemeStore = defineStore('theme', () => {
   // 初始化：从 localStorage 加载主题和皮肤
   const initTheme = () => {
     // 加载主题
-    const savedTheme = localStorage.getItem(STORAGE_KEY)
+    const savedTheme = appSettings.getItem(STORAGE_KEY)
     if (savedTheme && themeConfigs[savedTheme]) {
       currentTheme.value = savedTheme
       themeConfig.value = themeConfigs[savedTheme]
     }
 
     // 加载皮肤
-    const savedSkin = localStorage.getItem(SKIN_STORAGE_KEY)
+    const savedSkin = appSettings.getItem(SKIN_STORAGE_KEY)
     // 旧版本把服务端图片 URL 存在 localStorage，服务端已下线，见到就清
-    localStorage.removeItem(CUSTOM_SKIN_URL_KEY)
+    appSettings.removeItem(CUSTOM_SKIN_URL_KEY)
     if (savedSkin === CUSTOM_SKIN_NAME) {
-      // 自定义背景存在 IndexedDB，异步取回；取不到（旧版本残留）回落默认皮肤
-      void loadCustomSkinImage().then(dataUrl => {
-        if (!dataUrl) {
-          currentSkin.value = DEFAULT_SKIN.name
+      // 自定义背景异步取回。没有记录（旧版本残留）才回落默认皮肤并写回设置；
+      // 读取失败（附件缺失、存储暂时不可用）只在本次会话用默认图，不改写用户的选择
+      void loadCustomSkinImage()
+        .then(dataUrl => {
+          if (!dataUrl) {
+            currentSkin.value = DEFAULT_SKIN.name
+            currentSkinObj.value = DEFAULT_SKIN
+            appSettings.setItem(SKIN_STORAGE_KEY, DEFAULT_SKIN.name)
+            return
+          }
+          currentSkin.value = CUSTOM_SKIN_NAME
+          currentSkinObj.value = {
+            name: '自定义背景',
+            img: dataUrl,
+            style: ''
+          }
+        })
+        .catch(error => {
+          console.warn('自定义背景读取失败，本次使用默认背景，设置未改动', error)
+          currentSkin.value = CUSTOM_SKIN_NAME
           currentSkinObj.value = DEFAULT_SKIN
-          localStorage.setItem(SKIN_STORAGE_KEY, DEFAULT_SKIN.name)
-          return
-        }
-        currentSkin.value = CUSTOM_SKIN_NAME
-        currentSkinObj.value = {
-          name: '自定义背景',
-          img: dataUrl,
-          style: ''
-        }
-      })
+        })
     } else if (savedSkin && skinMap.has(savedSkin)) {
       currentSkin.value = savedSkin
       currentSkinObj.value = skinMap.get(savedSkin)!
@@ -200,7 +208,7 @@ export const useThemeStore = defineStore('theme', () => {
     themeConfig.value = themeConfigs[theme]
 
     // 保存到本地存储
-    localStorage.setItem(STORAGE_KEY, theme)
+    appSettings.setItem(STORAGE_KEY, theme)
 
     // 应用主题
     applyTheme()
@@ -216,27 +224,28 @@ export const useThemeStore = defineStore('theme', () => {
 
     currentSkin.value = skinName
     currentSkinObj.value = skin
-    localStorage.removeItem(CUSTOM_SKIN_URL_KEY)
+    appSettings.removeItem(CUSTOM_SKIN_URL_KEY)
     void clearCustomSkinImage()
 
     // 保存到本地存储
-    localStorage.setItem(SKIN_STORAGE_KEY, skinName)
+    appSettings.setItem(SKIN_STORAGE_KEY, skinName)
 
     // 应用皮肤
     applySkin()
   }
 
-  const setCustomSkin = (dataUrl: string) => {
+  // 先把图片落盘，成功了才改指针；否则会留下"指向自定义背景但没有图"的设置
+  const setCustomSkin = async (dataUrl: string) => {
     const value = String(dataUrl || '').trim()
     if (!value) return
+    await saveCustomSkinImage(value)
     currentSkin.value = CUSTOM_SKIN_NAME
     currentSkinObj.value = {
       name: '自定义背景',
       img: value,
       style: ''
     }
-    localStorage.setItem(SKIN_STORAGE_KEY, CUSTOM_SKIN_NAME)
-    void saveCustomSkinImage(value)
+    appSettings.setItem(SKIN_STORAGE_KEY, CUSTOM_SKIN_NAME)
     applySkin()
   }
 

@@ -218,6 +218,7 @@ v-else type="primary" circle class="send-btn" :disabled="!inputValue.trim()"
 </template>
 
 <script setup lang="ts">
+import { loadCharacterContext } from '@/storage/character-context'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { PopoverInstance, ScrollbarInstance } from 'element-plus'
@@ -663,6 +664,7 @@ const resolveCurrentChapterReference = async () => {
 
 
 const handleSend = async () => {
+  const requestBookId = bookIdValue.value
   const query = inputValue.value.trim()
   if (!query || isGenerating.value) return
   if (!bookIdValue.value) {
@@ -721,7 +723,8 @@ const handleSend = async () => {
   const aiIndex = messages.value.length - 1
   isGenerating.value = true
   stoppedByUser = false
-  abortController = new AbortController()
+  const requestController = new AbortController()
+  abortController = requestController
 
   let context = ''
   if (chapterSnapshot.length) {
@@ -751,6 +754,9 @@ const handleSend = async () => {
     .map(item => ({ role: item.role, content: item.content }))
 
   try {
+    const characterContext = await loadCharacterContext(requestBookId, [query, context, ...historyForPrompt.slice(-20).map(item => item.content)].join('\n'))
+    if (requestController.signal.aborted) throw new DOMException('已取消', 'AbortError')
+    context = [characterContext, context].filter(Boolean).join('\n\n')
     await streamLocalChatCompletion(
       {
         // 面板临时选择优先，否则用「模型管理」里设的文本默认模型
@@ -764,7 +770,7 @@ const handleSend = async () => {
           modeInstruction: activeTemplateInstruction(),
           history: historyForPrompt,
         }),
-        signal: abortController.signal,
+        signal: requestController.signal,
       },
       {
         onDelta: (text) => {

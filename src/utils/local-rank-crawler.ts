@@ -3,6 +3,7 @@ import type { NovelRankItem } from '@/types/novel-rank'
 import { dict_data } from '@/config/fanqie-font-dict'
 import { findRankCategory, type RankSeedSource } from '@/config/rank-sources'
 import { isTauriRuntime } from '@/storage'
+import { fetchQimaoRankPage } from '@/utils/local-rank-qimao'
 import { fetchQidianRank } from '@/utils/local-rank-qidian'
 import { crawlRankPageViaWindow } from '@/utils/local-rank-window'
 
@@ -311,16 +312,7 @@ const fetchQimaoRank = async (baseUrl: string, maxPages: number) => {
     // 日榜固定年月会把快照写旧：清掉 date 用实时榜（继承老适配器口径）
     if (String(url.searchParams.get('date_type') || '') === '1') url.searchParams.set('date', '')
     url.searchParams.set('page', String(page))
-    const response = await fetchWithTimeout(url.toString(), {
-      method: 'GET',
-      headers: {
-        'User-Agent': BROWSER_UA,
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        Accept: 'application/json, text/plain, */*',
-        Referer: 'https://www.qimao.com/rank/',
-      },
-    })
-    const pageItems = parseQimaoRankJson(await response.json())
+    const pageItems = parseQimaoRankJson(await fetchQimaoRankPage(url.toString()))
     if (!pageItems.length) break
     for (const item of pageItems) {
       const key = item.bookId || item.bookUrl

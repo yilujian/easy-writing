@@ -6,7 +6,7 @@
         class="ink-select"
         clearable
         :disabled="loading"
-        placeholder="搜索角色名称或标签"
+        placeholder="搜索角色姓名、别名或标签"
       >
         <template #prefix>
           <i class="fa-solid fa-magnifying-glass"></i>
@@ -92,6 +92,13 @@
             :disabled="formDisabled"
             placeholder="输入角色姓名"
           />
+        </label>
+
+        <label class="form-field">
+          <span>别名</span>
+          <CharacterAliasesInput
+            v-model="form.aliases" :name="form.name"
+            :character-id="selectedCharacterId" :characters="characters" :disabled="formDisabled" />
         </label>
 
         <div class="form-grid">
@@ -240,6 +247,8 @@
 </template>
 
 <script setup lang="ts">
+import CharacterAliasesInput from '@/components/CharacterAliasesInput.vue'
+import { getCharacterNames } from '@/utils/character-aliases'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 // 开源版：角色数据走本地参考库，函数形状对齐原服务端接口，调用点不动
@@ -255,6 +264,7 @@ import { inkConfirm } from '@/utils/ink-confirm'
 
 interface CharacterForm {
   name: string
+  aliases: string[]
   role: number
   gender: number
   age: string
@@ -287,6 +297,7 @@ const genderOptions = [
 
 const createEmptyForm = (): CharacterForm => ({
   name: '',
+  aliases: [],
   role: 0,
   gender: 0,
   age: '',
@@ -299,6 +310,7 @@ const createEmptyForm = (): CharacterForm => ({
 
 const toCharacterForm = (character: Character): CharacterForm => ({
   name: character.name,
+  aliases: [...(character.aliases || [])],
   role: character.role,
   gender: character.gender,
   age: character.age ?? '',
@@ -337,7 +349,7 @@ const filteredCharacters = computed(() => {
   const keyword = searchText.value.trim().toLocaleLowerCase()
   if (!keyword) return characters.value
   return characters.value.filter(character =>
-    [character.name, ...(character.tags ?? []), character.appearance, character.personality]
+    [...getCharacterNames(character), ...(character.tags ?? []), character.appearance, character.personality]
       .filter(Boolean)
       .some(value => String(value).toLocaleLowerCase().includes(keyword))
   )
@@ -454,6 +466,7 @@ const saveCharacter = async () => {
   try {
     const payload = {
       name,
+      aliases: [...form.aliases],
       role: form.role,
       gender: form.gender,
       age: form.age.trim(),

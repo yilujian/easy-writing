@@ -1,3 +1,4 @@
+import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import dayjs from 'dayjs'
 import { getWritingStorage } from './index'
 import { getLocalLibraryStorage } from './local-library'
@@ -48,6 +49,9 @@ type ChapterMeta = {
   volumeId: string
   volumeTitle: string
   chapterTitle: string
+  /** 目录里的实际位置（卷内第几章 / 第几卷，从 1 起）；恢复时据此排序，标题不带章号也不会乱 */
+  orderNo?: number | null
+  volumeOrderNo?: number | null
 }
 
 type CatalogMeta = {
@@ -73,16 +77,19 @@ const resolveCatalogMetaFromLocal = async (bookId: string | number): Promise<Cat
       localLibrary.getLocalBookTree(bookId).catch(() => []),
     ])
     const chapters = new Map<number, ChapterMeta>()
-    ;(Array.isArray(tree) ? tree : []).forEach(volume => {
+    // 目录树已按 sortNo/创建时间排好，这里记的是实际展示位置，比 sortNo 可靠（手建章节 sortNo 常为 0）
+    ;(Array.isArray(tree) ? tree : []).forEach((volume, volumeIndex) => {
       const volumeId = String(volume?.id ?? '0')
       const volumeTitle = String(volume?.title || '默认分卷')
-      ;(volume.children || []).forEach(chapter => {
+      ;(volume.children || []).forEach((chapter, chapterIndex) => {
         const chapterId = Number(chapter?.id || 0)
         if (!chapterId) return
         chapters.set(chapterId, {
           volumeId,
           volumeTitle,
           chapterTitle: String(chapter?.title || `章节_${chapterId}`),
+          orderNo: chapterIndex + 1,
+          volumeOrderNo: volumeIndex + 1,
         })
       })
     })
@@ -111,7 +118,7 @@ const REFERENCE_MARKS_KEY = 'ew-reference-backup-marks'
 
 const loadReferenceMarks = (): Record<string, string> => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(REFERENCE_MARKS_KEY) || '{}')
+    const parsed = JSON.parse(appSettings.getItem(REFERENCE_MARKS_KEY) || '{}')
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     return {}
@@ -120,7 +127,7 @@ const loadReferenceMarks = (): Record<string, string> => {
 
 const saveReferenceMarks = (marks: Record<string, string>) => {
   try {
-    localStorage.setItem(REFERENCE_MARKS_KEY, JSON.stringify(marks))
+    appSettings.setItem(REFERENCE_MARKS_KEY, JSON.stringify(marks))
   } catch (error) {
     console.warn('写入参考数据备份印记失败', error)
   }
@@ -237,6 +244,7 @@ export class LocalBackupService {
   }
 
   async backupBeforeExit(options: { requireSnapshotConfirmation?: boolean } = {}): Promise<BackupBeforeExitResult> {
+    await flushAppSettings()
     const snapshotted = await this.snapshotActiveWritingEditor(4000, options.requireSnapshotConfirmation)
     if (!snapshotted) {
       return {
@@ -274,6 +282,7 @@ export class LocalBackupService {
         }, EXIT_BACKUP_TIMEOUT)
       ),
     ])
+    await flushAppSettings()
     return {
       ok: !result.failed.length,
       result,
@@ -363,6 +372,8 @@ export class LocalBackupService {
         updatedAt: Number(chapter.updatedAt || backupAt),
         backupAt,
         fileStem,
+        orderNo: meta.orderNo ?? null,
+        volumeOrderNo: meta.volumeOrderNo ?? null,
       })
     }
 
@@ -451,7 +462,8 @@ export class LocalBackupService {
     try {
       candidates = pickChangedReferenceBooks(await listReferenceBookStamps(), marks, options.bookId)
     } catch (error) {
-      console.warn('读取参考数据备份印记失败，本轮跳过参考备份', error)
+      report.total = 1
+      report.failed.push({bookId: String(options.bookId || ''), title: '参考资料', message: resolveBackupError(error)})
       return report
     }
     if (!candidates.length) return report

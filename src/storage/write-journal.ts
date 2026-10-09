@@ -1,3 +1,4 @@
+import { appSettings } from '@/storage/app-settings'
 /**
  * 本地写入取证日志。
  *
@@ -71,10 +72,10 @@ const resolveJournalPath = async () => {
 
 const writeWebJournal = (lines: string[]) => {
   try {
-    const raw = localStorage.getItem(WEB_JOURNAL_KEY)
+    const raw = appSettings.getItem(WEB_JOURNAL_KEY)
     const existed = raw ? String(raw).split('\n').filter(Boolean) : []
     const next = existed.concat(lines).slice(-WEB_JOURNAL_LIMIT)
-    localStorage.setItem(WEB_JOURNAL_KEY, next.join('\n'))
+    appSettings.setItem(WEB_JOURNAL_KEY, next.join('\n'))
   } catch {
     // 隐私模式或配额用尽：日志是辅助能力，失败不影响主流程。
   }

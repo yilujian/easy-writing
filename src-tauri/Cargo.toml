@@ -29,6 +29,8 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
+sha2 = "0.10"
 tauri-plugin-updater = "2"
 # 关窗兜底超时用（tauri 自带 async_runtime 即 tokio，这里显式声明以使用 tokio::time）
 tokio = { version = "1", features = ["time"] }

@@ -284,7 +284,7 @@ const formatDisplayTime = (value?: string) => {
 // --- 操作 ---
 const addInspiration = async () => {
   try {
-    const created = addLocalInspiration({
+    const created = await addLocalInspiration({
       content: '',
       tag: filterTag.value ? persistTag(filterTag.value) : ''
     })
@@ -320,7 +320,7 @@ const generateInspiration = async () => {
     })
     const content = String(spark || '').trim()
     if (!content) throw new Error('AI 暂无灵感返回')
-    addLocalInspiration({ content, tag: 'AI灵感' })
+    await addLocalInspiration({ content, tag: 'AI灵感' })
     await loadInspirations()
     ElMessage.success('已生成一条 AI 灵感')
   } catch (error) {
@@ -345,7 +345,7 @@ const deleteInspiration = async (id: number) => {
   }
 
   try {
-    deleteLocalInspirations([id])
+    await deleteLocalInspirations([id])
     inputRefs.value.delete(id)
     await loadInspirations()
     ElMessage.success('灵感已删除')
@@ -449,7 +449,7 @@ const persistContent = async (item: InspirationItem) => {
   try {
     const parsed = extractTagAndContent(item.content || '')
     item.tag = parsed.tag
-    updateLocalInspiration({
+    await updateLocalInspiration({
       id: item.id,
       content: parsed.content,
       tag: persistTag(parsed.tag)

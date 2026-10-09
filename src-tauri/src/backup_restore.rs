@@ -248,6 +248,8 @@ mod tests {
         ));
         let root_text = root.to_string_lossy().to_string();
         crate::write_chapter_backup(crate::ChapterBackupPayload {
+            order_no: Some(1),
+            volume_order_no: Some(1),
             backup_dir: Some(root_text.clone()),
             book_id: "-1".into(),
             book_title: "真实备份格式".into(),

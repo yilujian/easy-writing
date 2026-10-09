@@ -1,3 +1,4 @@
+import { loadCharacterContext } from '@/storage/character-context'
 import type { JsonRecord } from '@/types/json'
 import type { WorkflowTask } from '@/types/workflow'
 import {
@@ -130,7 +131,7 @@ export const readChapterText = async (bookId: string, chapterId: number) => {
 export const resolveWorkflowModelCode = async (run: LocalWorkflowRun) => {
   const explicit = asText(run.modelCode || run.config?.modelCode)
   if (explicit) return explicit
-  const code = await useAiModelStore().ensureTextModel()
+  const code = await useAiModelStore().ensureWorkflowModel()
   if (!code) throw new Error(NO_MODEL_MESSAGE)
   return code
 }
@@ -164,13 +165,6 @@ const describeRunConfig = (run: LocalWorkflowRun) => {
 
 const describeSettingBrief = (run: LocalWorkflowRun) => {
   const setting = resolveRunSettingUi(run)
-  const characters = Array.isArray(setting.characters) ? setting.characters : []
-  const characterLines = characters
-    .filter((item: JsonRecord) => asText(item?.name))
-    .slice(0, 8)
-    .map((item: JsonRecord) =>
-      `${asText(item.name)}（${[asText(item.gender), asText(item.identity)].filter(Boolean).join('，')}）：${[asText(item.background), asText(item.motivation)].filter(Boolean).join('；')}`
-    )
   const core = (setting.core || {}) as JsonRecord
   const realms = Array.isArray(core.cultivation?.realms) ? core.cultivation.realms : []
   const powerLine = [asText(core.cultivation?.intro), realms.map((realm: JsonRecord) => asText(realm?.name)).filter(Boolean).join('→')]
@@ -181,7 +175,6 @@ const describeSettingBrief = (run: LocalWorkflowRun) => {
     .filter((line: JsonRecord) => asText(line?.title))
     .map((line: JsonRecord) => `${asText(line.title)}：${asText(line.desc)}`)
   return {
-    characters: characterLines.join('\n'),
     power: powerLine,
     storylines: storylineLines.join('\n'),
   }
@@ -235,7 +228,7 @@ const buildChapterMaterials = async (params: {
     '写作参数': describeRunConfig(run),
     '写作规则（必须遵守，优先级最高）': writingRules,
     '作品大纲': describeOutlineBrief(run),
-    '主要人物': brief.characters,
+    '主要人物': await loadCharacterContext(chapter.bookId, [chapter.title, chapter.summary, previousTail].join('\n'), true),
     '力量体系': brief.power,
     '故事线': brief.storylines,
     '本卷规划': [`卷《${volume.title}》：${asText(volume.summary)}`, describeVolumeStages(volume)].filter(Boolean).join('\n'),
@@ -338,6 +331,7 @@ const planNextChapterBatch = async (
     timeoutMs: LONG_COMPLETION_TIMEOUT_MS,
     messages: buildChapterPlanMessages({
       materials: {
+        '主要人物': await loadCharacterContext(volume.bookId, recentOutlines, true),
         '写作参数': describeRunConfig(run),
         '作品大纲': describeOutlineBrief(run),
         '本卷规划': [`卷《${volume.title}》：${asText(volume.summary)}`, describeVolumeStages(volume)].filter(Boolean).join('\n'),
@@ -399,6 +393,7 @@ const ensureChapterBeats = async (
     signal,
     messages: buildChapterBeatsMessages({
       materials: {
+        '主要人物': await loadCharacterContext(chapter.bookId, [chapter.title, chapter.summary].join('\n'), true),
         '写作参数': describeRunConfig(run),
         '本卷规划': [`卷《${volume.title}》：${asText(volume.summary)}`, describeVolumeStages(volume)].filter(Boolean).join('\n'),
         '本章章纲': `第${chapter.sortNo}章《${chapter.title}》：${asText(chapter.summary)}`,

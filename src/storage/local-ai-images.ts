@@ -1,3 +1,4 @@
+import { withRecordStore } from './desktop-records'
 import type {
   AiImageGenerateReq,
   AiImageGenerateRes,
@@ -40,36 +41,10 @@ interface LocalAiImageRecord {
 const DB_NAME = 'ew-local-ai-images'
 const STORE_NAME = 'images'
 
-const openDb = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-      }
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const withStore = async <T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-  const db = await openDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode)
-      const request = run(tx.objectStore(STORE_NAME))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-  } finally {
-    db.close()
-  }
-}
+const withStore = <T>(mode: IDBTransactionMode, run: Parameters<typeof withRecordStore>[4], options?: Parameters<typeof withRecordStore>[5]) =>
+  withRecordStore<T>(DB_NAME, STORE_NAME, 'id', mode, run, options)
+/** 列表读取：一张图片文件坏了只让那一条没有预览，历史列表和清空照常可用 */
+const readAll = () => withStore<LocalAiImageRecord[]>('readonly', store => store.getAll(), { tolerateMissingAssets: true })
 
 // 展示地址缓存：同一条记录整个会话内复用一个 objectURL，避免每次列表都新建泄漏
 const objectUrls = new Map<number, string>()
@@ -183,7 +158,7 @@ export const generateLocalAiImage = async (
 
 /** 历史记录（替代 /ai/image/history）：按书/场景过滤 + 分页，新的在前 */
 export const getLocalAiImageHistory = async (params: AiImageHistoryQuery) => {
-  const all = await withStore<LocalAiImageRecord[]>('readonly', store => store.getAll())
+  const all = await readAll()
   const bookId = params.bookId != null && Number(params.bookId) !== 0 ? Number(params.bookId) : null
   const scene = String(params.scene || '').trim()
   const filtered = all
@@ -209,7 +184,7 @@ export const deleteLocalAiImages = async (data: { ids: number[] }) => {
 
 /** 清空（替代 /ai/image/clear）：带 bookId 只清该书，不带全清 */
 export const clearLocalAiImages = async (data: { bookId?: number }) => {
-  const all = await withStore<LocalAiImageRecord[]>('readonly', store => store.getAll())
+  const all = await readAll()
   const bookId = data.bookId != null && Number(data.bookId) !== 0 ? Number(data.bookId) : null
   for (const record of all) {
     if (bookId != null && Number(record.bookId) !== bookId) continue

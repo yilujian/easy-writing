@@ -1,7 +1,8 @@
+import { appSettings } from '@/storage/app-settings'
 /**
  * 写作位置记忆（本机）：每章记住光标位置与滚动偏移，进入章节时恢复。
  *
- * - 只关心本机体验，放 localStorage 一张小表；上次编辑的章节存在书记录里（随备份走）。
+ * - 只关心本机体验，通过统一设置存储保存一张小表；上次编辑的章节存在书记录里（随备份走）。
  * - 记录同时保存当时的文档长度：正文若被 AI 重写、版本回退或备份覆盖过，
  *   旧坐标就不再可信，恢复时退到章末而不是硬套。
  * - 三十天没碰的记录自动清理，表体积有上界。
@@ -22,7 +23,7 @@ const RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 
 const loadMap = (): PositionMap => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const parsed = JSON.parse(appSettings.getItem(STORAGE_KEY) || '{}')
     return parsed && typeof parsed === 'object' ? (parsed as PositionMap) : {}
   } catch {
     return {}
@@ -31,7 +32,7 @@ const loadMap = (): PositionMap => {
 
 const saveMap = (map: PositionMap) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+    appSettings.setItem(STORAGE_KEY, JSON.stringify(map))
   } catch (error) {
     console.warn('写入写作位置记录失败', error)
   }
