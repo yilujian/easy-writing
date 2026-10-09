@@ -40,7 +40,15 @@ const MENU_FEEDBACK: &str = "ew_menu_feedback";
 type DesktopAppHandle = tauri::AppHandle<tauri::Wry>;
 type DesktopWebviewWindow = tauri::WebviewWindow<tauri::Wry>;
 
+/// Linux 下界面显示的应用名。
+/// dpkg 要求 deb 包名只能用字母、数字和 -+._，而包名取自 productName，
+/// 因此 tauri.linux.conf.json 把 productName 改成了 easy-writing；窗口标题等仍显示中文名。
+const LINUX_DISPLAY_NAME: &str = "易创";
+
 fn app_display_name(app: &DesktopAppHandle) -> String {
+    if cfg!(target_os = "linux") {
+        return LINUX_DISPLAY_NAME.to_string();
+    }
     app.config()
         .product_name
         .clone()

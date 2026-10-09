@@ -1,5 +1,13 @@
 {
+  "productName": "easy-writing",
   "bundle": {
-    "targets": ["deb", "appimage"]
+    "targets": ["deb", "appimage"],
+    "shortDescription": "易创桌面客户端",
+    "longDescription": "纯本地、开源的 AI 网文写作桌面软件，支持小说创作、BYOK、自定义提示词与本地数据存储。",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/easy-writing.desktop"
+      }
+    }
   }
 }
