@@ -1196,7 +1196,7 @@ dependencies = [
 
 [[package]]
 name = "ew-client-desktop"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "dispatch2",
  "serde",

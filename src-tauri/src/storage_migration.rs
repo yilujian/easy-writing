@@ -477,11 +477,17 @@ pub async fn inspect_at(root: &Path) -> Result<Inspection, String> {
     let content_count = core_count - count(&mut tx, "sync_settings", &present).await?;
     let modern = count(&mut tx, "desktop_records", &present).await?;
     let stage_count = count(&mut tx, "desktop_migration_stage", &present).await?;
-    if r.is_none() && legacy.is_none() && version.unwrap_or(0) == 0 {
+    // 未标记版本、也没有任何迁移记录的库，只有在没有可识别旧数据时才会被按全新安装初始化；
+    // 此时若还有不认识的表，说明它不是本应用建的库，拒绝初始化。
+    // 含旧数据的库一律走迁移：迁移前整库备份、不删任何表，所以开源前旧版本留下的
+    // chapter_conflicts / sync_outbox 等额外表会原样保留，不能因为它们把用户挡在外面。
+    if r.is_none() && legacy.is_none() && version.unwrap_or(0) == 0 && core_count == 0 {
         let known: BTreeSet<&str> = CORE_TABLES
             .iter()
             .map(|(table, _, _)| *table)
             .chain([
+                "chapter_conflicts",
+                "sync_outbox",
                 "desktop_records",
                 "desktop_meta",
                 "desktop_migration_stage",
@@ -1514,6 +1520,86 @@ mod tests {
             let bad = Temp::new();
             set_meta(&bad.0, LEGACY_KEY, "incomplete").await;
             assert!(inspect_at(&bad.0).await.unwrap_err().contains("标记无效"));
+        });
+    }
+    #[test]
+    fn pre_release_schema_with_extra_tables_is_migrated_and_preserved() {
+        tauri::async_runtime::block_on(async {
+            // 开源前的旧版本建的库：没有 desktop_* 表，多出 chapter_conflicts / sync_outbox，
+            // 再加一张完全陌生的表。只要有可识别的旧数据，就必须走迁移而不是拒绝启动。
+            let root = Temp::new();
+            let mut db = SqliteConnection::connect_with(
+                &SqliteConnectOptions::new()
+                    .filename(root.0.join("ew-writing.db"))
+                    .create_if_missing(true),
+            )
+            .await
+            .unwrap();
+            for sql in [
+                "CREATE TABLE chapter_contents (storageKey TEXT PRIMARY KEY, userId TEXT NOT NULL, bookId TEXT NOT NULL, chapterId INTEGER NOT NULL, payload TEXT NOT NULL, dirty INTEGER NOT NULL DEFAULT 0, conflict INTEGER NOT NULL DEFAULT 0, updatedAt INTEGER NOT NULL, lastBackedUpAt INTEGER NOT NULL DEFAULT 0, wordCount INTEGER NOT NULL DEFAULT 0, textWordCount INTEGER)",
+                "CREATE TABLE chapter_conflicts (storageKey TEXT PRIMARY KEY, userId TEXT NOT NULL, bookId TEXT NOT NULL, chapterId INTEGER NOT NULL, payload TEXT NOT NULL, createdAt INTEGER NOT NULL)",
+                "CREATE TABLE sync_outbox (id TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, nextRetryAt INTEGER)",
+                "CREATE TABLE sync_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+                "CREATE TABLE chapter_versions (id TEXT PRIMARY KEY, payload TEXT NOT NULL, chapterId INTEGER NOT NULL, createdAt INTEGER NOT NULL)",
+                "CREATE TABLE local_books (id INTEGER PRIMARY KEY, payload TEXT NOT NULL, title TEXT NOT NULL, groupId TEXT, mergeStatus TEXT NOT NULL, deletedAt TEXT, updateTime TEXT NOT NULL)",
+                "CREATE TABLE local_book_groups (id INTEGER PRIMARY KEY, payload TEXT NOT NULL, deletedAt TEXT, sortNo INTEGER NOT NULL)",
+                "CREATE TABLE local_volumes (id INTEGER PRIMARY KEY, bookId TEXT NOT NULL, payload TEXT NOT NULL, deletedAt TEXT, sortNo INTEGER NOT NULL)",
+                "CREATE TABLE local_chapters (id INTEGER PRIMARY KEY, bookId TEXT NOT NULL, volumeId TEXT NOT NULL, payload TEXT NOT NULL, deletedAt TEXT, sortNo INTEGER NOT NULL)",
+                "CREATE TABLE experimental_notes (id INTEGER PRIMARY KEY, body TEXT)",
+                "INSERT INTO local_books VALUES (149,'{\"id\":149,\"title\":\"书\"}','书',NULL,'local',NULL,'2026-09-20')",
+                "INSERT INTO chapter_contents(storageKey,userId,bookId,chapterId,payload,updatedAt) VALUES ('1:149:22083','1','149',22083,'{\"text\":\"正文\"}',1)",
+                "INSERT INTO chapter_conflicts VALUES ('1:149:22083','1','149',22083,'{\"text\":\"冲突副本\"}',1)",
+                "INSERT INTO sync_settings VALUES ('syncMode','auto')",
+            ] {
+                sqlx::query(sql).execute(&mut db).await.unwrap();
+            }
+            db.close().await.unwrap();
+            let inspected = inspect_at(&root.0).await.unwrap();
+            assert_eq!(inspected.state, StartupState::NeedsInventory);
+            assert_eq!(inspected.sqlite_records, 3);
+            assert_eq!(inspected.sqlite_content_records, 2);
+            let (plan, m) = prepare(&root.0, &[]).await;
+            assert_eq!(plan.action, "migrate");
+            assert!(Path::new(&plan.backup_path).is_file());
+            stage_all(&root.0, &plan, &[]).await;
+            commit_at(&root.0, &plan.run_id, m).await.unwrap();
+            assert_eq!(
+                inspect_at(&root.0).await.unwrap().state,
+                StartupState::Ready
+            );
+            let mut db = desktop_storage::connect_existing_at(&root.0).await.unwrap();
+            let present = tables(&mut db).await.unwrap();
+            for table in ["chapter_conflicts", "sync_outbox", "experimental_notes"] {
+                assert!(present.contains(table), "{table} 应原样保留");
+            }
+            let conflict: String = sqlx::query_scalar("SELECT payload FROM chapter_conflicts")
+                .fetch_one(&mut db)
+                .await
+                .unwrap();
+            assert!(conflict.contains("冲突副本"));
+            let content: String = sqlx::query_scalar(
+                "SELECT payload FROM chapter_contents WHERE storageKey='1:149:22083'",
+            )
+            .fetch_one(&mut db)
+            .await
+            .unwrap();
+            assert!(content.contains("正文"));
+            db.close().await.unwrap();
+
+            // 没有任何可识别旧数据、却带着这两张早期表的空库，也不能被当成陌生数据库拒绝
+            let empty = Temp::new();
+            let mut db = desktop_storage::connect_at(&empty.0).await.unwrap();
+            for sql in [
+                "CREATE TABLE chapter_conflicts (storageKey TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+                "CREATE TABLE sync_outbox (id TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+            ] {
+                sqlx::query(sql).execute(&mut db).await.unwrap();
+            }
+            db.close().await.unwrap();
+            assert_eq!(
+                inspect_at(&empty.0).await.unwrap().state,
+                StartupState::NeedsInventory
+            );
         });
     }
     #[test]
