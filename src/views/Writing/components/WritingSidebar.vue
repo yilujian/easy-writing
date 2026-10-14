@@ -397,6 +397,8 @@ const handleCreateChapterSave = async (data: { volumeId: string | number; title:
       // 自动选中新章节 (需要重新加载后才能获取到新ID)
       const volume = catalogItems.value.find(v => String(v.id) === String(data.volumeId))
       if (volume && volume.children.length > 0) {
+        // 新章节排在本卷末尾（见 createLocalChapter），要让用户直接看到它
+        volume.open = true
         const newChapter = volume.children[volume.children.length - 1]
         handleChapterClick(newChapter)
       }
@@ -1002,6 +1004,8 @@ onUnmounted(() => {
 
 const catalogItems = ref<Volume[]>([])
 let catalogLoadRevision = 0
+/** 当前目录树属于哪本书：换书算"首次进书"，同书内的重载沿用界面上的展开状态 */
+let catalogBookId: string | null = null
 const editableChapterVolumes = computed(() => {
   if (!props.workflowStopped || !editingChapter.value) return catalogItems.value
   return catalogItems.value.filter(
@@ -1048,6 +1052,19 @@ const findChapterInCatalog = (chapterId: number | null) => {
     if (match) return match
   }
   return null
+}
+
+/**
+ * 只展开当前活动章节所在的那一卷。
+ *
+ * 进书时所有卷先收起，然后靠这里把"上次退出时所在章节"（或回落的第一章）
+ * 那一卷摊开——不要把全部卷都展开让人一个个去关。
+ */
+const revealActiveVolume = () => {
+  const chapter = findChapterInCatalog(editorStore.activeChapterId)
+  if (!chapter) return
+  const volume = catalogItems.value.find(item => item.children.includes(chapter))
+  if (volume) volume.open = true
 }
 
 const pickFirstChapter = () => {
@@ -1141,14 +1158,22 @@ const loadCatalogTree = async () => {
     // 本地树与目录组件的 Volume 形状字段级兼容（多余字段忽略，缺省字段组件有兜底）
     const volumeList = (await localLibrary.getLocalBookTree(bookId.value)) as unknown as Volume[]
     if (loadRevision !== catalogLoadRevision) return
+    // 换书后重建目录树一律先全部收起，再由 revealActiveVolume 只摊开当前章节那一卷；
+    // 同一本书内的重载（重命名、保存、排序、导入导出…）则沿用界面上的展开/收起状态，
+    // getLocalBookTree 每次都返回 open=true，不能直接照抄。
+    const isFreshBook = catalogBookId !== String(bookId.value)
+    const previousOpen = new Map(catalogItems.value.map(item => [String(item.id), item.open !== false]))
     volumeList.forEach((vol: Volume) => {
-      vol.open = vol.open !== false
+      vol.open = isFreshBook ? false : previousOpen.get(String(vol.id)) ?? true
       if (!Array.isArray(vol.children)) vol.children = []
     })
+    catalogBookId = String(bookId.value)
     catalogItems.value = volumeList
     await applyRememberedChapter(loadRevision)
     if (loadRevision !== catalogLoadRevision) return
     ensureActiveChapter()
+    // 上次退出的章节（或回落的第一章）所在的卷摊开，其余保持收起
+    if (isFreshBook) revealActiveVolume()
     recordLastChapter(editorStore.activeChapterId)
   } catch (error) {
     if (loadRevision !== catalogLoadRevision) return
@@ -1386,6 +1411,9 @@ const handleCreateChapterBtn = () => {
 const handleAddChapter = async (volume: Volume) => {
   if (isCatalogStructureLocked.value) return
   try {
+    // 在折叠的卷里新建章节时先把这一卷展开：新建完要能直接看到、直接改名，
+    // 而不是让用户自己去把它点开。
+    volume.open = true
     // 1. 生成标题
     const existingTitles = volume.children.map(c => c.title)
     const nextTitle = generateNextChapterTitle(existingTitles)
@@ -1404,6 +1432,8 @@ const handleAddChapter = async (volume: Volume) => {
     // 4. 找到新创建的章节并进入编辑模式
     const updatedVolume = catalogItems.value.find(v => v.id === volume.id)
     if (updatedVolume && updatedVolume.children.length > 0) {
+      // 新章节排在本卷末尾（见 sortBySortNo），卷也保持展开，改完名就能写
+      updatedVolume.open = true
       const newChapter = updatedVolume.children[updatedVolume.children.length - 1]
       activeId.value = newChapter.id
       activeType.value = 'chapter'
