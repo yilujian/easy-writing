@@ -114,8 +114,22 @@ export const normalizeLocalChapter = (payload: Omit<Partial<LocalChapter>, 'book
   }
 }
 
+/**
+ * 目录排序：sortNo 升序，未排序的（0 或缺省）排到末尾，同组内按创建时间、再按 id。
+ *
+ * 新建卷/章不带 sortNo，归一化会落成默认值 0；0 以前是"最小值"，
+ * 于是新卷插到所有卷最前面、在卷里新建第 5 章会顶掉第 1 章的位置。
+ * 0 只表示"没排过序"，这一组理应跟在有序号的条目后面：新建的天然是该组里最新的，
+ * 就落在末尾；打开旧书时同样的规则会把历史脏数据摆回正确次序。
+ * 显式排序（sortLocalVolumes / sortLocalChapters）写入 1..N，优先级自然高于本组。
+ */
+const sortNoOrder = (item: { sortNo?: number }) => {
+  const sortNo = Number(item.sortNo || 0)
+  return sortNo > 0 ? sortNo : Number.MAX_SAFE_INTEGER
+}
+
 export const sortBySortNo = <T extends { sortNo?: number; createTime?: string; id?: number }>(list: T[]) =>
-  [...list].sort((a, b) => Number(a.sortNo || 0) - Number(b.sortNo || 0) || String(a.createTime || '').localeCompare(String(b.createTime || '')) || Number(a.id || 0) - Number(b.id || 0))
+  [...list].sort((a, b) => sortNoOrder(a) - sortNoOrder(b) || String(a.createTime || '').localeCompare(String(b.createTime || '')) || Number(a.id || 0) - Number(b.id || 0))
 
 export const buildLocalTree = (volumes: LocalVolume[], chapters: LocalChapter[]): LocalLibraryVolume[] => {
   const activeVolumes = sortBySortNo(volumes.filter(volume => !volume.deletedAt))
