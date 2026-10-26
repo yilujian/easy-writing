@@ -106,7 +106,7 @@
             <span>{{ primaryReference?.title || '选择作品' }}</span>
             <i class="fa-solid fa-chevron-down ac-tiny" aria-hidden="true"></i>
           </button>
-          <el-dropdown trigger="click" @command="value => (store.model = String(value))">
+          <el-dropdown trigger="click" @command="(value: string) => (store.model = String(value))">
             <button class="ac-tool-button" aria-label="选择模型">
               <i class="fa-solid fa-sliders" aria-hidden="true"></i><span>{{ store.modelLabel }}</span
               ><i class="fa-solid fa-chevron-down ac-tiny" aria-hidden="true"></i>

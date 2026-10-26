@@ -116,8 +116,8 @@
               class="ac-project-more"
               trigger="click"
               popper-class="ac-conversation-menu"
-              @visible-change="visible => (projectMenuId = visible ? project.id : null)"
-              @command="command => onProjectMore(project.id, command)"
+              @visible-change="(visible: boolean) => (projectMenuId = visible ? project.id : null)"
+              @command="(command: string) => onProjectMore(project.id, command)"
             >
               <button class="ac-icon-button" :aria-label="`管理项目 ${project.title}`">
                 <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
@@ -193,7 +193,7 @@
       placement="bottom-start"
       popper-class="ac-conversation-menu"
       @visible-change="conversationMenuVisible = $event"
-      @command="command => onConversationMore(conversationMenuId, command)"
+      @command="(command: string) => onConversationMore(conversationMenuId, command)"
     >
       <template #dropdown>
         <el-dropdown-menu v-if="contextConversation" @contextmenu.prevent>
