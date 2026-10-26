@@ -47,6 +47,7 @@
 - **Flexible editor typography**: adjust font, weight, color, size, line height, content width, paragraph spacing, alignment, and writing-grid style
 - **Four themes and custom backgrounds**: switch between Clean Paper, Classic Letter, Forest Eye-Care, and Dark Ink themes; choose from eight bundled backgrounds or use your own image
 - **Focus and reading preview**: write in fullscreen, use the inactivity countdown challenge, and preview the current chapter in a synchronized mobile reader
+- **Audiobook listening**: the writing desk reads the latest saved chapter, refreshes edited text when resuming, and stops at the chapter end. Bookshelf listening supports sentence highlighting, continuous playback, resume-where-you-left-off, and a sleep timer; uses system speech by default, with optional BYOK cloud TTS models that support `/audio/speech`
 
 ### AI assistance (bring your own key)
 

@@ -7,6 +7,7 @@ import { validateBackupData } from './backup-validation'
 import { beginStorageMaintenance, endStorageMaintenance } from './storage-maintenance'
 import { hasLiveLocalTasks } from '@/utils/local-workflow-runtime'
 import { appSettings, flushAppSettings, SETTINGS_NAMESPACE } from '@/storage/app-settings'
+import { LISTENING_DIAGNOSTICS_KEY, LISTENING_FINISHED_KEY, LISTENING_LAST_BOOK_KEY, LISTENING_POSITIONS_KEY } from '@/config/listening'
 /**
  * 一键备份 / 一键恢复（桌面端，单个 zip）。
  *
@@ -116,7 +117,7 @@ export interface FullRestoreReport {
 
 const LOCAL_STORAGE_PREFIX = 'ew-'
 /** 会话级临时键，不进备份也不恢复 */
-const LOCAL_STORAGE_SKIP = new Set(['ew-workflow-active-run', STORAGE_MODE_KEY])
+const LOCAL_STORAGE_SKIP = new Set(['ew-workflow-active-run', STORAGE_MODE_KEY, LISTENING_DIAGNOSTICS_KEY])
 /** 合并模式下"以备份为准"的设置类键 */
 const SETTINGS_KEYS = new Set([
   'ew-ui-preferences',
@@ -125,6 +126,7 @@ const SETTINGS_KEYS = new Set([
   'ew-writing-editor',
   'ew-writing-plan',
   'ew-workflow-rail-panel-width',
+  'ew-listening-settings',
 ])
 const AI_MODELS_KEY = 'ew-local-ai-models'
 const WRITE_STATS_KEY = 'ew-local-write-stats'
@@ -375,6 +377,52 @@ const mergePositions = (currentRaw: string, backupRaw: string, remap: IdRemap) =
   return JSON.stringify(out)
 }
 
+/** 听书位置：`{ [bookId]: { bookId, chapterId, signature, ... } }`，与写作位置是两个不同的键 */
+type ListeningPositionsFile = Record<string, Record<string, unknown>>
+
+const remapListeningPositions = (file: ListeningPositionsFile, remap: IdRemap): ListeningPositionsFile => {
+  const out: ListeningPositionsFile = {}
+  for (const [bookId, record] of Object.entries(file || {})) {
+    if (!record || typeof record !== 'object') continue
+    const nextBook = mapIdString(remap.books, bookId)
+    // 坏记录里的 chapterId 可能缺失；不要写成 NaN（JSON 会变 null）
+    const chapterId = Number(record.chapterId)
+    out[nextBook] = Number.isFinite(chapterId)
+      ? { ...record, bookId: nextBook, chapterId: Number(mapId(remap.chapters, chapterId)) }
+      : { ...record, bookId: nextBook }
+  }
+  return out
+}
+
+const mergeListeningPositions = (currentRaw: string, backupRaw: string, remap: IdRemap) => {
+  const current = parseJson<ListeningPositionsFile>(currentRaw, {})
+  const backup = remapListeningPositions(parseJson<ListeningPositionsFile>(backupRaw, {}), remap)
+  // 本机已有的书以本机进度为准，备份只补本机还没听过的书
+  return JSON.stringify({ ...backup, ...current })
+}
+
+/** 已听章节：`{ [bookId]: chapterId[] }` */
+type FinishedChaptersFile = Record<string, number[]>
+
+const remapFinishedChapters = (file: FinishedChaptersFile, remap: IdRemap): FinishedChaptersFile => {
+  const out: FinishedChaptersFile = {}
+  for (const [bookId, ids] of Object.entries(file || {})) {
+    if (!Array.isArray(ids)) continue
+    out[mapIdString(remap.books, bookId)] = ids.map(id => Number(mapId(remap.chapters, id))).filter(id => Number.isFinite(id))
+  }
+  return out
+}
+
+const mergeFinishedChapters = (currentRaw: string, backupRaw: string, remap: IdRemap) => {
+  const current = parseJson<FinishedChaptersFile>(currentRaw, {})
+  const backup = remapFinishedChapters(parseJson<FinishedChaptersFile>(backupRaw, {}), remap)
+  const out: FinishedChaptersFile = { ...backup }
+  for (const [bookId, ids] of Object.entries(current)) {
+    out[bookId] = [...new Set([...(out[bookId] || []), ...(Array.isArray(ids) ? ids : [])])]
+  }
+  return JSON.stringify(out)
+}
+
 interface AiModelsFile {
   version?: number
   models?: Array<{ id: number }>
@@ -393,10 +441,16 @@ const mergeAiModels = (currentRaw: string, backupRaw: string) => {
   })
 }
 
-/** 备份里的键在本机不存在时也要按新 id 改键（统计、位置） */
+/** 备份里的键在本机不存在时也要按新 id 改键（统计、位置、听书记录） */
 const remapLocalStorageValue = (key: string, raw: string, remap: IdRemap) => {
   if (key === WRITE_STATS_KEY) return JSON.stringify(remapWriteStats(parseJson<WriteStatsFile>(raw, {}), remap))
   if (key === POSITIONS_KEY) return JSON.stringify(remapPositions(parseJson<PositionsFile>(raw, {}), remap))
+  if (key === LISTENING_POSITIONS_KEY) return JSON.stringify(remapListeningPositions(parseJson<ListeningPositionsFile>(raw, {}), remap))
+  if (key === LISTENING_FINISHED_KEY) return JSON.stringify(remapFinishedChapters(parseJson<FinishedChaptersFile>(raw, {}), remap))
+  if (key === LISTENING_LAST_BOOK_KEY) {
+    const id = Number(String(raw ?? '').trim())
+    return Number.isFinite(id) && id ? String(mapId(remap.books, id)) : raw
+  }
   return raw
 }
 
@@ -420,7 +474,9 @@ export const mergeLocalStorage = (
     else if (key === AI_MODELS_KEY) next[key] = mergeAiModels(current[key], raw)
     else if (key === WRITE_STATS_KEY) next[key] = mergeWriteStats(current[key], raw, remap)
     else if (key === POSITIONS_KEY) next[key] = mergePositions(current[key], raw, remap)
-    // 其余（灵感、敏感词、榜单缓存、备份印记等）本机已有就保留
+    else if (key === LISTENING_POSITIONS_KEY) next[key] = mergeListeningPositions(current[key], raw, remap)
+    else if (key === LISTENING_FINISHED_KEY) next[key] = mergeFinishedChapters(current[key], raw, remap)
+    // 其余（灵感、敏感词、榜单缓存、最近听书、备份印记等）本机已有就保留
   }
   return next
 }

@@ -30,6 +30,9 @@ export interface LocalAiModel {
   thinking?: AiThinkingMode
   /** 额外请求参数 JSON 文本 */
   extraParams?: string
+  /** 音频模型默认音色与格式 */
+  ttsVoice?: string
+  ttsFormat?: 'mp3' | 'wav'
   /** 最近一次连通测试：1=已连接 2=失败，缺省=未测试 */
   testStatus?: number
   lastTestAt?: string
@@ -94,6 +97,8 @@ const toOption = (model: LocalAiModel): AiModelOption => ({
   maxOutputTokens: model.maxOutputTokens,
   thinking: model.thinking || defaultThinkingFor(model.provider),
   extraParams: model.extraParams || '',
+  ttsVoice: model.ttsVoice || '',
+  ttsFormat: model.ttsFormat || 'mp3',
   status: model.status,
   testStatus: model.testStatus,
   lastTestAt: model.lastTestAt,
@@ -127,6 +132,8 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     model.maxOutputTokens = payload.maxOutputTokens
     if (payload.thinking) model.thinking = payload.thinking
     if (payload.extraParams !== undefined) model.extraParams = String(payload.extraParams || '').trim()
+    if (payload.ttsVoice !== undefined) model.ttsVoice = String(payload.ttsVoice || '').trim()
+    if (payload.ttsFormat !== undefined) model.ttsFormat = payload.ttsFormat === 'wav' ? 'wav' : 'mp3'
     model.status = payload.status
     if (payload.sort != null) model.sort = payload.sort
     await saveStore(store)
@@ -148,6 +155,8 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     createTime: nowIso(),
     thinking: payload.thinking || defaultThinkingFor(payload.provider),
     extraParams: String(payload.extraParams || '').trim(),
+    ttsVoice: String(payload.ttsVoice || '').trim(),
+    ttsFormat: payload.ttsFormat === 'wav' ? 'wav' : 'mp3',
   }
   store.models.push(model)
   await saveStore(store)
@@ -209,7 +218,13 @@ export const getLocalAiModelDisplayName = (code: string): string => {
 }
 
 export const sceneOfGroup = (groupCode: AiModelGroupCode): UserAiModelScene =>
-  groupCode === 'image_generation' ? 'image' : groupCode === 'embedding' ? 'embedding' : 'text'
+  groupCode === 'image_generation'
+    ? 'image'
+    : groupCode === 'audiobook'
+      ? 'audio'
+      : groupCode === 'embedding'
+        ? 'embedding'
+        : 'text'
 
 /**
  * 某用途下第一个启用的模型 code：分组没选默认时的自动兜底（按列表顺序取）。

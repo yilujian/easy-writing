@@ -2,7 +2,7 @@ import type {
   AiThinkingMode,
   UserAiModelSavePayload,
   UserAiModelTestResult,
-  UserAiRemoteModelListResult,
+  UserAiRemoteModelListResult
 } from '@/types/user-ai-model'
 import { createThinkStreamFilter, stripThinkBlocks } from '@/utils/ai-think-filter'
 import { getLocalAiModelSecret, localAiModelCode, type LocalAiModel } from '@/storage/local-ai-models'
@@ -30,7 +30,7 @@ const resolveAiFetch = async (): Promise<FetchLike> => {
     return (input, init) =>
       tauriFetch(input, {
         ...init,
-        headers: { Origin: '', ...(init?.headers as Record<string, string> | undefined) },
+        headers: { Origin: '', ...(init?.headers as Record<string, string> | undefined) }
       })
   }
   return window.fetch.bind(window)
@@ -71,7 +71,7 @@ const THINKING_PARAMS: Record<string, ThinkingParamBuilder | undefined> = {
   siliconflow: on => ({ enable_thinking: on }),
   openrouter: on => ({ reasoning: { enabled: on } }),
   gemini_openai: on => (on ? null : { reasoning_effort: 'none' }),
-  local: on => (on ? null : { reasoning_effort: 'none' }),
+  local: on => (on ? null : { reasoning_effort: 'none' })
 }
 
 /**
@@ -80,7 +80,7 @@ const THINKING_PARAMS: Record<string, ThinkingParamBuilder | undefined> = {
  * 这是官方限制，这里按供应商降级成 auto，不白打一次失败请求；首轮必须查的约束由提示词与回复核对兜底。
  */
 const FORCED_TOOL_CHOICE_UNSUPPORTED: Record<string, ((thinkingOn: boolean) => boolean) | undefined> = {
-  deepseek: thinkingOn => thinkingOn,
+  deepseek: thinkingOn => thinkingOn
 }
 
 /** 按供应商与思考开关决定实际下发的 tool_choice */
@@ -100,7 +100,9 @@ export const parseExtraParams = (text: string | undefined): Record<string, unkno
   if (!raw) return undefined
   try {
     const parsed: unknown = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : undefined
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined
   } catch {
     return undefined
   }
@@ -128,8 +130,8 @@ const toWireMessage = (message: LocalChatMessageInput): Record<string, unknown> 
       tool_calls: message.toolCalls.map(call => ({
         id: call.id,
         type: 'function',
-        function: { name: call.name, arguments: call.arguments },
-      })),
+        function: { name: call.name, arguments: call.arguments }
+      }))
     }
   }
   return { role: message.role, content: message.content }
@@ -157,12 +159,12 @@ export const buildChatBody = (params: {
   const body: Record<string, unknown> = {
     model: params.modelCode,
     messages: params.messages.map(toWireMessage),
-    stream: params.stream,
+    stream: params.stream
   }
   if (params.tools?.length) {
     body.tools = params.tools.map(tool => ({
       type: 'function',
-      function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+      function: { name: tool.name, description: tool.description, parameters: tool.parameters }
     }))
     const toolChoice = resolveToolChoice(provider, params.thinking, params.toolChoice)
     if (toolChoice) body.tool_choice = toolChoice
@@ -203,7 +205,9 @@ const buildAuthHeaders = (apiKey: string | undefined, withJson = true): Record<s
 
 /** baseUrl 与端点拼接：只负责去重斜杠，版本段（/v1 等）以用户填写为准 */
 export const joinAiUrl = (baseUrl: string, path: string) =>
-  `${String(baseUrl || '').trim().replace(/\/+$/, '')}/${String(path).replace(/^\/+/, '')}`
+  `${String(baseUrl || '')
+    .trim()
+    .replace(/\/+$/, '')}/${String(path).replace(/^\/+/, '')}`
 
 /** 把测试/拉取用的载荷补齐配置：字段留空且带 id 时回查本地存储。
  *  覆盖两种调用：编辑表单（密钥留空=不修改）与列表行内测试（只传 id）。 */
@@ -215,6 +219,8 @@ const resolveRequestConfig = (payload: Partial<UserAiModelSavePayload>) => {
   let thinking: AiThinkingMode | undefined = payload.thinking
   let extraParams = String(payload.extraParams || '').trim()
   let scene = payload.scene
+  let ttsVoice = String(payload.ttsVoice || '').trim()
+  let ttsFormat = payload.ttsFormat
   if (payload.id != null && (!apiKey || !baseUrl || !modelCode || !scene)) {
     const stored = getLocalAiModelSecret(localAiModelCode(payload.id))
     if (stored) {
@@ -225,9 +231,11 @@ const resolveRequestConfig = (payload: Partial<UserAiModelSavePayload>) => {
       if (!thinking) thinking = stored.thinking
       if (!extraParams) extraParams = String(stored.extraParams || '').trim()
       if (!scene) scene = stored.scene
+      if (!ttsVoice) ttsVoice = String(stored.ttsVoice || '').trim()
+      if (!ttsFormat) ttsFormat = stored.ttsFormat
     }
   }
-  return { baseUrl, apiKey, modelCode, provider, thinking, extraParams, scene }
+  return { baseUrl, apiKey, modelCode, provider, thinking, extraParams, scene, ttsVoice, ttsFormat }
 }
 
 /** 中止判定：浏览器 fetch 抛 DOMException(AbortError)；tauri-plugin-http 中止时
@@ -271,7 +279,7 @@ const readableHttpError = async (response: Response): Promise<string> => {
     402: '账户余额不足，请到供应商后台充值',
     403: '没有访问权限：云端服务请检查 Key 的可用范围，本地服务请检查它的来源或 IP 访问限制',
     404: '接口路径或模型不存在（检查 BaseURL 与模型名）',
-    429: '触发限流或额度不足',
+    429: '触发限流或额度不足'
   }
   const base = byStatus[response.status] || `请求失败（HTTP ${response.status}）`
   return detail ? `${base}：${detail.slice(0, 200)}` : base
@@ -291,13 +299,15 @@ const withTimeout = async <T>(run: (signal: AbortSignal) => Promise<T>): Promise
 export const testLocalAiModel = async (
   payload: Partial<UserAiModelSavePayload>
 ): Promise<{ data: UserAiModelTestResult }> => {
-  const { baseUrl, apiKey, modelCode, provider, thinking, extraParams, scene } = resolveRequestConfig(payload)
-  // 向量模型没有 chat 接口，测试要打 /embeddings；拿对话接口测它只会得到一个误导性的 404
+  const { baseUrl, apiKey, modelCode, provider, thinking, extraParams, scene, ttsVoice, ttsFormat } =
+    resolveRequestConfig(payload)
+  // 不同场景走各自端点：向量没有 chat 接口，朗读也没有；拿 chat 测只会得到误导性的 404
   const isEmbedding = scene === 'embedding'
-  const url = joinAiUrl(baseUrl, isEmbedding ? 'embeddings' : 'chat/completions')
+  const isAudio = scene === 'audio'
+  const url = joinAiUrl(baseUrl, isAudio ? 'audio/speech' : isEmbedding ? 'embeddings' : 'chat/completions')
   const startedAt = Date.now()
   const result = (ok: boolean, message: string): { data: UserAiModelTestResult } => ({
-    data: { ok, message, latency: Date.now() - startedAt, url, testedAt: new Date().toISOString() },
+    data: { ok, message, latency: Date.now() - startedAt, url, testedAt: new Date().toISOString() }
   })
   if (!baseUrl) return result(false, '请先填写接口地址（BaseURL）')
   if (!modelCode) return result(false, '请先填写模型名称（modelCode）')
@@ -310,7 +320,7 @@ export const testLocalAiModel = async (
           method: 'POST',
           signal,
           headers: buildAuthHeaders(apiKey),
-          body: JSON.stringify({ model: modelCode, input: ['连通性测试'], encoding_format: 'float' }),
+          body: JSON.stringify({ model: modelCode, input: ['连通性测试'], encoding_format: 'float' })
         })
       )
       if (!response.ok) return result(false, await readableHttpError(response))
@@ -320,6 +330,32 @@ export const testLocalAiModel = async (
         return result(false, '接口没有返回向量数据，请确认所选模型是 embedding（向量）类型')
       }
       return result(true, `连接成功，向量 ${vector.length} 维`)
+    }
+    if (isAudio) {
+      const response = await withTimeout(signal =>
+        aiFetch(url, {
+          method: 'POST',
+          signal,
+          headers: buildAuthHeaders(apiKey),
+          body: JSON.stringify({
+            model: modelCode,
+            input: '朗读连接测试。',
+            voice: ttsVoice || 'alloy',
+            response_format: ttsFormat === 'wav' ? 'wav' : 'mp3',
+            speed: 1
+          })
+        })
+      )
+      if (!response.ok) return result(false, await readableHttpError(response))
+      const buffer = await response.arrayBuffer().catch(() => null)
+      if (!buffer || buffer.byteLength < 128) {
+        return result(false, '接口没有返回音频数据，请确认该模型支持 /audio/speech')
+      }
+      const contentType = String(response.headers.get('content-type') || '')
+      return result(
+        true,
+        `连接成功，返回 ${Math.max(1, Math.round(buffer.byteLength / 1024))}KB 音频${contentType ? `（${contentType}）` : ''}`
+      )
     }
     const response = await withTimeout(signal =>
       aiFetch(url, {
@@ -335,9 +371,9 @@ export const testLocalAiModel = async (
             extraBody: parseExtraParams(extraParams),
             messages: [{ role: 'user', content: '连通性测试，请回复"ok"' }],
             maxTokens: 16,
-            stream: false,
+            stream: false
           })
-        ),
+        )
       })
     )
     if (!response.ok) return result(false, await readableHttpError(response))
@@ -366,7 +402,11 @@ const messagesToText = (messages: LocalChatMessageInput[]) =>
 /** 流式增量里的 tool_calls 片段按 index 聚合：id/name 首片给出，arguments 逐片拼接 */
 const mergeToolCallDeltas = (parts: Map<number, LocalChatToolCall>, deltas: unknown[]) => {
   deltas.forEach((item, position) => {
-    const part = (item || {}) as { index?: unknown; id?: unknown; function?: { name?: unknown; arguments?: unknown } }
+    const part = (item || {}) as {
+      index?: unknown
+      id?: unknown
+      function?: { name?: unknown; arguments?: unknown }
+    }
     const index = Number.isInteger(part.index) ? Number(part.index) : position
     const current = parts.get(index) || { id: '', name: '', arguments: '' }
     if (typeof part.id === 'string' && part.id) current.id = part.id
@@ -409,7 +449,7 @@ const recordAiCall = (entry: {
     inputTokens: entry.inputTokens ?? estimateTokens(entry.input),
     outputTokens: entry.outputTokens ?? estimateTokens(entry.output),
     duration: Date.now() - entry.startedAt,
-    errorMsg: entry.errorMsg,
+    errorMsg: entry.errorMsg
   }).catch(error => console.warn('AI 调用记账失败', error))
 }
 
@@ -421,7 +461,7 @@ const describeEmptyCompletion = (finishReason: string, hasReasoning: boolean): s
   const byReason: Record<string, string> = {
     length: '模型把输出上限全用在思考上，没有产出正文：请换非思考模型，或在模型管理调大"最大输出 Tokens"',
     content_filter: '模型服务判定内容触发了安全过滤，没有返回正文：请调整涉及的内容后重试',
-    insufficient_system_resource: '模型服务当前推理资源不足（服务端主动打断了生成），请稍后重试',
+    insufficient_system_resource: '模型服务当前推理资源不足（服务端主动打断了生成），请稍后重试'
   }
   if (byReason[finishReason]) return byReason[finishReason]
   const tail = [finishReason ? `finish_reason=${finishReason}` : '', hasReasoning ? '只返回了思考内容' : '']
@@ -437,16 +477,18 @@ export const LONG_COMPLETION_TIMEOUT_MS = 10 * 60_000
  * 非流式补全：一次性返回全文（划词润色/打字补全这类"拿到结果再落格"的场景）。
  * 失败抛出带可读文案的 Error；外部 signal 中止原样抛 AbortError 由调用方静默。
  */
-export const requestLocalChatCompletion = async (options: {
-  modelCode: string
-  messages: LocalChatMessageInput[]
-  maxTokens?: number
-  /** 采样温度（0-2）：来自提示词库逐场景配置；未传用模型服务默认 */
-  temperature?: number
-  signal?: AbortSignal
-  /** 整次请求的时间上限，不传按 90 秒；大纲这类一次吐几千 token 的非流式调用要给足 */
-  timeoutMs?: number
-} & LocalAiSceneTag): Promise<string> => {
+export const requestLocalChatCompletion = async (
+  options: {
+    modelCode: string
+    messages: LocalChatMessageInput[]
+    maxTokens?: number
+    /** 采样温度（0-2）：来自提示词库逐场景配置；未传用模型服务默认 */
+    temperature?: number
+    signal?: AbortSignal
+    /** 整次请求的时间上限，不传按 90 秒；大纲这类一次吐几千 token 的非流式调用要给足 */
+    timeoutMs?: number
+  } & LocalAiSceneTag
+): Promise<string> => {
   const model = getLocalAiModelSecret(options.modelCode)
   if (!model) throw new Error(NO_MODEL_MESSAGE)
   if (!model.baseUrl || !model.modelCode) {
@@ -485,9 +527,9 @@ export const requestLocalChatCompletion = async (options: {
           // 不传按模型配置的最大输出走：上限是各家各模型自己的数，代码里不写死
           maxTokens: options.maxTokens || model.maxOutputTokens || undefined,
           temperature: options.temperature,
-          stream: false,
+          stream: false
         })
-      ),
+      )
     })
     if (!response.ok) throw new Error(await readableHttpError(response))
     const body = await response.json()
@@ -497,7 +539,10 @@ export const requestLocalChatCompletion = async (options: {
     const content = stripThinkBlocks(String(choice?.message?.content || '')).trim()
     if (!content) {
       throw new Error(
-        describeEmptyCompletion(String(choice?.finish_reason || ''), Boolean(String(choice?.message?.reasoning_content || '').trim()))
+        describeEmptyCompletion(
+          String(choice?.finish_reason || ''),
+          Boolean(String(choice?.message?.reasoning_content || '').trim())
+        )
       )
     }
     recordAiCall({
@@ -509,7 +554,7 @@ export const requestLocalChatCompletion = async (options: {
       output: content,
       inputTokens: Number(body?.usage?.prompt_tokens) || undefined,
       outputTokens: Number(body?.usage?.completion_tokens) || undefined,
-      startedAt,
+      startedAt
     })
     return content
   } catch (error) {
@@ -530,7 +575,7 @@ export const requestLocalChatCompletion = async (options: {
         output: '',
         outputTokens: 0,
         startedAt,
-        errorMsg: readable.message,
+        errorMsg: readable.message
       })
     }
     throw readable
@@ -620,7 +665,7 @@ export const streamLocalChatCompletion = async (
   const result = (reason: string): LocalChatStreamResult => ({
     content: collected,
     toolCalls: collectToolCalls(toolCallParts),
-    finishReason: reason,
+    finishReason: reason
   })
   let recorded = false
   const recordStream = (status: 0 | 1, errorMsg?: string) => {
@@ -634,7 +679,7 @@ export const streamLocalChatCompletion = async (
       input: recordInput,
       output: [collected, describeToolCalls(collectToolCalls(toolCallParts))].filter(Boolean).join('\n'),
       startedAt,
-      errorMsg,
+      errorMsg
     })
   }
 
@@ -679,9 +724,9 @@ export const streamLocalChatCompletion = async (
           temperature: options.temperature,
           stream: true,
           tools: options.tools,
-          toolChoice: options.toolChoice,
+          toolChoice: options.toolChoice
         })
-      ),
+      )
     })
     if (!response.ok) {
       const message = await readableHttpError(response)
@@ -732,8 +777,10 @@ export const streamLocalChatCompletion = async (
               callbacks.onDelta(visible)
             }
           }
-          if (Array.isArray(choice?.delta?.tool_calls)) mergeToolCallDeltas(toolCallParts, choice.delta.tool_calls)
-          if (typeof choice?.finish_reason === 'string' && choice.finish_reason) finishReason = choice.finish_reason
+          if (Array.isArray(choice?.delta?.tool_calls))
+            mergeToolCallDeltas(toolCallParts, choice.delta.tool_calls)
+          if (typeof choice?.finish_reason === 'string' && choice.finish_reason)
+            finishReason = choice.finish_reason
         } catch {
           // 跨分片被截断的 JSON 行极少见（按 \n 切已规避大半），忽略无法解析的行
         }
@@ -790,7 +837,10 @@ export const requestLocalEmbeddings = async (
   const startedAt = Date.now()
   const chars = texts.reduce((sum, text) => sum + text.length, 0)
   const recordInput = `${texts.length} 段文本，共 ${chars} 字`
-  const tag: LocalAiSceneTag = { scene: options.scene || 'embedding', sceneLabel: options.sceneLabel || '向量检索' }
+  const tag: LocalAiSceneTag = {
+    scene: options.scene || 'embedding',
+    sceneLabel: options.sceneLabel || '向量检索'
+  }
   const timeoutMs = options.timeoutMs || EMBEDDING_TIMEOUT_MS
   const controller = new AbortController()
   let timedOut = false
@@ -809,7 +859,7 @@ export const requestLocalEmbeddings = async (
       method: 'POST',
       signal: controller.signal,
       headers: buildAuthHeaders(model.apiKey),
-      body: JSON.stringify({ model: model.modelCode, input: texts, encoding_format: 'float' }),
+      body: JSON.stringify({ model: model.modelCode, input: texts, encoding_format: 'float' })
     })
     if (!response.ok) throw new Error(await readableHttpError(response))
     const body = await response.json()
@@ -833,7 +883,7 @@ export const requestLocalEmbeddings = async (
       output: `${vectors.length} 个向量 · ${vectors[0].length} 维`,
       inputTokens: Number(body?.usage?.prompt_tokens) || undefined,
       outputTokens: 0,
-      startedAt,
+      startedAt
     })
     return vectors
   } catch (error) {
@@ -843,7 +893,17 @@ export const requestLocalEmbeddings = async (
         : new DOMException('The operation was aborted.', 'AbortError')
       : new Error(readableRequestError(error))
     if (!(readable instanceof DOMException)) {
-      recordAiCall({ recordType: 'text', tag, model, status: 0, input: recordInput, output: '', outputTokens: 0, startedAt, errorMsg: readable.message })
+      recordAiCall({
+        recordType: 'text',
+        tag,
+        model,
+        status: 0,
+        input: recordInput,
+        output: '',
+        outputTokens: 0,
+        startedAt,
+        errorMsg: readable.message
+      })
     }
     throw readable
   } finally {
@@ -867,7 +927,7 @@ export const listLocalAiRemoteModels = async (
       aiFetch(url, {
         method: 'GET',
         signal,
-        headers: buildAuthHeaders(apiKey, false),
+        headers: buildAuthHeaders(apiKey, false)
       })
     )
     if (!response.ok) throw new Error(await readableHttpError(response))
@@ -883,8 +943,8 @@ export const listLocalAiRemoteModels = async (
         total: models.length,
         url,
         latency: Date.now() - startedAt,
-        testedAt: new Date().toISOString(),
-      },
+        testedAt: new Date().toISOString()
+      }
     }
   } catch (error) {
     const message = readableRequestError(error)
@@ -917,13 +977,15 @@ const base64ToBlob = (b64: string, type = 'image/png') => {
  * 按本地模型 code 直连供应商生图。请求 b64_json，供应商忽略该参数只回 url 时
  * 尝试把图捞回本地（桌面端不受跨域限制）；捞不回就退回 remoteUrl。
  */
-export const generateLocalAiImageRequest = async (options: {
-  modelCode: string
-  prompt: string
-  size?: string
-  quality?: string
-  signal?: AbortSignal
-} & LocalAiSceneTag): Promise<LocalAiImageResult> => {
+export const generateLocalAiImageRequest = async (
+  options: {
+    modelCode: string
+    prompt: string
+    size?: string
+    quality?: string
+    signal?: AbortSignal
+  } & LocalAiSceneTag
+): Promise<LocalAiImageResult> => {
   const model = getLocalAiModelSecret(options.modelCode)
   if (!model) throw new Error(NO_MODEL_MESSAGE)
   if (!model.baseUrl || !model.modelCode) {
@@ -941,7 +1003,7 @@ export const generateLocalAiImageRequest = async (options: {
       inputTokens: 0,
       outputTokens: 0,
       startedAt,
-      errorMsg,
+      errorMsg
     })
 
   const controller = new AbortController()
@@ -968,8 +1030,8 @@ export const generateLocalAiImageRequest = async (options: {
         n: 1,
         response_format: 'b64_json',
         ...(options.size ? { size: options.size } : {}),
-        ...(options.quality ? { quality: options.quality } : {}),
-      }),
+        ...(options.quality ? { quality: options.quality } : {})
+      })
     })
     if (!response.ok) throw new Error(await readableHttpError(response))
     const body = await response.json()
@@ -999,6 +1061,85 @@ export const generateLocalAiImageRequest = async (options: {
       : new Error(readableRequestError(error))
     if (!(readable instanceof DOMException)) recordImage(0, readable.message)
     throw readable
+  } finally {
+    window.clearTimeout(timer)
+    if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 朗读（OpenAI 兼容 POST {base}/audio/speech）
+// ---------------------------------------------------------------------------
+
+const SPEECH_TIMEOUT_MS = 60_000
+
+export interface LocalAiSpeechOptions {
+  modelCode: string
+  text: string
+  voice?: string
+  format?: 'mp3' | 'wav'
+  speed?: number
+  signal?: AbortSignal
+}
+
+/**
+ * 按本地模型 code 直连供应商合成一段语音。返回音频 Blob，由听书引擎负责播放/缓存。
+ * 不上报 AI 调用账本：按句调用会产生大量短记录，听书页自己的诊断日志更合适。
+ */
+export const synthesizeLocalSpeech = async (options: LocalAiSpeechOptions): Promise<Blob> => {
+  const text = String(options.text || '').trim()
+  if (!text) throw new Error('没有可朗读的文本')
+  const model = getLocalAiModelSecret(options.modelCode)
+  if (!model) throw new Error('还没有可用的朗读模型：请先到「模型管理」添加并启用一个朗读模型')
+  if (model.status === 0) throw new Error(`朗读模型「${model.name}」已停用，请先启用或更换模型`)
+  if (model.scene !== 'audio') throw new Error(`模型「${model.name}」的用途不是朗读，请到模型管理检查`)
+  if (!model.baseUrl || !model.modelCode) {
+    throw new Error(`模型「${model.name}」配置不完整，请到模型管理检查`)
+  }
+
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = window.setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, SPEECH_TIMEOUT_MS)
+  const onCallerAbort = () => controller.abort()
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort()
+    else options.signal.addEventListener('abort', onCallerAbort, { once: true })
+  }
+
+  try {
+    const aiFetch = await resolveAiFetch()
+    const response = await aiFetch(joinAiUrl(model.baseUrl, 'audio/speech'), {
+      method: 'POST',
+      signal: controller.signal,
+      headers: buildAuthHeaders(model.apiKey),
+      body: JSON.stringify({
+        ...(parseExtraParams(model.extraParams) || {}),
+        model: model.modelCode,
+        input: text,
+        voice: String(options.voice || model.ttsVoice || 'alloy').trim() || 'alloy',
+        response_format: (options.format || model.ttsFormat) === 'wav' ? 'wav' : 'mp3',
+        speed: Math.min(2, Math.max(0.5, Number(options.speed) || 1))
+      })
+    })
+    if (!response.ok) throw new Error(await readableHttpError(response))
+    const contentType = String(response.headers.get('content-type') || '')
+    if (contentType.includes('json') || contentType.includes('text/')) {
+      const detail = await response.text().catch(() => '')
+      throw new Error(`朗读接口没有返回音频${detail ? `：${detail.slice(0, 120)}` : ''}`)
+    }
+    const buffer = await response.arrayBuffer()
+    if (!buffer.byteLength) throw new Error('朗读接口返回了空音频')
+    return new Blob([buffer], { type: contentType || 'audio/mpeg' })
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw timedOut
+        ? new Error('朗读请求超时，请检查网络或稍后重试')
+        : new DOMException('The operation was aborted.', 'AbortError')
+    }
+    throw new Error(readableRequestError(error))
   } finally {
     window.clearTimeout(timer)
     if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)

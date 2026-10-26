@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { TypingSound } from '@/config/typing-sounds'
 import { TypingSoundSamplePlayer } from '@/utils/typing-sound-player'
 import { isTauriRuntime, type LocalWritingSettings } from '@/storage'
+import { useListeningStore } from '@/stores/listening'
 
 /**
  * 打字反馈：击键音效（合成机械键/打字机 + 采样播放器）与光标处视觉特效。
@@ -22,6 +23,7 @@ interface UseTypingFeedbackOptions {
 
 export const useTypingFeedback = (options: UseTypingFeedbackOptions) => {
   const { typingSound, typingEffect, editor, particlesContainerRef } = options
+  const listeningStore = useListeningStore()
 
   let audioCtx: AudioContext | null = null
   let audioResumePromise: Promise<void> | null = null
@@ -153,6 +155,8 @@ export const useTypingFeedback = (options: UseTypingFeedbackOptions) => {
   }
 
   const playSound = async (type: TypingSound) => {
+    // 听书播放时不再叠加打字音效，避免两路声音抢注意力
+    if (listeningStore.isPlaying) return
     const ready = await ensureAudioContextReady()
     if (!ready || !audioCtx) return
 

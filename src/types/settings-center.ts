@@ -4,6 +4,7 @@ export type SettingsSectionId =
   | 'overview'
   | 'menus'
   | 'writing'
+  | 'listening'
   | 'appearance'
   | 'sync'
   | 'sensitive'

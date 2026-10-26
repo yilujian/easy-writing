@@ -4,6 +4,7 @@ export type AiModelGroupCode =
   | 'text_assist'
   | 'workflow_book'
   | 'image_generation'
+  | 'audiobook'
   | 'embedding'
   | 'background'
   | 'weixin'
@@ -26,6 +27,7 @@ export const AI_MODEL_GROUPS: AiModelGroupDef[] = [
   { code: 'text_assist', name: '写作助手', hint: '续写、润色、妙笔、取名等日常功能', icon: 'fa-solid fa-wand-magic-sparkles' },
   { code: 'workflow_book', name: '工作流建书', hint: '按大纲逐章生成正文，建议用最强的模型', icon: 'fa-solid fa-diagram-project' },
   { code: 'image_generation', name: '图像生成', hint: '作品封面', icon: 'fa-solid fa-image' },
+  { code: 'audiobook', name: '听书朗读', hint: '把章节转成语音，按字符计费；未设置时听书使用系统朗读', icon: 'fa-solid fa-headphones' },
   { code: 'weixin', name: '微信助手', hint: '在微信里跟易创对话时用；未设置时跟随写作助手', icon: 'fa-solid fa-comment-dots', fallback: 'text_assist' },
   { code: 'background', name: '后台整理', hint: '每章写完后自动整理人物状态与伏笔，调用次数多，可选便宜的；未设置时跟随写作助手', icon: 'fa-solid fa-clipboard-list', fallback: 'text_assist' },
   { code: 'embedding', name: '全书语义记忆', hint: '按意思找到前文相关段落，需要向量（embedding）模型', icon: 'fa-solid fa-brain' },
@@ -55,6 +57,8 @@ export interface AiModelOption {
   maxOutputTokens?: number
   thinking?: AiThinkingMode
   extraParams?: string
+  ttsVoice?: string
+  ttsFormat?: string
   status?: number
   testStatus?: number
   lastTestAt?: string

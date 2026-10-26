@@ -117,6 +117,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '模型管理' }
       },
       {
+        path: '/listen/:bookId',
+        name: 'Listen',
+        component: () => import('@/views/Listen/index.vue'),
+        meta: { title: '听书', hideLayout: true }
+      },
+      {
         path: '/writing/:bookId',
         name: 'Writing',
         component: () => import('@/views/Writing/index.vue'),
