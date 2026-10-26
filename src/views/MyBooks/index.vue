@@ -33,6 +33,11 @@
             导入
           </button>
 
+          <button v-if="continueBook" class="ink-btn ink-btn-outline" type="button" title="继续上次的听书" @click="continueListening">
+            <i class="fa-solid fa-headphones"></i>
+            继续听
+          </button>
+
         </div>
 
         <div class="toolbar-right">
@@ -214,6 +219,10 @@ v-for="option in sortOptions" :key="option.value" :command="option.value"
                           <i class="fa-solid fa-pen-to-square"></i>
                           编辑作品
                         </el-dropdown-item>
+                        <el-dropdown-item class="listen-item" @click.stop="handleListen(work)">
+                          <i class="fa-solid fa-headphones"></i>
+                          听书
+                        </el-dropdown-item>
                         <el-dropdown-item class="export-item" @click.stop="handleExport(work)">
                           <i class="fa-solid fa-file-export"></i>
                           导出作品
@@ -289,6 +298,7 @@ import { Book, BookGroup } from "@/types"
 import { CATEGORY_TAG_MAP } from '@/utils/constants'
 import { useThemeStore } from '@/stores/theme'
 import { getLocalLibraryStorage } from '@/storage/local-library'
+import { readLastListeningBook } from '@/storage/listening-position'
 
 const wordCounter = useWordCount()
 
@@ -452,9 +462,32 @@ const handleGroupDeleted = (groupId: string) => {
   }
 }
 
+const continueBook = ref<Book | null>(null)
+
+const refreshContinueBook = async () => {
+  const id = Number(readLastListeningBook())
+  if (!Number.isFinite(id) || !id) {
+    continueBook.value = null
+    return
+  }
+  try {
+    const detail = await getLocalLibraryStorage().getLocalBookDetail(id)
+    continueBook.value = detail ? detail as Book : null
+  } catch {
+    continueBook.value = null
+  }
+}
+
+const continueListening = () => {
+  const id = continueBook.value?.id
+  if (!id) return
+  router.push({ name: 'Listen', params: { bookId: id } })
+}
+
 // 初始化：先并行拉列表与分组渲染首屏，认领检测在列表就绪后异步执行
 onMounted(() => {
   void refreshBooks()
+  void refreshContinueBook()
   if (route.query.create === '1' || route.query.create === 'true') {
     handleCreate()
     const nextQuery = { ...route.query }
@@ -501,6 +534,13 @@ const formatWordCount = (value?: number | null) => {
 const openWriting = (work: Book) => {
   router.push({
     name: 'Writing',
+    params: { bookId: work.id }
+  })
+}
+
+const handleListen = (work: Book) => {
+  router.push({
+    name: 'Listen',
     params: { bookId: work.id }
   })
 }

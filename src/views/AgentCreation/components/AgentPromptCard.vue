@@ -70,7 +70,7 @@
           popper-class="ink-select-popper"
           :placeholder="field.placeholder || '请选择'"
           :aria-label="field.label"
-          @update:model-value="value => setField(field.key, String(value || ''))"
+          @update:model-value="(value: unknown) => setField(field.key, String(value || ''))"
         >
           <el-option v-for="item in field.options" :key="item" :label="item" :value="item" />
         </el-select>

@@ -230,6 +230,7 @@
                 <el-option label="文字生成（续写、建书、对话）" value="text" />
                 <el-option label="图像生成（封面）" value="image" />
                 <el-option label="向量（全书语义记忆，如 bge-m3、text-embedding-3）" value="embedding" />
+                <el-option label="朗读（听书，需支持 /audio/speech）" value="audio" />
               </el-select>
             </label>
             <label class="field">
@@ -295,7 +296,18 @@
                 :placeholder="editingId ? '留空则不修改' : '请输入 API Key'"
               />
             </label>
-            <label class="field">
+            <label v-if="form.scene === 'audio'" class="field">
+              <span>默认音色<small class="key-local-hint">（OpenAI 如 alloy/nova；其他供应商按文档填）</small></span>
+              <el-input v-model="form.ttsVoice" size="small" maxlength="120" placeholder="alloy" />
+            </label>
+            <label v-if="form.scene === 'audio'" class="field">
+              <span>音频格式</span>
+              <el-select v-model="form.ttsFormat" size="small" popper-class="ink-select-popper">
+                <el-option label="MP3（推荐）" value="mp3" />
+                <el-option label="WAV" value="wav" />
+              </el-select>
+            </label>
+            <label v-if="form.scene !== 'audio'" class="field">
               <span>最大上下文</span>
               <el-input-number
                 v-model="form.maxContext"
@@ -306,7 +318,7 @@
                 controls-position="right"
               />
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label v-if="form.scene !== 'embedding' && form.scene !== 'audio'" class="field">
               <span>最大输出 Tokens<small class="key-local-hint">（各家上限不同，思考型模型建议 32768 以上）</small></span>
               <el-input-number
                 v-model="form.maxOutputTokens"
@@ -317,7 +329,7 @@
                 controls-position="right"
               />
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label v-if="form.scene !== 'embedding' && form.scene !== 'audio'" class="field">
               <span>思考模式<small class="key-local-hint">{{ thinkingSupportHint }}</small></span>
               <el-select v-model="form.thinking" size="small" class="ink-select" popper-class="ink-select-popper">
                 <el-option label="关闭（结构化任务更快更稳）" value="off" />
@@ -325,7 +337,7 @@
                 <el-option label="开启（请调大最大输出 Tokens）" value="on" />
               </el-select>
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label v-if="form.scene !== 'embedding' && form.scene !== 'audio'" class="field">
               <span>额外请求参数<small class="key-local-hint">（JSON 对象，原样合并进请求体）</small></span>
               <el-input
                 v-model="form.extraParams"
@@ -464,6 +476,7 @@ const sceneLabels: Record<string, string> = {
   text: '文字',
   image: '生图',
   embedding: '向量',
+  audio: '朗读',
 }
 
 /**
@@ -490,6 +503,7 @@ const advancedSlots: SlotDef[] = [
   { group: 'weixin', label: '微信助手', hint: '在微信里跟易创对话时用', icon: 'fa-comment-dots', scene: 'text', sceneName: '文本' },
   { group: 'background', label: '后台整理', hint: '每章写完后自动整理人物状态与伏笔，调用次数多，可选便宜的', icon: 'fa-clipboard-list', scene: 'text', sceneName: '文本' },
   { group: 'embedding', label: '全书语义记忆', hint: '让妙笔和续写按意思找到前文相关段落，需要向量（embedding）模型', icon: 'fa-brain', scene: 'embedding', sceneName: '向量' },
+  { group: 'audiobook', label: '听书朗读', hint: '把章节转成语音；没有设置时听书使用系统朗读', icon: 'fa-headphones', scene: 'audio', sceneName: '朗读' },
   { group: 'agent_planner', label: 'Agent 规划', hint: 'Agent 对话主循环：理解指令、调用工具、规划拍子', icon: 'fa-diagram-project', scene: 'text', sceneName: '文本' },
   { group: 'agent_writer', label: 'Agent 写作', hint: '生成正文与定向修订，可以选更强的模型', icon: 'fa-pen-nib', scene: 'text', sceneName: '文本' },
   { group: 'agent_critic', label: 'Agent 评审', hint: '读者模拟体检，可与写作模型不同', icon: 'fa-magnifying-glass', scene: 'text', sceneName: '文本' },
@@ -535,6 +549,8 @@ const form = reactive<UserAiModelSavePayload>({
   sort: 0,
   thinking: DEFAULT_PRESET.thinking,
   extraParams: '',
+  ttsVoice: '',
+  ttsFormat: 'mp3',
 })
 
 const modelEnabled = computed({
@@ -568,6 +584,7 @@ const groupFallbackLabel = (group: AiModelGroupCode) => {
 const slotEmptyLabel = (slot: SlotDef) => {
   const name = effectiveModelName(slot.group)
   if (slot.group === 'workflow_book') return '未设置'
+  if (slot.group === 'audiobook') return '未设置'
   const fallback = groupFallbackLabel(slot.group)
   if (fallback) return name ? `跟随${fallback} · ${name}` : `跟随${fallback}`
   return name ? `自动 · ${name}` : `未添加${slot.sceneName}模型`
@@ -575,6 +592,7 @@ const slotEmptyLabel = (slot: SlotDef) => {
 
 const slotEmptyDesc = (slot: SlotDef) => {
   if (slot.group === 'workflow_book') return '建书消耗大，请明确选一个；不会自动借用写作助手的模型'
+  if (slot.group === 'audiobook') return '不设置时听书仍使用系统朗读；设置后才启用云端朗读'
   const fallback = groupFallbackLabel(slot.group)
   if (fallback) return `不单独选时与${fallback}用同一个模型`
   return `不指定时自动用列表里第一个启用的${slot.sceneName}模型`
@@ -668,9 +686,11 @@ const saveModel = async () => {
     ElMessage.success(
       wasEditing
         ? '模型已更新'
-        : sceneHadNone && payload.status === 1
-          ? '模型已保存；这是第一个可用的该用途模型，相关 AI 功能会自动使用它'
-          : '模型已保存，已加入列表；要让某个功能用它，在上方「默认模型」里选'
+        : payload.scene === 'audio'
+          ? '朗读模型已保存；到「听书与朗读」选择云端朗读即可使用'
+          : sceneHadNone && payload.status === 1
+            ? '模型已保存；这是第一个可用的该用途模型，相关 AI 功能会自动使用它'
+            : '模型已保存，已加入列表；要让某个功能用它，在上方「默认模型」里选'
     )
     await refreshModels()
   } catch (error) {
@@ -770,7 +790,14 @@ const closeRemoteModelPanelOnOutside = (event: MouseEvent) => {
 const editModel = (model: AiModelOption) => {
   editingId.value = model.id
   form.name = model.name || ''
-  form.scene = model.scene === 'image' ? 'image' : model.scene === 'embedding' ? 'embedding' : 'text'
+  form.scene =
+    model.scene === 'image'
+      ? 'image'
+      : model.scene === 'embedding'
+        ? 'embedding'
+        : model.scene === 'audio'
+          ? 'audio'
+          : 'text'
   form.provider = model.provider || 'custom'
   form.protocol = 'openai_compatible'
   form.modelCode = model.modelCode || ''
@@ -780,6 +807,8 @@ const editModel = (model: AiModelOption) => {
   form.maxOutputTokens = Number(model.maxOutputTokens || 8192)
   form.thinking = model.thinking || 'default'
   form.extraParams = model.extraParams || ''
+  form.ttsVoice = model.ttsVoice || ''
+  form.ttsFormat = model.ttsFormat === 'wav' ? 'wav' : 'mp3'
   form.status = model.status === 0 ? 0 : 1
   testResult.value = null
   clearRemoteModels()
@@ -835,6 +864,8 @@ const resetForm = () => {
   form.sort = 0
   form.thinking = DEFAULT_PRESET.thinking
   form.extraParams = ''
+  form.ttsVoice = ''
+  form.ttsFormat = 'mp3'
   testResult.value = null
   clearRemoteModels()
 }
@@ -854,6 +885,8 @@ const buildPayload = (): UserAiModelSavePayload => ({
   sort: Number(form.sort || 0),
   thinking: form.thinking || 'default',
   extraParams: form.extraParams?.trim() || '',
+  ttsVoice: form.ttsVoice?.trim() || '',
+  ttsFormat: form.ttsFormat === 'wav' ? 'wav' : 'mp3',
 })
 
 const buildRemoteModelPayload = (): Partial<UserAiModelSavePayload> => ({
@@ -875,11 +908,11 @@ const validateRemoteModelFetch = () => {
     ElMessage.warning('请填写 Base URL')
     return false
   }
-  if (
+  if (form.scene !== 'audio' && (
     !Number.isInteger(Number(form.maxOutputTokens)) ||
     Number(form.maxOutputTokens) < 128 ||
     Number(form.maxOutputTokens) > Number(form.maxContext)
-  ) {
+  )) {
     ElMessage.warning('最大输出 Tokens 必须为 128 到最大上下文之间的整数')
     return false
   }
@@ -905,15 +938,15 @@ const validateForm = () => {
     ElMessage.warning('请填写 Base URL')
     return false
   }
-  if (
+  if (form.scene !== 'embedding' && form.scene !== 'audio' && (
     !Number.isInteger(Number(form.maxOutputTokens)) ||
     Number(form.maxOutputTokens) < 128 ||
     Number(form.maxOutputTokens) > Number(form.maxContext)
-  ) {
+  )) {
     ElMessage.warning('最大输出 Tokens 必须为 128 到最大上下文之间的整数')
     return false
   }
-  if (form.extraParams?.trim()) {
+  if (form.scene !== 'embedding' && form.scene !== 'audio' && form.extraParams?.trim()) {
     try {
       const parsed: unknown = JSON.parse(form.extraParams)
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')

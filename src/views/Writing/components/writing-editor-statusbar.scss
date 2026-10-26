@@ -24,8 +24,83 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
+      gap: 12px;
       overflow: hidden;
       padding: 0;
+    }
+
+    /* 状态栏听书：喇叭 / 语速 / 朗读设置收在一个胶囊里，和右区按钮同高 */
+    .listen-inline {
+      display: inline-flex;
+      align-items: stretch;
+      height: 22px;
+      flex: 0 0 auto;
+      border: 1px solid var(--ui-border, rgba(255, 255, 255, 0.1));
+      border-radius: 999px;
+      background: var(--panel-bg, rgba(255, 255, 255, 0.04));
+      overflow: hidden;
+      white-space: nowrap;
+
+      .listen-btn {
+        height: 20px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--ink-sec);
+        font: inherit;
+        font-size: 12px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        cursor: pointer;
+        transition:
+          color 0.2s ease,
+          background 0.2s ease;
+
+        &:hover:not(:disabled) {
+          color: var(--ink-main);
+          background: var(--panel-header-bg, rgba(255, 255, 255, 0.08));
+        }
+
+        &:disabled {
+          cursor: default;
+          opacity: 0.45;
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--ink-accent);
+          outline-offset: -2px;
+        }
+
+        &.is-playing {
+          color: var(--ink-accent);
+        }
+
+        &--ghost {
+          color: var(--ink-sec);
+        }
+
+        /* 语速按钮：点击循环切换，宽度固定避免数字跳动 */
+        &--rate {
+          min-width: 36px;
+          font-variant-numeric: tabular-nums;
+        }
+      }
+
+      .listen-btn + .listen-btn {
+        border-left: 1px solid var(--divider);
+      }
+
+      /* 朗读设置入口的双滑杆图标，手绘保持与参考稿一致的两条轨道 */
+      .listen-sliders-icon {
+        width: 12px;
+        height: 12px;
+        display: block;
+        pointer-events: none;
+      }
     }
 
     .status-right {
@@ -345,11 +420,13 @@
     }
 
     &.status-icon-only-mode {
+      /* 左区除保存状态图标外还挂着听书控件：不再把这一栏裁到 22px，
+         否则听书入口会被 overflow:hidden 吃掉 */
       .status-center {
-        flex: 0 0 22px;
-        width: 22px;
-        min-width: 22px;
-        justify-content: center;
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 0;
+        justify-content: flex-start;
       }
 
       .save-status-icon {
@@ -379,6 +456,11 @@
         padding: 0;
         gap: 0;
         justify-content: center;
+      }
+
+      /* 窄窗口：听书胶囊只留喇叭和朗读设置，语速段收起 */
+      .listen-inline .listen-btn--rate {
+        display: none;
       }
 
       .plan-entry {

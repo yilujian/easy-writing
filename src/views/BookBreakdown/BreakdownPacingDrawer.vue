@@ -3,7 +3,7 @@
     :model-value="visible"
     title="节奏与对比"
     size="62%"
-    @update:model-value="value => emit('update:visible', value)"
+    @update:model-value="(value: boolean) => emit('update:visible', value)"
     @opened="load"
     @closed="disposeCharts"
   >

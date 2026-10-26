@@ -2,8 +2,8 @@
   <EwModal
     v-model:visible="visibleProxy"
     :title="activeMeta.title"
-    width="min(1720px, 90vw)"
-    height="min(1040px, 90vh)"
+    :width="focusedMode ? 'min(960px, 92vw)' : 'min(1720px, 90vw)'"
+    :height="focusedMode ? 'min(720px, 86vh)' : 'min(1040px, 90vh)'"
     custom-class="settings-center-modal"
     :close-on-click-modal="true"
     @open="loadSettings"
@@ -15,8 +15,8 @@
       </div>
     </template>
 
-    <div class="settings-center-shell">
-      <aside class="settings-center-nav">
+    <div class="settings-center-shell" :class="{ 'is-focused': focusedMode }">
+      <aside v-if="!focusedMode" class="settings-center-nav">
         <div v-for="group in navGroups" :key="group.title" class="settings-nav-group">
           <span class="settings-nav-title">{{ group.title }}</span>
           <button
@@ -37,6 +37,7 @@
         <div ref="paneScrollRef" class="settings-pane-scroll">
           <OverviewPane v-if="activeSection === 'overview'" />
           <WritingPane v-else-if="activeSection === 'writing'" />
+          <ListeningPane v-else-if="activeSection === 'listening'" />
           <MenuPane v-else-if="activeSection === 'menus'" />
           <AppearancePane v-else-if="activeSection === 'appearance'" />
           <SyncPane v-else-if="activeSection === 'sync'" />
@@ -51,8 +52,16 @@
     </div>
 
     <template #footer>
+      <!-- 聚焦模式：设置即时生效，取消会还原打开时的状态 -->
+      <div v-if="focusedMode" class="settings-footer">
+        <span class="footer-hint">{{ focusedHint }}</span>
+        <div class="footer-actions">
+          <button type="button" class="ink-btn ink-btn-outline" @click="handleFocusedCancel">取消</button>
+          <button type="button" class="ink-btn ink-btn-primary" @click="handleFocusedConfirm">确定</button>
+        </div>
+      </div>
       <!-- AI 调用记录：只读，不适用草稿式保存 -->
-      <div v-if="isInstantSection" class="settings-footer">
+      <div v-else-if="isInstantSection" class="settings-footer">
         <span class="footer-hint">{{ instantHint }}</span>
         <div class="footer-actions">
           <button type="button" class="ink-btn ink-btn-outline" @click="visibleProxy = false">关闭</button>
@@ -82,6 +91,8 @@ import EwModal from '@/components/EwModal/index.vue'
 import AiRecordPane from '@/views/Writing/components/AiRecordPane.vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWritingEditorStore } from '@/stores/writing-editor'
+import { useListeningStore } from '@/stores/listening'
+import type { ListeningSettings } from '@/types/listening'
 import { getLocalBackupService } from '@/storage/local-backup-service'
 import {
   DEFAULT_LOCAL_WRITING_SETTINGS,
@@ -95,6 +106,7 @@ import { defaultUiPreferences, useUiPreferencesStore } from '@/stores/ui-prefere
 import MenuPane from './panes/MenuPane.vue'
 import OverviewPane from './panes/OverviewPane.vue'
 import WritingPane from './panes/WritingPane.vue'
+import ListeningPane from './panes/ListeningPane.vue'
 import AppearancePane from './panes/AppearancePane.vue'
 import SyncPane from './panes/SyncPane.vue'
 import SensitiveWordsPane from './panes/SensitiveWordsPane.vue'
@@ -104,6 +116,8 @@ import CachePane from './panes/CachePane.vue'
 const props = defineProps<{
   visible: boolean
   bookId?: string | number
+  /** 只显示这一个分区（写作台齿轮 → 听书与朗读）：隐藏左侧导航，弹窗按单页尺寸展示 */
+  focusSection?: SettingsSectionId
 }>()
 
 const emit = defineEmits<{
@@ -128,6 +142,7 @@ const navGroups: SettingsNavGroup[] = [
     items: [
       { id: 'overview', label: '总览', icon: 'fa-solid fa-table-cells-large' },
       { id: 'writing', label: '写作体验', icon: 'fa-regular fa-pen-to-square' },
+      { id: 'listening', label: '听书与朗读', icon: 'fa-solid fa-headphones' },
       { id: 'menus', label: '菜单管理', icon: 'fa-solid fa-bars' },
       { id: 'appearance', label: '外观主题', icon: 'fa-solid fa-palette' },
       { id: 'sync', label: '保存与备份', icon: 'fa-solid fa-cloud-arrow-up' },
@@ -153,6 +168,7 @@ const sectionMeta: Record<SettingsSectionId, { title: string; description: strin
   overview: { title: '设置中心', description: '统一管理写作体验、AI 能力与数据保存' },
   menus: { title: '菜单管理', description: '选择侧边栏中显示的功能入口' },
   writing: { title: '写作体验', description: '管理打字反馈、自爆挑战与写作辅助' },
+  listening: { title: '听书与朗读', description: '选择朗读引擎、音色与播放偏好' },
   appearance: { title: '外观主题', description: '切换创作空间的主题、字体与排版' },
   sync: { title: '保存与备份', description: '管理本地自动保存、备份与版本保留策略' },
   sensitive: { title: '敏感词库', description: '管理写作台敏感词检查的内置词库与自定义词' },
@@ -161,7 +177,9 @@ const sectionMeta: Record<SettingsSectionId, { title: string; description: strin
   cache: { title: '存储空间', description: '查看本地缓存占用并清理临时数据' },
 }
 
-const activeSection = ref<SettingsSectionId>('overview')
+const activeSection = ref<SettingsSectionId>(props.focusSection || 'overview')
+/** 聚焦模式：只展示指定分区，不出现左侧全量导航 */
+const focusedMode = computed(() => Boolean(props.focusSection))
 const paneScrollRef = ref<HTMLElement | null>(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -208,13 +226,59 @@ watch(activeSection, async () => {
   if (paneScrollRef.value) paneScrollRef.value.scrollTop = 0
 })
 
+// 聚焦模式（写作台齿轮 → 听书与朗读）：打开时记下快照，取消还原，确定保留
+const listeningStore = useListeningStore()
+const listeningSnapshot = ref<ListeningSettings | null>(null)
+
+const focusedHint = computed(() =>
+  props.focusSection === 'listening' ? '调整即时生效；取消或直接关闭会还原本次改动' : '',
+)
+
+/** 点过「确定」后保留本次改动；叉号、遮罩、Esc 与「取消」同义。 */
+let keepListeningSnapshot = false
+
+const handleFocusedCancel = () => {
+  visibleProxy.value = false
+}
+
+const handleFocusedConfirm = () => {
+  keepListeningSnapshot = true
+  visibleProxy.value = false
+}
+
+// 指定了聚焦分区（写作台齿轮 → 听书与朗读）时，每次打开都落在那一页
+watch(
+  () => props.visible,
+  visible => {
+    if (!visible) {
+      const snapshot = listeningSnapshot.value
+      if (props.focusSection === 'listening' && snapshot && !keepListeningSnapshot) {
+        listeningStore.updateSettings({ ...snapshot })
+      }
+      listeningSnapshot.value = null
+      keepListeningSnapshot = false
+      return
+    }
+    keepListeningSnapshot = false
+    if (props.focusSection) activeSection.value = props.focusSection
+    if (props.focusSection === 'listening') {
+      listeningSnapshot.value = { ...listeningStore.settings }
+    }
+  },
+  { immediate: true }
+)
+
 // AI 调用记录（只读）、敏感词库与微信助手（改动即时生效）不适用底部「保存设置」草稿语义
 const isInstantSection = computed(() =>
-  activeSection.value === 'record' || activeSection.value === 'sensitive' || activeSection.value === 'weixin'
+  activeSection.value === 'record' ||
+  activeSection.value === 'sensitive' ||
+  activeSection.value === 'weixin' ||
+  activeSection.value === 'listening'
 )
 const instantHint = computed(() => {
   if (activeSection.value === 'sensitive') return '词库改动即时生效'
   if (activeSection.value === 'weixin') return '绑定与开关改动即时生效'
+  if (activeSection.value === 'listening') return '朗读与播放偏好即时生效'
   return '本页为只读记录'
 })
 
@@ -380,6 +444,15 @@ const restoreDefaults = async () => {
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--surface-1) 76%, var(--bg-main)), color-mix(in srgb, var(--surface-2) 62%, var(--bg-main))),
       var(--bg-main);
+  }
+
+  /* 聚焦模式：单分区铺满，去掉导航列与多余留白 */
+  .settings-center-shell.is-focused {
+    grid-template-columns: minmax(0, 1fr);
+
+    .settings-pane {
+      padding: 22px 30px 30px;
+    }
   }
 
   .settings-nav-group + .settings-nav-group {

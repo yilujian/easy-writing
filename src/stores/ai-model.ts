@@ -1,11 +1,16 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { AI_MODEL_GROUPS, type AiModelGroupCode, type AiModelOption, type AiModelOptionsResult } from '@/types/ai-model'
+import {
+  AI_MODEL_GROUPS,
+  type AiModelGroupCode,
+  type AiModelOption,
+  type AiModelOptionsResult
+} from '@/types/ai-model'
 import {
   getLocalAiPreference,
   listLocalAiModels,
   saveLocalAiPreference,
-  sceneOfGroup,
+  sceneOfGroup
 } from '@/storage/local-ai-models'
 
 // 开源版：模型清单与默认偏好全部来自本地 BYOK 模型库（模型管理页维护），零网络请求
@@ -19,8 +24,8 @@ const toSelectOptions = (models: AiModelOption[]) => [
   ...models.map(item => ({
     label: getOptionLabel(item),
     value: item.code,
-    description: String(item.modelCode || '').trim(),
-  })),
+    description: String(item.modelCode || '').trim()
+  }))
 ]
 
 export const useAiModelStore = defineStore('ai-model', () => {
@@ -39,7 +44,8 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const weixinModel = ref('')
   /** 各分组当前保存的偏好 code（分组表里的全部分组，含 Agent 四个角色）；旧字段保留给已有页面 */
   const selected = ref<Partial<Record<AiModelGroupCode, string>>>({})
-  const fallbackOf = (groupCode: AiModelGroupCode) => AI_MODEL_GROUPS.find(group => group.code === groupCode)?.fallback
+  const fallbackOf = (groupCode: AiModelGroupCode) =>
+    AI_MODEL_GROUPS.find(group => group.code === groupCode)?.fallback
 
   const textModels = computed(() => groups.value.text_assist?.models || [])
   const workflowModels = computed(() => groups.value.workflow_book?.models || [])
@@ -130,26 +136,38 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const setBackgroundModel = (value: string) => setGroupModel('background', value)
   const setWeixinModel = (value: string) => setGroupModel('weixin', value)
 
-  const loadGroup = async (groupCode: AiModelGroupCode, force = false) => {
-    if (loading.value[groupCode]) return groups.value[groupCode]
-    if (loaded.value[groupCode] && !force) return groups.value[groupCode]
-    loading.value[groupCode] = true
-    try {
-      const { data } = await listLocalAiModels({ scene: sceneOfGroup(groupCode) })
-      // 停用的模型不进下拉；已选中的模型被停用/删除时自动回落"智能推荐"
-      const models = (data || []).filter(model => model.status !== 0)
-      groups.value[groupCode] = {
-        policy: null,
-        defaultModel: null,
-        models,
-        selectedModelCode: getLocalAiPreference(groupCode),
+  const pendingGroupLoads = new Map<string, Promise<AiModelOptionsResult | null | undefined>>()
+
+  const loadGroup = (groupCode: AiModelGroupCode, force = false) => {
+    const pending = pendingGroupLoads.get(groupCode)
+    if (pending) return pending
+    if (loaded.value[groupCode] && !force) return Promise.resolve(groups.value[groupCode])
+    const task = (async () => {
+      loading.value[groupCode] = true
+      try {
+        const { data } = await listLocalAiModels({ scene: sceneOfGroup(groupCode) })
+        // 停用的模型不进下拉；已选中的模型被停用/删除时自动回落"智能推荐"
+        const models = (data || []).filter(model => model.status !== 0)
+        groups.value[groupCode] = {
+          policy: null,
+          defaultModel: null,
+          models,
+          selectedModelCode: getLocalAiPreference(groupCode)
+        }
+        loaded.value[groupCode] = true
+        applyGroupModelValue(groupCode, getLocalAiPreference(groupCode))
+        return groups.value[groupCode]
+      } finally {
+        loading.value[groupCode] = false
       }
-      loaded.value[groupCode] = true
-      applyGroupModelValue(groupCode, getLocalAiPreference(groupCode))
-      return groups.value[groupCode]
-    } finally {
-      loading.value[groupCode] = false
-    }
+    })()
+    pendingGroupLoads.set(groupCode, task)
+    void task
+      .finally(() => {
+        if (pendingGroupLoads.get(groupCode) === task) pendingGroupLoads.delete(groupCode)
+      })
+      .catch(() => undefined)
+    return task
   }
 
   const loadTextModels = (force = false) => loadGroup('text_assist', force)
@@ -250,6 +268,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     ensureBackgroundModel,
     loadWeixinModels,
     ensureWeixinModel,
-    loadAll,
+    loadAll
   }
 })

@@ -3,7 +3,7 @@
     <label
       >技能名称<el-input
         :model-value="draft.name"
-        @update:model-value="value => change('name', value)"
+        @update:model-value="(value: string) => change('name', value)"
         aria-label="技能名称"
         :maxlength="80"
         :disabled="readonly"
@@ -11,7 +11,7 @@
     <label
       >用途说明<el-input
         :model-value="draft.description"
-        @update:model-value="value => change('description', value)"
+        @update:model-value="(value: string) => change('description', value)"
         aria-label="用途说明"
         :maxlength="1000"
         :disabled="readonly"
@@ -20,7 +20,7 @@
       <label
         >技能类型<el-select
           :model-value="draft.kind"
-          @update:model-value="value => change('kind', value)"
+          @update:model-value="(value: AgentSkillDraft['kind']) => change('kind', value)"
           clearable
           aria-label="技能类型"
           placeholder="辅助技能（未分类）"
@@ -36,7 +36,7 @@
       <label v-if="draft.kind === 'method'"
         >替换方法编号<el-input
           :model-value="draft.replaces"
-          @update:model-value="value => change('replaces', value)"
+          @update:model-value="(value: string) => change('replaces', value)"
           placeholder="如 chapter-writing；留空作为辅助方法"
           aria-label="替换方法编号"
           :disabled="readonly"
@@ -45,7 +45,7 @@
     <label
       >技能说明<el-input
         :model-value="draft.instructions"
-        @update:model-value="value => change('instructions', value)"
+        @update:model-value="(value: string) => change('instructions', value)"
         type="textarea"
         :rows="9"
         :maxlength="50000"
@@ -111,7 +111,7 @@
             <label
               >文件路径<el-input
                 :model-value="currentFile.path"
-                @update:model-value="value => changeFile('path', value)"
+                @update:model-value="(value: string) => changeFile('path', value)"
                 aria-label="文件路径"
                 :disabled="readonly"
             /></label>
@@ -121,7 +121,7 @@
           </div>
           <el-input
             :model-value="currentFile.content"
-            @update:model-value="value => changeFile('content', value)"
+            @update:model-value="(value: string) => changeFile('content', value)"
             class="ac-skill-source-input"
             type="textarea"
             :rows="12"
