@@ -108,7 +108,7 @@
             filterable
             :disabled="store.busy"
             class="pi-book-select"
-            @change="value => store.changeContext({ bookId: value || '' })"
+            @change="selectBook"
           >
             <template #prefix><i class="fa-solid fa-book-open" aria-hidden="true"></i></template>
             <el-option v-for="book in store.books" :key="book.id" :value="book.id" :label="book.title" />
@@ -119,7 +119,7 @@
             aria-label="选择模型"
             :disabled="store.busy"
             class="pi-model-select"
-            @change="value => store.changeContext({ modelCode: value })"
+            @change="selectModel"
           >
             <template #prefix><i class="fa-solid fa-sliders" aria-hidden="true"></i></template>
             <el-option
@@ -212,6 +212,12 @@ import {
 import { listMentionItems, REFERENCE_GROUPS, type MentionItem } from '@/agent-pi/references'
 import { DOCUMENT_ACCEPT } from '@/writing-service/document-text'
 const store = usePiWorkspace()
+function selectBook(value: string | undefined) {
+  return store.changeContext({ bookId: value || '' })
+}
+function selectModel(value: string) {
+  return store.changeContext({ modelCode: value })
+}
 const sendKeys = computed(() => store.enterToSend ? 'Enter' : shortcutLabel('send'))
 const sendHint = computed(() => sendKeys.value + ' 发送；' + (store.enterToSend ? 'Shift + Enter' : 'Enter') + ' 换行；/ 选技能，@ 引用作品资料')
 

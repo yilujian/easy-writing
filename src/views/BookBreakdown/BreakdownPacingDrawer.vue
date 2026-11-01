@@ -3,7 +3,7 @@
     :model-value="visible"
     title="节奏与对比"
     size="62%"
-    @update:model-value="value => emit('update:visible', value)"
+    @update:model-value="updateVisible"
     @opened="load"
     @closed="disposeCharts"
   >
@@ -224,6 +224,9 @@ interface Comparison {
 
 const props = defineProps<{ visible: boolean; projectId: number; bookTitle: string }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
+function updateVisible(value: boolean) {
+  emit('update:visible', value)
+}
 const desktop = isTauriRuntime()
 const busy = ref(false)
 const error = ref('')
