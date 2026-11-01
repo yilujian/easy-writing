@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 8px 20px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
@@ -20,7 +20,7 @@
 
   i {
     margin-right: 6px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     transition: transform 0.3s ease;
   }
 
@@ -32,12 +32,12 @@
 /* 尺寸变体：小号按钮 */
 .ink-btn-sm {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   border-radius: 4px;
 
   i {
     margin-right: 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -150,7 +150,7 @@
   padding: 6px 12px;
   border: 1px solid var(--btn-outline-border);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--btn-outline-bg);
   cursor: pointer;
@@ -164,7 +164,7 @@
   }
 
   i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .btn-text {
@@ -373,7 +373,7 @@
   border-bottom: 1px solid var(--input-border);
   padding: 6px 0;
   width: 100%;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -383,7 +383,7 @@
     color: var(--ink-sec);
     font-weight: normal;
     opacity: 0.6;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   &:focus {
@@ -468,14 +468,14 @@
 
   /* 选中文字与输入框文字 */
   .el-select__selected-item {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main) !important;
     font-weight: 500;
     line-height: normal;
   }
 
   .el-input__inner {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main) !important;
     font-weight: 500;
     line-height: normal;
@@ -484,14 +484,14 @@
   /* 占位符颜色 */
   .el-select__placeholder.is-transparent {
     color: var(--ink-sec) !important;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     margin-left: 0;
     opacity: 1;
   }
 
   .el-input__inner::placeholder {
     color: var(--ink-sec) !important;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     margin-left: 0;
     opacity: 1;
   }
@@ -622,7 +622,7 @@
     min-width: 0;
 
     .opt-desc {
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       font-weight: 400;
       opacity: 0.72;
       white-space: nowrap;
@@ -668,7 +668,7 @@
 .ink-btn-cancel {
   padding: 8px 20px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 500;
   border: 1px solid var(--btn-outline-border);
   background: var(--btn-outline-bg);
@@ -693,7 +693,7 @@
 .ink-btn-submit {
   padding: 8px 24px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 700;
   letter-spacing: 0.05em;
   background: var(--btn-primary-bg);
@@ -879,7 +879,7 @@
   .el-input__inner {
     color: var(--ink-main) !important;
     height: 38px;
-    line-height: 38px;
+    line-height: calc(38px * var(--ui-font-scale, 1));
 
     &::placeholder {
       color: var(--ink-sec);
@@ -911,7 +911,7 @@
       }
 
       i {
-        font-size: 16px;
+        font-size: calc(16px * var(--ui-font-scale, 1));
       }
     }
   }
@@ -935,7 +935,7 @@
       background: var(--ui-glass-bg) !important;
       color: var(--ink-sec);
       font-weight: normal;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       border-bottom: 1px solid var(--ui-border) !important;
       height: 48px;
     }
@@ -960,7 +960,7 @@
         // background: transparent !important;
         border-bottom: 1px solid var(--ui-border) !important;
         color: var(--ink-main);
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         padding: 12px 0;
       }
     }
@@ -968,7 +968,7 @@
 
   /* 排名图标 */
   .medal-icon {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
 
     &.medal-1 {
@@ -986,7 +986,7 @@
 
   .rank-number {
     font-weight: bold;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     font-family: serif;
     color: var(--ink-sec);
   }
@@ -1007,7 +1007,7 @@
   /* 标签 */
   .level-tag {
     display: inline-block;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     background: var(--btn-outline-bg);
     padding: 2px 6px;
     border-radius: 3px;
@@ -1037,7 +1037,7 @@
     border: 1px solid var(--ink-main);
     color: var(--ink-main);
     background: transparent;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
@@ -1091,7 +1091,7 @@
     --el-pagination-bg-color: transparent;
     --el-pagination-button-bg-color: var(--ui-glass-bg);
     --el-pagination-hover-color: var(--ink-main);
-    --el-pagination-font-size: 13px;
+    --el-pagination-font-size: calc(13px * var(--ui-font-scale, 1));
 
     .el-pager li {
       background: var(--ui-glass-bg) !important;
@@ -1101,7 +1101,7 @@
       margin: 0 4px;
       min-width: 28px;
       height: 28px;
-      line-height: 26px;
+      line-height: calc(26px * var(--ui-font-scale, 1));
       transition: all 0.2s;
 
       &.is-active {
@@ -1200,7 +1200,7 @@
       color: var(--ink-sec);
       border-radius: 6px;
       margin: 0 4px;
-      line-height: 24px;
+      line-height: calc(24px * var(--ui-font-scale, 1));
       /* 稍微增加行高 */
 
       &:hover,
@@ -1263,7 +1263,7 @@
   border-radius: 6px;
   padding: 8px 12px;
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   outline: none;

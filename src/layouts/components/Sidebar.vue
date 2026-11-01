@@ -158,7 +158,7 @@ const handleSidebarClick = (event: MouseEvent) => {
   .logo-text {
     display: inline-flex;
     align-items: center;
-    font-size: 23px;
+    font-size: calc(23px * var(--ui-font-scale, 1));
     font-weight: 700;
     font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
     line-height: 1.08;
@@ -178,7 +178,7 @@ const handleSidebarClick = (event: MouseEvent) => {
   }
 
   .brand-subtitle {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-weight: 500;
     line-height: 1;
     letter-spacing: 0.08em;
@@ -219,12 +219,12 @@ const handleSidebarClick = (event: MouseEvent) => {
 .nav-item {
   display: flex;
   align-items: center;
-  height: 48px;
+  min-height: 48px;
   padding: 0 16px;
   margin-bottom: 4px;
   border-radius: 0 8px 8px 0;
   color: var(--ink-sec);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   text-decoration: none;
   text-align: left;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -236,11 +236,13 @@ const handleSidebarClick = (event: MouseEvent) => {
   i {
     width: 20px;
     text-align: center;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   span {
+    min-width: 0;
+    overflow-wrap: anywhere;
     margin-left: 12px;
     transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -264,6 +266,13 @@ const handleSidebarClick = (event: MouseEvent) => {
     }
   }
 }
+
+:global(html[data-ui-enlarged] .sidebar-container .nav-item) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.4;
+}
+:global(html[data-ui-enlarged] .sidebar-container .nav-item i) { flex-shrink: 0; }
 
 .external-nav-item {
   border: 0;

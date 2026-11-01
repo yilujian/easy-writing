@@ -20,7 +20,33 @@
             </section>
 
             <section class="settings-section-block">
-              <div class="number-title"><span>2</span><strong>阅读与排版</strong></div>
+              <div class="number-title"><span>2</span><strong>界面字号</strong></div>
+              <div class="settings-card thin ui-font-setting">
+                <label id="ui-font-size-label" class="setting-label">界面文字大小</label>
+                <p class="ui-font-description">调整菜单、侧栏、工具栏和弹窗的文字大小，正文字号保持独立。</p>
+                <div class="ui-font-control">
+                  <el-slider
+                    v-model="uiDraft.uiFontSize"
+                    :min="MIN_UI_FONT_SIZE"
+                    :max="MAX_UI_FONT_SIZE"
+                    :step="1"
+                    :show-tooltip="false"
+                    aria-label="界面文字大小"
+                  />
+                  <output aria-live="polite">{{ uiDraft.uiFontSize }}px</output>
+                  <button
+                    type="button"
+                    class="ink-btn ink-btn-outline ink-btn-sm"
+                    :disabled="uiDraft.uiFontSize === DEFAULT_UI_FONT_SIZE"
+                    @click="uiDraft.uiFontSize = DEFAULT_UI_FONT_SIZE"
+                  >默认</button>
+                </div>
+                <div class="ui-font-preview" :style="{ fontSize: `${uiDraft.uiFontSize}px` }">界面文字预览 · 易创，让写作更舒适</div>
+              </div>
+            </section>
+
+            <section class="settings-section-block">
+              <div class="number-title"><span>3</span><strong>阅读与排版</strong></div>
               <div class="appearance-form-grid">
                 <div class="settings-card thin">
                   <div class="font-choice-heading">
@@ -52,7 +78,7 @@
                   </el-select>
                 </div>
                 <div class="settings-card thin">
-                  <span class="setting-label">字号</span>
+                  <span class="setting-label">正文字号</span>
                   <div class="slider-row">
                     <span>A-</span>
                     <el-slider v-model="editorDraft.fontSize" :min="14" :max="22" :step="1" />
@@ -116,10 +142,11 @@ import { importedFonts } from '@/composables/use-imported-fonts'
 import { useThemeStore } from '@/stores/theme'
 import { WENKAI_FONT_FAMILY } from '@/config/editor-fonts'
 import type { SettingsOption } from '@/types/settings-center'
+import { DEFAULT_UI_FONT_SIZE, MIN_UI_FONT_SIZE, MAX_UI_FONT_SIZE } from '@/utils/ui-typography'
 import { useSettingsCenterCtx } from '../settings-context'
 
 const ctx = useSettingsCenterCtx()
-const { editorDraft, selectedTheme } = ctx
+const { editorDraft, uiDraft, selectedTheme } = ctx
 const themeStore = useThemeStore()
 const showFontImport = ref(false)
 
@@ -156,6 +183,18 @@ const getThemeDescription = (theme: string) => {
 </script>
 
 <style scoped lang="scss">
+.ui-font-setting { min-width: 0; }
+.ui-font-description { margin: 0 0 12px; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.6; }
+.ui-font-control {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 520px;
+  :deep(.el-slider) { flex: 1; min-width: 60px; }
+  output { min-width: 3.5em; text-align: right; color: var(--ink-main); font-variant-numeric: tabular-nums; }
+  button { flex-shrink: 0; }
+}
+.ui-font-preview { margin-top: 12px; padding: 12px 16px; border-radius: 6px; background: var(--input-bg); color: var(--ink-main); line-height: 1.7; overflow-wrap: anywhere; }
 .font-choice-heading {
   display: flex;
   align-items: center;

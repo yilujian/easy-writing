@@ -1651,6 +1651,12 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
 </script>
 
 <style scoped lang="scss">
+:global(html[data-ui-enlarged] .writing-sidebar .catalog-item .item-title) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
 .writing-sidebar {
   // width: 256px; // 由 store 控制
   display: flex;
@@ -1720,7 +1726,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 
     i {
-      font-size: 10px;
+      font-size: calc(10px * var(--ui-font-scale, 1));
     }
 
     &:hover {
@@ -1745,7 +1751,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       .search-input {
         width: 100%;
         padding: 8px 32px 8px 12px;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         border: 1px solid var(--input-border);
         border-radius: 4px;
         background: var(--input-bg);
@@ -1771,7 +1777,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
         transform: translateY(-50%);
         color: var(--ink-sec);
         opacity: 0.5;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         pointer-events: none;
 
         &.clear-icon {
@@ -1798,7 +1804,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
     .create-btn {
       flex: 1;
       padding: 6px 12px;
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -1832,7 +1838,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     border-bottom: 1px solid rgba(128, 128, 128, 0.05);
     // font-family: system-ui, sans-serif;
@@ -1904,13 +1910,13 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       opacity: 0.6;
 
       i {
-        font-size: 48px;
+        font-size: calc(48px * var(--ui-font-scale, 1));
         margin-bottom: 16px;
         opacity: 0.3;
       }
 
       p {
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         margin: 0;
       }
     }
@@ -1919,7 +1925,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       display: flex;
       align-items: center;
       padding: 10px 16px;
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       color: var(--ink-main);
       transition: color 0.3s ease;
       cursor: pointer;
@@ -1975,9 +1981,9 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
         flex: 1;
         width: 0;
         height: 28px;
-        line-height: 28px;
+        line-height: calc(28px * var(--ui-font-scale, 1));
         padding: 0 8px;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         color: var(--ink-main);
         background: var(--input-bg);
         border: 1px solid var(--input-border);
@@ -1995,7 +2001,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
 
       i {
         margin-right: 8px;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
       }
 
       .item-title {
@@ -2003,6 +2009,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+
 
         // 搜索高亮样式
         :deep(.search-highlight) {
@@ -2015,7 +2022,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       }
 
       .item-count {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         opacity: 0.5;
       }
 
@@ -2035,7 +2042,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
         border-radius: 999px;
         background: color-mix(in srgb, var(--ink-sec) 10%, transparent);
         color: var(--ink-sec);
-        font-size: 10px;
+        font-size: calc(10px * var(--ui-font-scale, 1));
 
         &.is-generating {
           background: color-mix(in srgb, var(--ink-accent) 12%, transparent);
@@ -2056,7 +2063,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
         min-width: 40px;
 
         .chapter-count {
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
           color: var(--ink-sec);
           opacity: 0.5;
         }
@@ -2067,7 +2074,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
           align-items: center;
 
           .action-btn {
-            font-size: 12px;
+            font-size: calc(12px * var(--ui-font-scale, 1));
             color: var(--ink-sec);
             cursor: pointer;
             // padding: 4px;
@@ -2107,7 +2114,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
     box-shadow: var(--ui-shadow);
     border-radius: 8px;
     padding: 8px 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     animation: fadeIn 0.2s ease;
 
@@ -2120,7 +2127,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       }
 
       .menu-info {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         color: var(--ink-sec);
         opacity: 0.8;
       }
@@ -2138,7 +2145,7 @@ const onDrop = async (_e: DragEvent, target: DragData) => {
       transition: all 0.2s;
       display: flex;
       align-items: center;
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
 
       &:hover {
         background: var(--nav-hover-bg);

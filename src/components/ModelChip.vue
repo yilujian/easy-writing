@@ -159,7 +159,7 @@ onMounted(() => {
   &.compact :deep(.ai-pref-trigger) {
     min-height: 28px;
     padding: 3px 8px 3px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     border-radius: 6px;
   }
 }
@@ -178,12 +178,12 @@ onMounted(() => {
   background: transparent;
   color: var(--ink-accent);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   text-align: left;
 
   .arrow {
     margin-left: auto;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
   }
 
   &:hover {

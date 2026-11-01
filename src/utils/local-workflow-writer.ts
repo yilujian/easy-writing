@@ -11,18 +11,16 @@ import { LOCAL_USER_ID, createLocalEntityId } from '@/storage/local-library-util
 import type { LocalChapter, LocalLibraryVolume } from '@/storage/local-library-types'
 import {
   readLocalWorkflowRun,
+  completeWorkflowAiDraft,
   writeLocalWorkflowTask,
   settleLocalWorkflowTask,
   type LocalWorkflowRun,
 } from '@/storage/local-workflow'
 import { getWritingStorage } from '@/storage'
 import { useAiModelStore } from '@/stores/ai-model'
-import { parseAiJson } from '@/utils/ai-json'
+import { parseWorkflowJson, requestWorkflowAi } from '@/utils/workflow-ai'
 import {
   NO_MODEL_MESSAGE,
-  requestLocalChatCompletion,
-  streamLocalChatCompletion,
-  LONG_COMPLETION_TIMEOUT_MS,
 } from '@/utils/local-ai-client'
 import { runDraftGuard, summarizeStateFacts, type DraftIssue } from '@/ai/verify/consistency'
 import { aiFactsOpenForeshadows, aiFactsQuery } from '@/storage/ai-facts'
@@ -30,8 +28,8 @@ import { canUseAiIndex } from '@/storage/ai-index'
 import { buildNotesContext } from '@/storage/ai-notes'
 import { mergeAgentGate, runLocalChapterQualityCheck } from '@/utils/local-quality-check'
 import type { QualityReport } from '@/types/canon'
-import { agentCommand } from '@/agent/client'
-import { editorContext } from '@/agent/writing-context'
+import { writingCommand } from '@/writing-service/client'
+import { editorContext } from '@/writing-service/writing-context'
 import { isTauriRuntime } from '@/storage/writing-storage'
 import { beatLine, hookLine } from '@/views/Writing/components/workflow-rail/outline-model'
 import {
@@ -147,6 +145,14 @@ export const resolveWorkflowModelCode = async (run: LocalWorkflowRun) => {
 
 const resolveChapterTargetWords = (run: LocalWorkflowRun) =>
   parseChineseWordTarget(run.config?.chapterTargetWords) || DEFAULT_CHAPTER_WORDS
+/**
+ * 篇幅怎么控：拍数跟着目标字数走（每拍约 600 字，3 到 8 拍），正文再给一个上限（目标的 1.2 倍）。
+ * 之前拍数固定 5 到 8，模型按拍子展开，3000 字的章常写到五六千。
+ */
+export const chapterBudget = (targetWords: number) => {
+  const beatCount = Math.min(8, Math.max(3, Math.round(targetWords / 600)))
+  return { beatCount, wordsPerBeat: Math.round(targetWords / beatCount), maxWords: Math.round(targetWords * 1.2) }
+}
 
 // ---------------------------------------------------------------------------
 // 提示词素材组装
@@ -222,7 +228,7 @@ const runChapterGate = async (params: Parameters<typeof runLocalChapterQualityCh
   const notice = runLocalChapterQualityCheck(params)
   if (!isTauriRuntime()) return notice
   try {
-    const report = await agentCommand<QualityReport>('quality_check', {
+    const report = await writingCommand<QualityReport>('quality_check', {
       bookId: params.bookId,
       chapterId: String(params.chapterId),
       text: params.text,
@@ -377,65 +383,111 @@ const planNextChapterBatch = async (
   const storage = getLocalLibraryStorage()
   const { volume, orderedChapters } = work
   const existing = volume.children
-  const globalStart = orderedChapters.length ? Number(orderedChapters[orderedChapters.length - 1].sortNo) + 1 : 1
+  const globalStart = orderedChapters.length
+    ? Number(orderedChapters[orderedChapters.length - 1].sortNo) + 1
+    : 1
   const count = Math.min(PLAN_BATCH_SIZE, Math.max(1, work.targetCount - existing.length))
   const recentOutlines = orderedChapters
     .slice(-6)
     .map(chapter => `第${chapter.sortNo}章《${chapter.title}》：${asText(chapter.summary)}`)
     .join('\n')
   const isFinalStretch = existing.length + count >= work.targetCount
-  const data = await requestLocalChatCompletion({
-    scene: 'workflow_chapter_plan',
-    sceneLabel: '建书·章纲规划',
-    modelCode,
-    signal,
-    timeoutMs: LONG_COMPLETION_TIMEOUT_MS,
-    messages: buildChapterPlanMessages({
-      materials: {
-        '主要人物': await loadCharacterContext(volume.bookId, recentOutlines, true),
-        '写作参数': describeRunConfig(run),
-        '作品大纲': describeOutlineBrief(run),
-        '本卷规划': [`卷《${volume.title}》：${asText(volume.summary)}`, describeVolumeStages(volume)].filter(Boolean).join('\n'),
-        '已有章纲（最近几章）': recentOutlines,
-      },
-      count,
-      startChapterNo: globalStart,
-      isFinalStretch,
-    }),
-  })
-  const parsed = parseAiJson(data, ['chapters'])
-  const plans = Array.isArray(parsed?.chapters) ? parsed.chapters : []
-  const cleaned = plans
-    .map((plan: JsonRecord) => ({ title: asText(plan?.title), summary: asText(plan?.summary) }))
-    .filter((plan: { title: string }) => plan.title)
-    .slice(0, count)
-  if (!cleaned.length) throw new Error('章纲规划结果为空，请重试')
+  type PendingBatch = {
+    id: number
+    start: number
+    offset: number
+    key: string
+    plans: Array<{ title: string; summary: string }>
+  }
+  let batch = volume.planMeta?.pendingChapterBatch as PendingBatch | undefined
+  if (!batch?.plans?.length) {
+    const data = await requestWorkflowAi({
+      runId: Number(run.id),
+      key: `chapter-plan:${volume.id}:${globalStart}`,
+      requiredKeys: ['chapters'],
+      scene: 'workflow_chapter_plan',
+      sceneLabel: '建书·章纲规划',
+      modelCode,
+      signal,
+      messages: buildChapterPlanMessages({
+        materials: {
+          主要人物: await loadCharacterContext(volume.bookId, recentOutlines, true),
+          写作参数: describeRunConfig(run),
+          作品大纲: describeOutlineBrief(run),
+          本卷规划: [`卷《${volume.title}》：${asText(volume.summary)}`, describeVolumeStages(volume)]
+            .filter(Boolean)
+            .join('\n'),
+          '已有章纲（最近几章）': recentOutlines
+        },
+        count,
+        startChapterNo: globalStart,
+        isFinalStretch
+      })
+    })
+    const parsed = parseWorkflowJson(data, ['chapters'])
+    const plans = Array.isArray(parsed?.chapters) ? parsed.chapters : []
+    const cleaned = plans
+      .map((plan: JsonRecord) => ({ title: asText(plan?.title), summary: asText(plan?.summary) }))
+      .filter((plan: { title: string }) => plan.title)
+      .slice(0, count)
+    if (!cleaned.length) throw new Error('章纲规划结果为空，请重试')
 
-  const planOffset = Array.isArray(volume.planMeta?.chapters) ? volume.planMeta!.chapters.length : 0
+    if (signal.aborted) throw new DOMException('已取消', 'AbortError')
+    batch = {
+      id: createLocalEntityId(),
+      start: globalStart,
+      offset: Array.isArray(volume.planMeta?.chapters) ? volume.planMeta!.chapters.length : 0,
+      key: `chapter-plan:${volume.id}:${globalStart}`,
+      plans: cleaned
+    }
+    // 先保存整批模型成果；逐章建目录中途失败也不需要重新规划。
+    await storage.updateLocalVolume({
+      id: volume.id,
+      planMeta: { ...(volume.planMeta || {}), pendingChapterBatch: batch }
+    })
+  }
+  const current = (await storage.getLocalBookTree(volume.bookId)).find(item => item.id === volume.id)
+  if (!current) throw new Error('分卷已删除，章纲草稿已保留')
   const createdChapters: LocalChapter[] = []
-  for (const [index, plan] of cleaned.entries()) {
+  for (const [index, plan] of batch.plans.entries()) {
+    if (signal.aborted) throw new DOMException('已取消', 'AbortError')
+    // 重试时按批次与位置识别已经创建的章，不能重复插入。
+    if (
+      current.children.some(
+        chapter =>
+          chapter.planMeta?.planningBatchId === batch!.id && chapter.planMeta?.planningBatchIndex === index
+      )
+    )
+      continue
     const created = await storage.createLocalChapter({
       bookId: volume.bookId,
       volumeId: volume.id,
       title: plan.title,
       summary: plan.summary,
-      sortNo: globalStart + index,
+      sortNo: batch.start + index,
       planMeta: {
-        workflowPlanIndex: planOffset + index + 1,
+        workflowPlanIndex: batch.offset + index + 1,
         outlineSource: 'volume_ai',
-        source: { title: plan.title, summary: plan.summary },
+        planningBatchId: batch.id,
+        planningBatchIndex: index,
+        source: { title: plan.title, summary: plan.summary }
       },
-      workflowStatus: 'incomplete',
+      workflowStatus: 'incomplete'
     })
     createdChapters.push(created)
   }
   await storage.updateLocalVolume({
     id: volume.id,
     planMeta: {
-      ...(volume.planMeta || {}),
-      chapters: [...(Array.isArray(volume.planMeta?.chapters) ? volume.planMeta!.chapters : []), ...cleaned],
-    },
+      ...(current.planMeta || {}),
+      pendingChapterBatch: null,
+      chapters: [
+        ...(Array.isArray(current.planMeta?.chapters) ? current.planMeta!.chapters : []),
+        ...batch.plans
+      ]
+    }
   })
+  await completeWorkflowAiDraft(Number(run.id), batch.key)
   return createdChapters
 }
 
@@ -447,12 +499,18 @@ const ensureChapterBeats = async (
   signal: AbortSignal
 ) => {
   if (readBeats(chapter) || String(chapter.planMeta?.outlineSource || '') === 'user') return chapter
-  const data = await requestLocalChatCompletion({
+  const budget = chapterBudget(resolveChapterTargetWords(run))
+  const data = await requestWorkflowAi({
+    runId: Number(run.id),
+    key: `chapter-beats:${chapter.id}`,
+    requiredKeys: ['beats'],
     scene: 'workflow_chapter_beats',
     sceneLabel: '建书·细纲',
     modelCode,
     signal,
     messages: buildChapterBeatsMessages({
+      beatCount: budget.beatCount,
+      wordsPerBeat: budget.wordsPerBeat,
       materials: {
         '主要人物': await loadCharacterContext(chapter.bookId, [chapter.title, chapter.summary].join('\n'), true),
         '写作参数': describeRunConfig(run),
@@ -461,7 +519,7 @@ const ensureChapterBeats = async (
       },
     }),
   })
-  const parsed = parseAiJson(data, ['beats'])
+  const parsed = parseWorkflowJson(data, ['beats'])
   const beats = Array.isArray(parsed?.beats) ? parsed.beats.map(beatLine).filter(Boolean) : []
   if (!beats.length) return chapter
   const updated = await getLocalLibraryStorage().updateLocalChapter({
@@ -472,6 +530,7 @@ const ensureChapterBeats = async (
       outlineSource: 'phase_a',
     },
   })
+  await completeWorkflowAiDraft(Number(run.id), `chapter-beats:${chapter.id}`)
   return updated || chapter
 }
 
@@ -484,6 +543,8 @@ export interface ChapterStreamCallbacks {
 }
 
 const streamChapterContent = async (params: {
+  runId: number
+  chapterId: number
   modelCode: string
   materials: Record<string, string>
   targetWords: number
@@ -494,33 +555,33 @@ const streamChapterContent = async (params: {
 }): Promise<string> => {
   const base = String(params.partialText || '')
   let streamed = ''
-  let streamError = ''
-  await streamLocalChatCompletion(
-    {
+  try {
+    streamed = await requestWorkflowAi({
+      runId: params.runId,
+      key: `content:${params.chapterId}`,
       modelCode: params.modelCode,
       scene: 'workflow_content',
       sceneLabel: '建书·正文',
+      format: 'text',
+      reuseDraft: false,
       temperature: promptTemperature('workflow-writer', 'contentSystem'),
       messages: buildChapterContentMessages({
         materials: params.materials,
         targetWords: params.targetWords,
+        maxWords: chapterBudget(params.targetWords).maxWords,
         partialText: params.partialText,
         rewriteInstruction: params.rewriteInstruction,
       }),
       signal: params.signal,
-    },
-    {
-      onDelta: text => {
-        streamed += text
+      onDelta: (_delta, fullText) => {
+        streamed = fullText
         params.onSnapshot(base ? `${base}\n${streamed}` : streamed)
       },
-      onDone: () => undefined,
-      onError: message => {
-        streamError = message
-      },
-    }
-  )
-  if (streamError) throw new Error(streamError)
+    })
+  } catch (error) {
+    // 保留原有暂停/取消语义：将最后一个分片交给宿主保存断点。
+    if (!params.signal.aborted) throw error
+  }
   return base ? `${base}\n${streamed}` : streamed
 }
 
@@ -528,8 +589,14 @@ const streamChapterContent = async (params: {
 // 任务快照与断点
 // ---------------------------------------------------------------------------
 
-const persistTask = async (task: WorkflowTask) => {
-  await writeLocalWorkflowTask(task)
+const taskWrites = new Map<number, Promise<void>>()
+const persistTask = (task: WorkflowTask) => {
+  const snapshot = JSON.parse(JSON.stringify(task)) as WorkflowTask
+  const pending = (taskWrites.get(task.id) || Promise.resolve()).catch(() => undefined)
+    .then(() => writeLocalWorkflowTask(snapshot))
+  taskWrites.set(task.id, pending)
+  void pending.finally(() => { if (taskWrites.get(task.id) === pending) taskWrites.delete(task.id) }).catch(() => undefined)
+  return pending
 }
 
 const buildCheckpoint = (chapterId: number, contentText: string, seq: number) => ({
@@ -594,6 +661,8 @@ export const launchLocalChapterRewrite = (task: WorkflowTask, options: { instruc
       }
       let lastProgressAt = 0
       const fullText = await streamChapterContent({
+        runId: Number(run.id),
+        chapterId: chapter.id,
         modelCode,
         materials,
         targetWords,
@@ -607,7 +676,7 @@ export const launchLocalChapterRewrite = (task: WorkflowTask, options: { instruc
             ...current,
             progress: Math.min(95, Math.round((countWords(text) / Math.max(targetWords, 1)) * 100)),
           }
-          void persistTask(current)
+          void persistTask(current).catch(error => console.warn('工作流进度保存失败', error))
         },
       })
       flags.abort = null
@@ -620,6 +689,7 @@ export const launchLocalChapterRewrite = (task: WorkflowTask, options: { instruc
 
       const contentVersion = original.contentVersion + 1
       await saveGeneratedChapterContent({ bookId, chapterId, title: chapter.title, text: fullText, contentVersion })
+      await completeWorkflowAiDraft(Number(run.id), `content:${chapter.id}`)
       await getLocalLibraryStorage().updateLocalChapter({ id: chapterId, workflowStatus: 'review_required' })
       const notice = await runChapterGate({
         bookId: String(bookId),
@@ -739,6 +809,7 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
       canResume: ['paused', 'interrupted', 'failed'].includes(status),
       canCancel: ['paused', 'interrupted', 'failed', 'review_required'].includes(status),
     }
+    await taskWrites.get(task.id)
     await settleLocalWorkflowTask(task)
   }
 
@@ -858,7 +929,13 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
     } catch (error) {
       flags.abort = null
       if (!flags.pauseRequested && !flags.cancelRequested) {
-        await halt('failed', { errorMessage: error instanceof Error ? error.message : '细纲生成失败' })
+        // 细纲还没过就失败：任务上仍记着上一章，得把失败落在正在准备的这一章上
+        await halt('failed', {
+          currentChapterId: chapter.id,
+          currentChapterTitle: chapter.title,
+          chapterNo: Number(chapter.sortNo || 0),
+          errorMessage: error instanceof Error ? error.message : '细纲生成失败',
+        })
         emit('error', { message: task.errorMessage })
         return
       }
@@ -915,7 +992,7 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
           checkpoint: buildCheckpoint(chapter.id, fullText, checkpointSeq),
           checkpointId: Number(task.checkpointId || 0) || createLocalEntityId(),
         }
-        void persistTask(task)
+        void persistTask(task).catch(error => console.warn('工作流断点保存失败', error))
       }
     }
 
@@ -933,6 +1010,8 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
         materials['原稿（重写参考，不要照抄）'] = asText(directive?.baseText).slice(0, 4000)
       }
       fullText = await streamChapterContent({
+        runId: Number(run.id),
+        chapterId: chapter.id,
         modelCode,
         materials,
         targetWords,
@@ -1000,9 +1079,16 @@ const runWriterLoop = async (initial: WorkflowTask, flags: WriterFlags) => {
       flags.abort = null
     }
 
+    if (flags.pauseRequested || flags.cancelRequested) {
+      await saveGeneratedChapterContent({ bookId, chapterId: chapter.id, title: chapter.title, text: fullText, contentVersion: (await readChapterText(bookId, chapter.id)).contentVersion + 1 })
+      task = { ...task, checkpoint: buildCheckpoint(chapter.id, fullText, checkpointSeq + 1) }
+      continue
+    }
+
     // 落库 + 质检
     const contentVersion = (await readChapterText(bookId, chapter.id)).contentVersion + 1
     await saveGeneratedChapterContent({ bookId, chapterId: chapter.id, title: chapter.title, text: fullText, contentVersion })
+    await completeWorkflowAiDraft(Number(run.id), `content:${chapter.id}`)
     emitSnapshot(fullText, true)
     const notice = await runChapterGate({
       bookId: String(bookId),

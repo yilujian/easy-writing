@@ -3,6 +3,7 @@
 /* 导入统一主题系统 */
 @use './themes.scss' as *;
 @use './editor-tokens.scss' as *;
+@use './ui-typography.scss' as *;
 
 @font-face {
   font-family: "LXGW WenKai";
@@ -330,7 +331,7 @@ i.fa-regular {
 
   i.fa-solid,
   i.fa-regular {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -338,7 +339,7 @@ i.fa-regular {
 
   i.fa-solid,
   i.fa-regular {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -346,7 +347,7 @@ i.fa-regular {
 .el-dialog__header {
   .el-dialog__title {
     color: var(--ink-main);
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
   }
 
   .el-dialog__headerbtn {

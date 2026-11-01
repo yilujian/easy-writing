@@ -11,118 +11,35 @@ use tauri::menu::{
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
-mod agent_batch;
+mod speech_signing;
+mod reference_books;
+mod reference_import;
+mod story_state;
+mod story_history;
+mod story_memory;
+mod writing_context;
+mod pi_prose_sources;
+mod prose_examples;
 #[cfg(all(test, feature = "local-tests"))]
-mod agent_batch_tests;
-mod agent_book_plan;
-mod agent_book_adoption;
+mod writing_context_tests;
+mod writing_schema;
 #[cfg(all(test, feature = "local-tests"))]
-mod agent_book_adoption_tests;
-mod agent_breakdown;
-mod agent_breakdown_job;
-mod agent_distillation;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_distillation_tests;
-mod agent_reference_import;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_breakdown_tests;
-mod agent_canon;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_canon_tests;
-mod agent_context;
-mod agent_task;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_task_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_context_tests;
-mod agent_contract;
-mod agent_tool_boundary;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_tool_boundary_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_contract_tests;
-mod agent_creation;
-mod agent_digest;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_digest_tests;
-mod agent_eval;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_eval_tests;
-mod agent_feedback;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_feedback_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_creation_tests;
-mod agent_host;
+mod writing_schema_tests;
+mod book_materials;
+mod writing_host;
+mod story_extraction;
 mod background_process;
-mod agent_indexer;
+mod book_replace;
+mod desktop_pet;
+mod pi_host;
+mod story_index;
+mod book_notes;
+mod writing_review;
 #[cfg(all(test, feature = "local-tests"))]
-mod agent_indexer_tests;
-mod agent_journal;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_journal_tests;
-mod agent_memory;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_memory_tests;
-mod agent_method_pack;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_method_pack_tests;
-mod agent_packaging;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_packaging_tests;
-mod agent_prompt;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_prompt_tests;
-mod agent_quality;
-mod agent_delivery;
-mod agent_artifacts;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_delivery_tests;
-mod agent_rank;
-mod agent_approval;
-mod agent_library;
-mod agent_rank_bridge;
-mod agent_webview_bridge;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_rank_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_quality_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_reference_tests;
-mod agent_ruleset;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_ruleset_tests;
-mod agent_service;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_short_tests;
-mod agent_skill_files;
-mod agent_skill_authoring;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_skill_authoring_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_skill_files_tests;
-mod agent_skill_runner;
-mod agent_skill_lifecycle;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_skill_lifecycle_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_skill_runner_tests;
-mod agent_skills;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_skills_tests;
-mod agent_store;
-mod agent_submission;
-mod agent_style;
-mod agent_style_profile;
-mod agent_writing_basis;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_prose_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_style_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_writing_tests;
+mod writing_review_tests;
+mod writing_service;
+mod writing_records;
+mod writing_style;
 mod backup_restore;
 mod desktop_storage;
 mod full_backup;
@@ -134,33 +51,14 @@ mod startup_recovery;
 #[cfg(all(test, feature = "local-tests"))]
 mod startup_recovery_tests;
 mod window_state;
-mod agent_story;
-mod agent_channel;
 #[cfg(all(test, feature = "local-tests"))]
-mod agent_channel_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_approval_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_library_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_story_tests;
+mod writing_panel_tests;
+mod story_view;
 mod model_gateway;
 mod model_gateway_providers;
-mod agent_events;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_events_tests;
-mod agent_delivery_queue;
+mod writing_events;
+mod weixin_delivery;
 mod blocking;
-mod agent_heartbeat;
-mod agent_scheduler;
-mod agent_vectors;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_vectors_tests;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_scheduler_tests;
-mod agent_worker_pool;
-#[cfg(all(test, feature = "local-tests"))]
-mod agent_worker_pool_tests;
 #[cfg(all(test, feature = "local-tests"))]
 mod model_gateway_tests;
 mod ai_trace;
@@ -718,6 +616,16 @@ fn restart_app(app: DesktopAppHandle) {
 // ---------------------------------------------------------------------------
 
 pub(crate) fn prompt_dir_path() -> Result<PathBuf, String> {
+    // 全量恢复的隔离集成验证不能触碰用户 Documents。仅显式测试构建允许临时目录覆盖。
+    #[cfg(all(debug_assertions, feature = "local-tests"))]
+    if let Some(path) = std::env::var_os("EW_PI_VALIDATION_PROMPTS") {
+        let path = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
+        let temporary = std::env::temp_dir().canonicalize().map_err(|e| e.to_string())?;
+        if !path.starts_with(temporary) || path.file_name().and_then(|s| s.to_str()) != Some("pi-test-prompts") {
+            return Err("验证提示词目录必须是临时目录中的 pi-test-prompts".into());
+        }
+        return Ok(path);
+    }
     Ok(home_dir()?.join("Documents").join("易创提示词"))
 }
 
@@ -1159,7 +1067,26 @@ fn build_main_window(app: &DesktopAppHandle) -> tauri::Result<DesktopWebviewWind
         // 对应原配置 dragDropEnabled: false
         .disable_drag_drop_handler()
         // 导航守卫：主 webview 只允许停留在应用页面，外部链接一律拒绝（外链走 open_external_url/open_in_app_browser）
+        .on_page_load(|window, payload| {
+            if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+                window.state::<pi_host::PiHost>().document_reloading(window.app_handle());
+            }
+        })
         .on_navigation(|url| is_app_shell_url(url));
+
+    // 隔离桌面验收允许后台继续运行计时器；正常开发版与发行版不改变窗口策略。
+    #[cfg(all(debug_assertions, feature = "local-tests"))]
+    let builder = if (app.config().identifier.starts_with("com.yichuang.writing.pi-")
+        || app
+            .config()
+            .identifier
+            .starts_with("com.yichuang.writing.workflow-validation."))
+        && std::env::var("EW_PI_VALIDATION_UNTHROTTLED").as_deref() == Ok("1")
+    {
+        builder.background_throttling(tauri::utils::config::BackgroundThrottlingPolicy::Disabled)
+    } else {
+        builder
+    };
 
     // 对应原配置 decorations/titleBarStyle: Overlay/hiddenTitle/trafficLightPosition（红绿灯内嵌标题栏）
     #[cfg(target_os = "macos")]
@@ -1203,11 +1130,17 @@ fn schedule_main_window_close_fallback(window: &tauri::Window) {
     });
 }
 
+// 共用真实构建上下文，权限回归验证与运行时使用同一份编译后的 capability。
+fn app_context() -> tauri::Context<tauri::Wry> {
+    tauri::generate_context!()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
-        .manage(agent_host::AgentHost::default())
-        .manage(agent_webview_bridge::WebviewExecutor::default())
+        .manage(desktop_pet::DesktopPet::default())
+        .manage(writing_host::WritingHost::default())
+        .manage(pi_host::PiHost::default())
         // 必须最先注册：第二个实例要在做任何初始化（尤其是打开 SQLite）之前就退出。
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
@@ -1222,7 +1155,9 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(window_state::plugin())
         .setup(|app| {
+            pi_host::initialize_resources(app.handle())?;
             build_main_window(app.handle())?;
+            desktop_pet::initialize(app.handle());
             // 模型网关随应用起：worker 与后台任务的模型请求都从这里出去，Key 不离开宿主
             if let Ok(root) = desktop_storage::root(app.handle()) {
                 if let Err(error) = model_gateway::endpoint(&root) {
@@ -1230,23 +1165,24 @@ pub fn run() {
                 }
             }
             // 启动后稍等再索引：先让迁移与首屏加载完成；没有变更事件或没有模型时索引器直接退出。
-            agent_host::schedule_index(app.handle().clone(), std::time::Duration::from_secs(30));
-            agent_host::start_index_watch(app.handle().clone());
-            // 调度器随应用起：到点的自动任务、助理巡检、事件规则与投递队列都在宿主后台跑，不依赖窗口
-            agent_scheduler::start(app.handle().clone());
+            writing_host::schedule_index(app.handle().clone(), std::time::Duration::from_secs(30));
+            writing_host::start_index_watch(app.handle().clone());
+            // 旧 Agent 自动任务页已移除，不再启动其定时任务与助理巡检。
             Ok(())
         })
         .on_window_event(|window, event| {
+            desktop_pet::window_event(window, event);
             if matches!(event, WindowEvent::CloseRequested { .. }) {
                 window_state::save_before_close(window);
                 schedule_main_window_close_fallback(window);
             }
         })
         .invoke_handler(tauri::generate_handler![
-            agent_host::agent_workspace,
-            agent_webview_bridge::webview_executor_ready,
-            agent_webview_bridge::webview_executor_complete,
-            agent_webview_bridge::webview_executor_progress,
+            speech_signing::speech_digest,
+            book_replace::replace_book_chapters,
+            desktop_pet::desktop_pet,
+            writing_host::writing_workspace,
+            pi_host::pi_workspace,
             storage_migration::desktop_storage_session,
             storage_migration::desktop_storage_activate,
             storage_migration::desktop_storage_inspect,
@@ -1318,11 +1254,12 @@ pub fn run() {
         .on_menu_event(handle_menu_event);
 
     builder
-        .build(tauri::generate_context!())
+        .build(app_context())
         .expect("error while building tauri application")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
-                app.state::<agent_host::AgentHost>().stop_all();
+                app.state::<writing_host::WritingHost>().stop_all();
+                app.state::<pi_host::PiHost>().stop_all();
             }
             #[cfg(target_os = "macos")]
             if matches!(event, tauri::RunEvent::Reopen { .. }) {
@@ -1339,9 +1276,7 @@ pub fn run() {
                 }
                 if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
                     api.prevent_exit();
-                    app.state::<agent_host::AgentHost>()
-                        .quitting
-                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                    app.state::<pi_host::PiHost>().request_quit();
                     let _ = window.close();
                 }
             }

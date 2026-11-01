@@ -201,7 +201,7 @@ const emitColorInput = (event: Event) => {
 .field-label,
 .switch-heading strong {
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
@@ -209,7 +209,7 @@ const emitColorInput = (event: Event) => {
 .field-help,
 .switch-heading small {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .overlay-section {

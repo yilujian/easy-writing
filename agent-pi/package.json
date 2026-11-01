@@ -1,0 +1,12 @@
+{
+  "name": "yichuang-agent-pi",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "test": "node scripts/smoke.mjs",
+    "check": "node upstream/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "verify": "node scripts/verify.mjs",
+    "check:tools": "node scripts/check-tools.mjs"
+  }
+}

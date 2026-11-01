@@ -1,6 +1,8 @@
 <template>
   <WorkflowAdjustDrawer
     :visible="visible"
+    :run-id="runId"
+    recovery-key="step:setting_adjust"
     :phase="phase"
     input-title="按要求调整设定"
     generating-title="正在生成调整候选"
@@ -133,6 +135,7 @@ const INSTRUCTION_MAX = 500
 type SettingAdjustGroupScope = 'all' | 'worldCards' | 'core' | 'characters' | 'storylines'
 
 const props = withDefaults(defineProps<{
+  runId?: number
   visible: boolean
   phase: WorkflowAdjustPhase
   /** 供单条目范围选择目标，只取 id 与展示名 */
@@ -147,6 +150,7 @@ const props = withDefaults(defineProps<{
   characters: () => [],
   storylines: () => [],
   modelName: '',
+  runId: 0,
   percent: 0,
   stages: () => [],
   candidate: null,
@@ -360,6 +364,12 @@ const openForTarget = (kind: 'character' | 'storyline', id: string) => {
 }
 
 defineExpose({
+  restoreRequest: (request: WorkflowSettingAdjustRequest) => {
+    scope.value = toGroupScope(request.scope)
+    targetId.value = request.targetId
+    instruction.value = request.instruction
+    preserve.value = [...request.preserve]
+  },
   openForTarget,
   // 应用之后只清掉已生效的要求，范围和保留项保留：
   // 连着调几轮是常态，每次都要重选范围很烦。

@@ -13,6 +13,8 @@ async function activate(mode: StorageMode, token: string) {
   const selected = await desktopInvoke<StorageMode>('desktop_storage_activate', { mode, token })
   activateStorageMode(selected)
   await initAppSettings()
+  // Start background indexing/cleanup only after the receipt token has been accepted.
+  if (selected.mode === 'unified') await desktopInvoke('desktop_storage_ready')
 }
 
 async function continueLegacy(inspection: StorageInspection, failed: boolean) {

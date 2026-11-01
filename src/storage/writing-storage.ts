@@ -40,6 +40,24 @@ export interface ChapterSaveOptions {
   expectedLocalVersion?: number
 }
 
+export interface ChapterReplacementBatch {
+  operationId: string
+  bookId: string
+  query: string
+  replacement: string
+  edits: Array<{
+    chapterId: number
+    expectedVersion: number
+    expectedText: string
+    expectedJson: unknown
+    expectedTitle: string
+    textContent: string
+    contentJson: unknown
+    count: number
+  }>
+}
+export interface ChapterReplacementResult { chapterIds: number[]; count: number }
+
 export class ChapterVersionConflictError extends Error {
   constructor(
     readonly storageKey: string,
@@ -122,7 +140,9 @@ export interface WritingStorage {
   importAllRecords(dump: WritingStorageDump, options: { replace: boolean }): Promise<void>
   getChapter(chapterId: number): Promise<StoredLocalChapterDraft | null>
   getChapterByIdentity(userId: string, bookId: string | number, chapterId: number): Promise<StoredLocalChapterDraft | null>
+  listBookChapters(userId: string, bookId: string | number): Promise<StoredLocalChapterDraft[]>
   saveChapterLocal(payload: LocalChapterDraft, options?: ChapterSaveOptions): Promise<StoredLocalChapterDraft>
+  replaceChapters(batch: ChapterReplacementBatch): Promise<ChapterReplacementResult>
   saveChapterVersion(payload: Omit<StoredChapterVersion, 'id' | 'createdAt'> & { createdAt?: number }): Promise<void>
   listLocalChaptersForBackup(userId?: string, bookId?: string | number): Promise<StoredLocalChapterDraft[]>
   markChapterBackedUp(userId: string, bookId: string | number, chapterId: number, backupAt: number): Promise<void>

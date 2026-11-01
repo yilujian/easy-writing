@@ -102,6 +102,8 @@ pnpm build      # 构建 Web 产物
 
 桌面端（Tauri 2）：需要先安装 [Rust](https://rustup.rs/)，然后 `pnpm dev:desktop` 调试、`pnpm tauri build` 打包。
 
+首次使用 Agent 开发环境，先执行 `pnpm --dir agent-pi setup`。打包会自动准备目标平台的 Pi 和 Node 运行环境，安装包内置这些文件。支持 `universal-apple-darwin`、`x86_64-pc-windows-msvc` 和 `x86_64-unknown-linux-gnu`；通过 Tauri 的 `--target` 指定。Node 下载有固定版本和 SHA-256 校验，构建机需要能访问 nodejs.org。
+
 技术栈：Vue 3 + TypeScript + Vite + Pinia + Element Plus + TipTap 3 + Tauri 2。
 
 ## 常见问题

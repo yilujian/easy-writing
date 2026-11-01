@@ -120,7 +120,7 @@ const restore = async () => {
 </script>
 
 <style scoped lang="scss">
-.restore-body { display: grid; gap: 16px; color: var(--ink-main); font-size: 13px; }
+.restore-body { display: grid; gap: 16px; color: var(--ink-main); font-size: calc(13px * var(--ui-font-scale, 1)); }
 .restore-hint, .restore-summary { margin: 0; line-height: 1.7; }
 .restore-directory { display: flex; gap: 12px; align-items: center; border: 1px solid var(--input-border); border-radius: 6px; padding: 12px; }
 .restore-directory span { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink-sec); }

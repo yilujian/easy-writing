@@ -25,6 +25,7 @@ import { initLocalPrompts } from '@/storage/local-prompts'
 import { initImportedFonts, loadImportedFont } from '@/composables/use-imported-fonts'
 import { useWritingEditorStore } from '@/stores/writing-editor'
 import { installOverflowProbe } from './startup/overflow-probe'
+import { installUiTypography } from './startup/ui-typography'
 import { isTauriRuntime } from '@/storage/writing-storage'
 
 // main.ts 在桌面迁移、设置加载完成后才动态导入此文件；
@@ -42,6 +43,8 @@ pinia.use(piniaPluginPersistedstate)
 
 app.use(pinia)
 app.use(router)
+const disposeUiTypography = installUiTypography()
+import.meta.hot?.dispose(disposeUiTypography)
 /** index.html 里的启动占位（两根墨条）在首屏挂载后淡出；迁移页出现时由迁移页自己移除 */
 const dismissBootScreen = () => {
   const boot = document.getElementById('ew-boot')
@@ -50,17 +53,8 @@ const dismissBootScreen = () => {
   window.setTimeout(() => boot.remove(), 300)
 }
 
-// 后台任务可以在 Agent 页面关闭时修改章节；应用级桥接通知原编辑器重新核对版本。
-let webviewExecutorReady = Promise.resolve()
+// 后台任务可能改动章节；应用级事件通知原编辑器重新核对版本。
 if (isTauriRuntime()) {
-  webviewExecutorReady = import('@tauri-apps/api/window')
-    .then(async ({ getCurrentWindow }) => {
-      if (getCurrentWindow().label !== 'main') return
-      const { installWebviewExecutor } = await import('@/agent/webview-executor')
-      const dispose = await installWebviewExecutor()
-      import.meta.hot?.dispose(dispose)
-    })
-    .catch(error => console.error('启动网页桥执行器失败', error))
   void import('@tauri-apps/api/event')
     .then(({ listen }) =>
       listen<{ bookId: string; chapterId: string; version?: number }>('agent-book-changed', event => {
@@ -94,11 +88,9 @@ const themeStore = useThemeStore()
 themeStore.initTheme()
 
 // 提示词库先于挂载装载：AI 组装器同步读取，必须在任何界面可交互前就绪。
-// 网页桥执行器只服务 Agent 的后台请求（榜单抓取、发文件发图、灵感与统计），不挡首屏：挂载后再等它装好。
 void initLocalPrompts().finally(() => {
   app.mount('#app')
   dismissBootScreen()
-  void webviewExecutorReady
   const storageNotice = takeStorageStartupNotice()
   if (storageNotice) ElMessage.warning({ message: storageNotice, duration: 8000 })
   // 字体是可选资源，恢复本地字体不能阻塞整个应用启动。

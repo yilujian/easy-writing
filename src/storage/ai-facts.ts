@@ -1,5 +1,5 @@
-import { agentCommand } from '@/agent/client'
-import { onCanonChanged } from '@/agent/writing-context'
+import { writingCommand } from '@/writing-service/client'
+import { onCanonChanged } from '@/writing-service/writing-context'
 import { canUseAiIndex } from './ai-index'
 
 /**
@@ -102,7 +102,7 @@ export const loadStoryView = (bookId: string | number): Promise<StoryView> => {
   const key = String(bookId)
   const hit = cache.get(key)
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.value
-  const value = agentCommand<StoryView>('canon_query', { bookId: key, view: 'story' }).catch(error => {
+  const value = writingCommand<StoryView>('canon_query', { bookId: key, view: 'story' }).catch(error => {
     console.warn('读取故事状态失败', error)
     return EMPTY_VIEW
   })
@@ -152,13 +152,13 @@ export const aiFactsSummary = async (bookId: string | number): Promise<AiFactSum
 
 /** 作者的确认 / 否决 / 恢复：落宿主的作者数据区；否决的状态变化立即退出折叠结果 */
 export const aiFactsSetStatus = async (bookId: string | number, id: string, status: AiFactStatus) => {
-  await agentCommand('canon_mark', { bookId: String(bookId), recordKey: id, mark: status })
+  await writingCommand('canon_mark', { bookId: String(bookId), recordKey: id, mark: status })
   invalidate(String(bookId))
 }
 
 /** 让索引器整理：传章节只整理这几章（已有章节卡的先作废），否则补全书缺的 */
 export const aiFactsRebuild = (bookId: string | number, chapterIds?: Array<string | number>) =>
-  agentCommand<{ queued: number }>('index_rebuild', {
+  writingCommand<{ queued: number }>('index_rebuild', {
     bookId: String(bookId),
     onlyMissing: !chapterIds?.length,
     chapterIds: (chapterIds || []).map(String),

@@ -455,7 +455,7 @@ const formatNumber = (value?: number, fraction = 0) => {
   height: 42px;
   flex-shrink: 0;
   border-radius: 50%;
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-font-scale, 1));
 
   &.total {
     color: var(--ink-accent);
@@ -485,7 +485,7 @@ const formatNumber = (value?: number, fraction = 0) => {
     display: block;
     margin-bottom: 3px;
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong {
@@ -493,7 +493,7 @@ const formatNumber = (value?: number, fraction = 0) => {
     overflow: hidden;
     color: var(--ink-main);
     font-family: 'Noto Serif SC', serif;
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -521,7 +521,7 @@ const formatNumber = (value?: number, fraction = 0) => {
 
 .field-label {
   color: var(--settings-muted-color, var(--ink-sec));
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   white-space: nowrap;
 }
 
@@ -541,7 +541,7 @@ const formatNumber = (value?: number, fraction = 0) => {
   border-radius: 6px;
   background: transparent;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.5;
   white-space: nowrap;
   cursor: pointer;
@@ -628,7 +628,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   padding: 10px 14px;
   background: color-mix(in srgb, var(--ink-sec) 7%, transparent);
   color: var(--settings-muted-color, var(--ink-sec));
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   .col-cost {
     text-align: right;
@@ -650,7 +650,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   align-items: center;
   padding: 12px 14px;
   border-top: 1px solid var(--ui-border);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: background 0.15s ease;
 
@@ -695,7 +695,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   border-radius: 8px;
   color: var(--ink-accent);
   background: color-mix(in srgb, var(--ink-accent) 10%, transparent);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .record-name {
@@ -713,7 +713,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
 
   strong {
     overflow: hidden;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -721,7 +721,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   .error-line,
   .preview-line {
     overflow: hidden;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -736,7 +736,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
 
   .row-chevron {
     flex: 0 0 auto;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     color: var(--settings-muted-color, var(--ink-sec));
     transition: transform 0.18s ease;
   }
@@ -754,7 +754,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   align-items: flex-start;
   gap: 6px;
   color: var(--state-danger);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale, 1));
   line-height: 1.6;
   word-break: break-word;
 
@@ -782,7 +782,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
     background: var(--ui-glass-bg);
     color: var(--ink-main);
     font: inherit;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ui-font-scale, 1));
     line-height: 1.65;
     white-space: pre-wrap;
     word-break: break-word;
@@ -796,7 +796,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 
@@ -813,7 +813,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   border-radius: 5px;
   background: transparent;
   color: var(--ink-accent);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   &:hover:not(:disabled) {
@@ -831,7 +831,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
 .record-duration {
   overflow: hidden;
   color: var(--ink-main);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale, 1));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -844,7 +844,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
 .record-cost {
   color: var(--ink-accent);
   font-weight: 600;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: right;
   white-space: nowrap;
 }
@@ -859,8 +859,8 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   padding: 0 7px;
   border-radius: 4px;
   font-style: normal;
-  font-size: 11px;
-  line-height: 19px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  line-height: calc(19px * var(--ui-font-scale, 1));
 
   &.success {
     color: var(--state-success-on);
@@ -882,7 +882,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
   padding: 34px 12px;
   color: var(--settings-muted-color, var(--ink-sec));
   text-align: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 /* --- 骨架屏 --- */

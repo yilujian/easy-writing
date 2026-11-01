@@ -44,13 +44,18 @@ export const buildChapterPlanMessages = (params: {
   },
 ]
 
-/** 把一章章纲展开成细纲（3-10 拍，每拍 ≤80 字） */
+/** 把一章章纲展开成细纲：拍数按本章目标字数定，每拍约 600 字 */
 export const buildChapterBeatsMessages = (params: {
   materials: Record<string, string>
+  beatCount: number
+  wordsPerBeat: number
 }): LocalChatMessageInput[] => [
   {
     role: 'system',
-    content: jsonSystem(promptText('workflow-writer', 'beatsShape'), promptText('workflow-writer', 'beatsNote')),
+    content: jsonSystem(
+      promptText('workflow-writer', 'beatsShape'),
+      renderPromptText('workflow-writer', 'beatsNote', { 拍数: params.beatCount, 每拍字数: params.wordsPerBeat })
+    ),
   },
   {
     role: 'user',
@@ -65,6 +70,8 @@ export const buildChapterBeatsMessages = (params: {
 export const buildChapterContentMessages = (params: {
   materials: Record<string, string>
   targetWords: number
+  /** 篇幅上限，默认目标的 1.2 倍 */
+  maxWords?: number
   /** 断点续写时传已写部分，提示模型无缝接着写 */
   partialText?: string
   /** 重写模式的补充要求（为空表示常规生成） */
@@ -75,7 +82,10 @@ export const buildChapterContentMessages = (params: {
   return [
     {
       role: 'system',
-      content: renderPromptText('workflow-writer', 'contentSystem', { 目标字数: params.targetWords }),
+      content: renderPromptText('workflow-writer', 'contentSystem', {
+        目标字数: params.targetWords,
+        上限字数: params.maxWords || Math.round(params.targetWords * 1.2)
+      }),
     },
     {
       role: 'user',
@@ -88,7 +98,7 @@ export const buildChapterContentMessages = (params: {
               partial,
               `【任务】${promptText('workflow-writer', 'continueTask')}`,
             ].join('\n')
-          : `【任务】${promptText('workflow-writer', 'freshTask')}`,
+          : `【任务】${renderPromptText('workflow-writer', 'freshTask', { 目标字数: params.targetWords })}`,
       ]
         .filter(Boolean)
         .join('\n\n'),

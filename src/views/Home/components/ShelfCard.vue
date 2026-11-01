@@ -147,7 +147,7 @@ fetchBooks()
 }
 
 .link-button {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: transparent;
   border: none;
@@ -206,7 +206,7 @@ fetchBooks()
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--bg-main) 86%, var(--ink-accent));
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   letter-spacing: 2px;
   box-shadow:
@@ -280,7 +280,7 @@ fetchBooks()
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 800;
   color: var(--ink-main);
   text-align: center;
@@ -296,12 +296,12 @@ fetchBooks()
 }
 
 .book-cover-placeholder .placeholder-title.is-long {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ui-font-scale, 1));
   letter-spacing: 1px;
 }
 
 .book-cover-placeholder .placeholder-title.is-compact {
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--ui-font-scale, 1));
   letter-spacing: 0;
   line-height: 1.22;
 }
@@ -332,7 +332,7 @@ fetchBooks()
 }
 
 .book-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
   overflow: hidden;
@@ -342,12 +342,12 @@ fetchBooks()
 
 .book-sub,
 .book-update {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .book-intro {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   opacity: 0.8;
   line-height: 1.4;
@@ -399,10 +399,10 @@ fetchBooks()
   flex-direction: row;
   justify-content: center;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   i {
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     color: var(--ink-accent);
   }
 }
@@ -427,7 +427,7 @@ fetchBooks()
 }
 
 .book-empty-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   opacity: 0.8;
 }
@@ -448,7 +448,7 @@ fetchBooks()
   border: 1px dashed var(--btn-ghost-border);
   background: var(--btn-ghost-bg);
   color: var(--ink-main);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-weight: 600;
   display: inline-flex;
   align-items: center;

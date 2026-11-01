@@ -51,5 +51,22 @@
   ),
   $font-family: (
     'base': '"Noto Serif SC", "Songti SC", SimSun, serif',
-  )
+  ),
+  // 组件内原先固定的字号也统一读取运行时字号，包含传送到 body 的浮层。
+  $input-font-size: ('large': var(--el-font-size-base), 'default': var(--el-font-size-base), 'small': var(--el-font-size-extra-small)),
+  $button-font-size: ('small': var(--el-font-size-extra-small)),
+  $checkbox: ('font-size': var(--el-font-size-base)),
+  $select: ('input-font-size': var(--el-font-size-base)),
+  $select-group: ('font-size': var(--el-font-size-extra-small)),
+  $tag: ('font-size': var(--el-font-size-extra-small)),
+  $tag-height: ('large': calc(32px * var(--ui-control-scale, 1)), 'default': calc(24px * var(--ui-control-scale, 1)), 'small': calc(20px * var(--ui-control-scale, 1))),
+  $badge: ('font-size': var(--el-font-size-extra-small), 'size': calc(18px * var(--ui-control-scale, 1))),
+  $alert: ('title-font-size': var(--el-font-size-base), 'title-with-description-font-size': var(--el-font-size-medium), 'description-font-size': var(--el-font-size-base)),
+  $dialog: ('content-font-size': var(--el-font-size-base)),
+  $messagebox: ('error-font-size': var(--el-font-size-extra-small)),
+  $notification: ('title-font-size': var(--el-font-size-medium)),
+  $popover: ('title-font-size': var(--el-font-size-medium)),
+  $pagination: ('font-size': var(--el-font-size-base), 'font-size-small': var(--el-font-size-extra-small), 'button-height': var(--el-component-size), 'button-width': var(--el-component-size)),
+  $collapse: ('header-font-size': var(--el-font-size-small), 'content-font-size': var(--el-font-size-small)),
+  $tour: ('font-size': var(--el-font-size-base), 'title-font-size': var(--el-font-size-medium))
 );

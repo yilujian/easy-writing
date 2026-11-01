@@ -141,37 +141,37 @@ onBeforeUnmount(() => { revision++; window.removeEventListener(WORD_LIBRARY_CHAN
 .word-library-panel {
   width: 100%; flex: 1; min-width: 0; height: 100%; min-height: 0; box-sizing: border-box;
   display: flex; flex-direction: column; padding: 20px; overflow: hidden;
-  color: var(--ink-main); background: var(--word-library-panel-bg, var(--popover-bg)); font-size: 14px;
+  color: var(--ink-main); background: var(--word-library-panel-bg, var(--popover-bg)); font-size: calc(14px * var(--ui-font-scale, 1));
 }
 .word-library-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.word-library-heading h2 { margin: 0; font-family: inherit; font-size: 22px; font-weight: 600; line-height: 1.4; }
+.word-library-heading h2 { margin: 0; font-family: inherit; font-size: calc(22px * var(--ui-font-scale, 1)); font-weight: 600; line-height: 1.4; }
 .word-library-add { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 32px; padding: 5px 10px; border: 1px solid currentColor; border-radius: 5px; color: var(--word-library-accent, var(--ink-accent)); background: transparent; font: inherit; cursor: pointer; }
 .word-library-add:hover { background: var(--accent-soft); }
-.word-library-shortcut { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 15px 0 18px; font-size: 13px; color: var(--ink-sec); }
+.word-library-shortcut { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 15px 0 18px; font-size: calc(13px * var(--ui-font-scale, 1)); color: var(--ink-sec); }
 .word-library-keys { display: inline-flex; gap: 4px; }
-kbd { min-width: 23px; height: 23px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--ui-border-hover); border-radius: 4px; color: var(--ink-sec); background: var(--input-bg); font-family: inherit; font-size: 12px; box-shadow: 0 1px 1px var(--divider); }
+kbd { min-width: 23px; height: 23px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--ui-border-hover); border-radius: 4px; color: var(--ink-sec); background: var(--input-bg); font-family: inherit; font-size: calc(12px * var(--ui-font-scale, 1)); box-shadow: 0 1px 1px var(--divider); }
 .word-library-search-field { position: relative; flex-shrink: 0; }
-.word-library-search-field > i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-sec); font-size: 14px; pointer-events: none; }
+.word-library-search-field > i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-sec); font-size: calc(14px * var(--ui-font-scale, 1)); pointer-events: none; }
 .word-library-input { width: 100%; min-width: 0; height: 38px; box-sizing: border-box; padding: 8px 10px; color: var(--ink-main); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 5px; font: inherit; }
 .word-library-search-field .word-library-input { padding-left: 35px; }
 .word-library-input::placeholder { color: var(--ink-sec); opacity: 1; }
 .word-library-input:focus-visible { outline: 2px solid var(--word-library-accent, var(--ink-accent)); outline-offset: 1px; }
 .word-library-form { display: flex; flex-direction: column; gap: 9px; flex-shrink: 0; margin-top: 14px; padding: 12px; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--input-bg); }
-.word-library-form label { color: var(--ink-sec); font-size: 12px; }
+.word-library-form label { color: var(--ink-sec); font-size: calc(12px * var(--ui-font-scale, 1)); }
 .word-library-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .word-library-cancel, .word-library-save { min-height: 30px; padding: 4px 12px; border-radius: 4px; font: inherit; cursor: pointer; }
 .word-library-cancel { border: 1px solid var(--ui-border-hover); color: var(--ink-main); background: transparent; }
 .word-library-save { border: 1px solid var(--btn-primary-bg); color: var(--btn-primary-color); background: var(--btn-primary-bg); }
-.word-library-count { flex-shrink: 0; padding: 18px 0 8px; color: var(--ink-sec); font-size: 13px; }
+.word-library-count { flex-shrink: 0; padding: 18px 0 8px; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); }
 .word-library-state { margin: 12px 0; line-height: 1.7; color: var(--ink-sec); }
 .word-library-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
 .word-library-row { display: flex; align-items: center; gap: 10px; min-height: 74px; box-sizing: border-box; position: relative; padding: 12px 2px; border-bottom: 1px solid var(--ui-border); }
 .word-library-row::before { content: ''; position: absolute; inset: 4px -8px; border-radius: 5px; background: var(--accent-soft); opacity: 0; pointer-events: none; }
 .word-library-row:hover::before, .word-library-row:focus-within::before, .word-library-row.is-editing::before { opacity: 1; }
 .word-library-copy { position: relative; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.word-library-copy strong { display: block; font-size: 18px; font-weight: 500; line-height: 1.5; }
-.word-library-copy small { display: block; margin-top: 2px; color: var(--ink-sec); font-size: 13px; line-height: 1.5; }
-.word-library-alias { display: block; margin-top: 4px; color: var(--ink-sec); font-size: 13px; line-height: 1.5; }
+.word-library-copy strong { display: block; font-size: calc(18px * var(--ui-font-scale, 1)); font-weight: 500; line-height: 1.5; }
+.word-library-copy small { display: block; margin-top: 2px; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.5; }
+.word-library-alias { display: block; margin-top: 4px; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.5; }
 .word-library-row-actions { position: relative; display: flex; flex-shrink: 0; gap: 4px; opacity: 0; pointer-events: none; }
 .word-library-row:hover .word-library-row-actions, .word-library-row:focus-within .word-library-row-actions, .word-library-row.is-editing .word-library-row-actions { opacity: 1; pointer-events: auto; }
 .word-library-icon-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 4px; color: var(--word-library-accent, var(--ink-accent)); background: transparent; cursor: pointer; }
@@ -179,6 +179,6 @@ kbd { min-width: 23px; height: 23px; display: inline-flex; align-items: center; 
 .word-library-icon-button:hover { background: var(--overlay-active); }
 button:focus-visible { outline: 2px solid var(--word-library-accent, var(--ink-accent)); outline-offset: 2px; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
-.word-library-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--ui-border); color: var(--ink-sec); text-align: center; font-size: 13px; line-height: 1.6; }
+.word-library-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--ui-border); color: var(--ink-sec); text-align: center; font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.6; }
 @media (hover: none) { .word-library-row-actions { opacity: 1; pointer-events: auto; } }
 </style>

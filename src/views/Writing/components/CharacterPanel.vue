@@ -1060,7 +1060,7 @@ defineExpose({
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &.active {
@@ -1082,7 +1082,7 @@ defineExpose({
 
   .panel-title {
     font-weight: bold;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
@@ -1099,7 +1099,7 @@ defineExpose({
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       opacity: 0.6;
       cursor: pointer;
@@ -1156,7 +1156,7 @@ defineExpose({
       .tree-search {
         width: 100%;
         padding: 4px 24px 4px 8px;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         border: 1px solid var(--input-border);
         border-radius: 4px;
         background: var(--input-bg);
@@ -1180,7 +1180,7 @@ defineExpose({
         right: 8px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 10px;
+        font-size: calc(10px * var(--ui-font-scale, 1));
         color: var(--ink-sec);
         opacity: 0.5;
       }
@@ -1190,7 +1190,7 @@ defineExpose({
       background: none;
       border: none;
       color: var(--ink-sec);
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       cursor: pointer;
       transition: color 0.3s ease;
 
@@ -1205,7 +1205,7 @@ defineExpose({
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     opacity: 0.8;
     background: rgba(0, 0, 0, 0.02);
@@ -1222,7 +1222,7 @@ defineExpose({
   .tree-list {
     flex: 1;
     overflow-y: auto;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     padding: 4px 0;
 
     .tree-item {
@@ -1291,16 +1291,16 @@ defineExpose({
         overflow: hidden;
         text-overflow: ellipsis;
         color: var(--ink-main);
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
       }
 
       .edit-input {
         flex: 1;
         width: 0;
         height: 28px;
-        line-height: 28px;
+        line-height: calc(28px * var(--ui-font-scale, 1));
         padding: 0 8px;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         color: var(--ink-main);
         background: var(--input-bg);
         border: 1px solid var(--input-border);
@@ -1324,7 +1324,7 @@ defineExpose({
         .action-btn {
           padding: 2px;
           border-radius: 2px;
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
           color: var(--ink-sec);
 
           &:hover {
@@ -1354,7 +1354,7 @@ defineExpose({
 
         i {
           color: var(--ink-sec);
-          font-size: 14px;
+          font-size: calc(14px * var(--ui-font-scale, 1));
         }
 
         .item-text {
@@ -1364,7 +1364,7 @@ defineExpose({
 
       &.child {
         padding-left: 32px;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
 
         &.active {
           font-weight: normal;
@@ -1390,7 +1390,7 @@ defineExpose({
     align-items: center;
     justify-content: center;
     color: var(--ink-sec);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1405,7 +1405,7 @@ defineExpose({
     flex: 1;
     border: none;
     outline: none;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     font-weight: bold;
     color: var(--ink-main);
     background: transparent;
@@ -1424,7 +1424,7 @@ defineExpose({
   }
 
   i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     cursor: pointer;
   }
@@ -1444,7 +1444,7 @@ defineExpose({
     gap: 8px;
 
     label {
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       font-weight: 500;
     }
@@ -1457,7 +1457,7 @@ defineExpose({
       border-radius: 4px;
       background: var(--input-bg);
       color: var(--ink-main);
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       transition: all 0.2s;
       outline: none;
 
@@ -1517,7 +1517,7 @@ defineExpose({
       padding: 4px 10px;
       border-radius: 4px;
       border: none;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       cursor: pointer;
       background: rgba(180, 83, 9, 0.1);
       color: var(--ink-accent);
@@ -1537,7 +1537,7 @@ defineExpose({
       }
 
       i {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
       }
     }
   }
@@ -1553,7 +1553,7 @@ defineExpose({
   box-shadow: var(--ui-shadow);
   border-radius: 8px;
   padding: 8px 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   animation: fadeIn 0.2s ease;
 
@@ -1566,7 +1566,7 @@ defineExpose({
     }
 
     .menu-info {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       opacity: 0.85;
     }

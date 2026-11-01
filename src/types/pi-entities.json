@@ -1,0 +1,747 @@
+{
+  "book": {
+    "label": "新作品",
+    "collection": "local_books",
+    "fields": {
+      "title": {
+        "label": "书名",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "intro": {
+        "label": "简介",
+        "type": "string",
+        "default": ""
+      },
+      "category": {
+        "label": "分类",
+        "type": "string",
+        "default": ""
+      },
+      "tags": {
+        "label": "标签",
+        "type": "strings",
+        "default": []
+      },
+      "platform": {
+        "label": "目标平台",
+        "type": "string",
+        "default": ""
+      },
+      "perspective": {
+        "label": "叙事视角",
+        "type": "string",
+        "default": ""
+      },
+      "voice": {
+        "label": "叙述口吻",
+        "type": "string",
+        "default": ""
+      },
+      "styleSkillId": {
+        "label": "默认文风技能",
+        "type": "string"
+      },
+      "audience": {
+        "label": "目标读者",
+        "type": "string",
+        "default": ""
+      }
+    },
+    "createOnly": true
+  },
+  "volume": {
+    "label": "分卷",
+    "collection": "local_volumes",
+    "fields": {
+      "title": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "summary": {
+        "label": "卷纲",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
+  "outline": {
+    "label": "大纲",
+    "collection": "outlineNodes",
+    "fields": {
+      "title": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "parentId": {
+        "label": "上级大纲",
+        "type": "string",
+        "default": "0",
+        "reference": "outlineNodes",
+        "nullable": true,
+        "required": false
+      },
+      "nodeType": {
+        "label": "节点类型",
+        "type": "number",
+        "default": 1,
+        "enum": [
+          0,
+          1
+        ],
+        "options": [
+          "目录",
+          "正文"
+        ]
+      },
+      "content": {
+        "label": "大纲正文",
+        "type": "string",
+        "default": "",
+        "format": "plain_html"
+      }
+    }
+  },
+  "character": {
+    "label": "人物",
+    "collection": "characters",
+    "fields": {
+      "name": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "groupId": {
+        "label": "人物分组",
+        "type": "string",
+        "default": null,
+        "reference": "characterGroups",
+        "nullable": true,
+        "required": false
+      },
+      "aliases": {
+        "label": "别名",
+        "type": "strings",
+        "default": []
+      },
+      "role": {
+        "label": "角色",
+        "type": "number",
+        "default": 0,
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "options": [
+          "主角",
+          "主要配角",
+          "反派",
+          "路人"
+        ]
+      },
+      "gender": {
+        "label": "性别",
+        "type": "number",
+        "default": 0,
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "options": [
+          "女",
+          "男",
+          "其他"
+        ]
+      },
+      "age": {
+        "label": "年龄",
+        "type": "string",
+        "default": ""
+      },
+      "tags": {
+        "label": "标签",
+        "type": "strings",
+        "default": []
+      },
+      "appearance": {
+        "label": "外貌",
+        "type": "string",
+        "default": ""
+      },
+      "personality": {
+        "label": "性格",
+        "type": "string",
+        "default": ""
+      },
+      "background": {
+        "label": "背景",
+        "type": "string",
+        "default": ""
+      },
+      "ability": {
+        "label": "能力",
+        "type": "string",
+        "default": ""
+      },
+      "voice": {
+        "label": "语言风格",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
+  "world_setting": {
+    "label": "设定",
+    "collection": "worldSettings",
+    "fields": {
+      "name": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "groupId": {
+        "label": "设定分组",
+        "type": "string",
+        "default": null,
+        "reference": "worldSettingGroups",
+        "nullable": true,
+        "required": false
+      },
+      "type": {
+        "label": "类型",
+        "type": "number",
+        "default": 5,
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "options": [
+          "地理位置",
+          "势力宗门",
+          "功法技能",
+          "物品道具",
+          "等级体系",
+          "其他"
+        ]
+      },
+      "detail": {
+        "label": "详细设定",
+        "type": "string",
+        "default": "",
+        "format": "plain_html"
+      },
+      "relatedChapterIds": {
+        "label": "关联章节",
+        "type": "strings",
+        "default": [],
+        "reference": "chapters"
+      }
+    }
+  },
+  "character_relation": {
+    "label": "人物关系",
+    "collection": "characterRelations",
+    "fields": {
+      "fromId": {
+        "label": "起点",
+        "type": "number",
+        "default": null,
+        "reference": "characters",
+        "nullable": false,
+        "required": true
+      },
+      "toId": {
+        "label": "终点",
+        "type": "number",
+        "default": null,
+        "reference": "characters",
+        "nullable": false,
+        "required": true
+      },
+      "relationType": {
+        "label": "关系类型",
+        "type": "string",
+        "default": "family",
+        "enum": [
+          "family",
+          "love",
+          "friend",
+          "enemy",
+          "other"
+        ],
+        "options": [
+          "亲属",
+          "感情",
+          "朋友",
+          "敌对",
+          "其他"
+        ]
+      },
+      "label": {
+        "label": "关系说明",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
+  "storyline": {
+    "label": "故事线",
+    "collection": "storylines",
+    "fields": {
+      "title": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "lineType": {
+        "label": "类型",
+        "type": "string",
+        "default": "main",
+        "enum": [
+          "main",
+          "branch",
+          "character",
+          "emotion",
+          "foreshadow"
+        ],
+        "options": [
+          "主线",
+          "支线",
+          "人物",
+          "情感",
+          "伏笔"
+        ]
+      },
+      "status": {
+        "label": "状态",
+        "type": "string",
+        "default": "active",
+        "enum": [
+          "active",
+          "pending",
+          "closed"
+        ],
+        "options": [
+          "进行中",
+          "待展开",
+          "已结束"
+        ]
+      },
+      "importance": {
+        "label": "重要程度",
+        "type": "number",
+        "default": 3,
+        "min": 1,
+        "max": 5
+      },
+      "chapterRangeText": {
+        "label": "章节范围说明",
+        "type": "string",
+        "default": ""
+      },
+      "goal": {
+        "label": "目标",
+        "type": "string",
+        "default": ""
+      },
+      "conflict": {
+        "label": "冲突",
+        "type": "string",
+        "default": ""
+      },
+      "summary": {
+        "label": "概述",
+        "type": "string",
+        "default": ""
+      },
+      "firstChapterId": {
+        "label": "起始章节",
+        "type": "string",
+        "default": null,
+        "reference": "chapters",
+        "nullable": true,
+        "required": false
+      },
+      "revealChapterId": {
+        "label": "揭示章节",
+        "type": "string",
+        "default": null,
+        "reference": "chapters",
+        "nullable": true,
+        "required": false
+      },
+      "keyCharacterIds": {
+        "label": "关键人物",
+        "type": "strings",
+        "default": [],
+        "reference": "characters"
+      }
+    }
+  },
+  "storyline_node": {
+    "label": "剧情节点",
+    "collection": "storylineNodes",
+    "fields": {
+      "title": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "storylineId": {
+        "label": "所属故事线",
+        "type": "string",
+        "default": "",
+        "reference": "storylines",
+        "nullable": true,
+        "required": false
+      },
+      "nodeType": {
+        "label": "节点类型",
+        "type": "string",
+        "default": "plot",
+        "enum": [
+          "plot",
+          "character",
+          "clue",
+          "location",
+          "organization",
+          "goal",
+          "ability",
+          "turning",
+          "custom"
+        ],
+        "options": [
+          "剧情",
+          "人物",
+          "线索",
+          "地点",
+          "组织",
+          "目标",
+          "能力",
+          "转折",
+          "自定义"
+        ]
+      },
+      "status": {
+        "label": "状态",
+        "type": "string",
+        "default": "draft",
+        "enum": [
+          "draft",
+          "active",
+          "closed"
+        ],
+        "options": [
+          "草案",
+          "进行中",
+          "已结束"
+        ]
+      },
+      "summary": {
+        "label": "概述",
+        "type": "string",
+        "default": ""
+      },
+      "location": {
+        "label": "地点",
+        "type": "string",
+        "default": ""
+      },
+      "chapterIds": {
+        "label": "关联章节",
+        "type": "strings",
+        "default": [],
+        "reference": "chapters"
+      },
+      "characterIds": {
+        "label": "关联人物",
+        "type": "strings",
+        "default": [],
+        "reference": "characters"
+      },
+      "settingIds": {
+        "label": "关联设定",
+        "type": "strings",
+        "default": [],
+        "reference": "worldSettings"
+      },
+      "tags": {
+        "label": "标签",
+        "type": "strings",
+        "default": []
+      }
+    }
+  },
+  "storyline_relation": {
+    "label": "故事线关系",
+    "collection": "storylineRelations",
+    "fields": {
+      "fromStorylineId": {
+        "label": "起点",
+        "type": "string",
+        "default": null,
+        "reference": "storylines",
+        "nullable": false,
+        "required": true
+      },
+      "toStorylineId": {
+        "label": "终点",
+        "type": "string",
+        "default": null,
+        "reference": "storylines",
+        "nullable": false,
+        "required": true
+      },
+      "relationType": {
+        "label": "关系类型",
+        "type": "string",
+        "default": "drive",
+        "enum": [
+          "drive",
+          "dependency",
+          "influence",
+          "foreshadow",
+          "conflict"
+        ],
+        "options": [
+          "推动",
+          "依赖",
+          "影响",
+          "伏笔",
+          "冲突"
+        ]
+      },
+      "description": {
+        "label": "关系说明",
+        "type": "string",
+        "default": ""
+      },
+      "strength": {
+        "label": "强度",
+        "type": "number",
+        "default": 3,
+        "min": 1,
+        "max": 5
+      }
+    }
+  },
+  "storyline_node_relation": {
+    "label": "剧情节点关系",
+    "collection": "storylineNodeRelations",
+    "fields": {
+      "fromNodeId": {
+        "label": "起点",
+        "type": "string",
+        "default": null,
+        "reference": "storylineNodes",
+        "nullable": false,
+        "required": true
+      },
+      "toNodeId": {
+        "label": "终点",
+        "type": "string",
+        "default": null,
+        "reference": "storylineNodes",
+        "nullable": false,
+        "required": true
+      },
+      "relationType": {
+        "label": "关系类型",
+        "type": "string",
+        "default": "branch",
+        "enum": [
+          "branch",
+          "peer",
+          "link",
+          "cause",
+          "influence",
+          "foreshadow",
+          "conflict"
+        ],
+        "options": [
+          "支线",
+          "并行",
+          "关联",
+          "因果",
+          "影响",
+          "伏笔",
+          "冲突"
+        ]
+      },
+      "description": {
+        "label": "关系说明",
+        "type": "string",
+        "default": ""
+      },
+      "strength": {
+        "label": "强度",
+        "type": "number",
+        "default": 3,
+        "min": 1,
+        "max": 5
+      }
+    }
+  },
+  "timeline_event": {
+    "label": "时间线事件",
+    "collection": "timelineEvents",
+    "fields": {
+      "title": {
+        "label": "名称",
+        "type": "string",
+        "default": "",
+        "required": true
+      },
+      "storylineId": {
+        "label": "所属故事线",
+        "type": "string",
+        "default": null,
+        "reference": "storylines",
+        "nullable": true,
+        "required": false
+      },
+      "chapterId": {
+        "label": "关联章节",
+        "type": "string",
+        "default": null,
+        "reference": "chapters",
+        "nullable": true,
+        "required": false
+      },
+      "lineType": {
+        "label": "线类型",
+        "type": "string",
+        "default": "main",
+        "enum": [
+          "main",
+          "branch"
+        ],
+        "options": [
+          "主线",
+          "支线"
+        ]
+      },
+      "timeLabel": {
+        "label": "时间描述",
+        "type": "string",
+        "default": ""
+      },
+      "timePoint": {
+        "label": "时间点",
+        "type": "string",
+        "default": ""
+      },
+      "timeOrder": {
+        "label": "时间顺序",
+        "type": "number",
+        "default": 10
+      },
+      "location": {
+        "label": "地点",
+        "type": "string",
+        "default": ""
+      },
+      "summary": {
+        "label": "事件概述",
+        "type": "string",
+        "default": ""
+      },
+      "cause": {
+        "label": "起因",
+        "type": "string",
+        "default": ""
+      },
+      "effect": {
+        "label": "后果",
+        "type": "string",
+        "default": ""
+      },
+      "conflictLevel": {
+        "label": "冲突程度",
+        "type": "number",
+        "default": 0,
+        "min": 0,
+        "max": 5
+      },
+      "characterIds": {
+        "label": "关联人物",
+        "type": "strings",
+        "default": [],
+        "reference": "characters"
+      },
+      "settingIds": {
+        "label": "关联设定",
+        "type": "strings",
+        "default": [],
+        "reference": "worldSettings"
+      },
+      "relatedEventIds": {
+        "label": "关联事件",
+        "type": "strings",
+        "default": [],
+        "reference": "timelineEvents"
+      },
+      "note": {
+        "label": "备注",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
+  "plot_binding": {
+    "label": "章节引用",
+    "collection": "plotBindings",
+    "fields": {
+      "chapterId": {
+        "label": "章节",
+        "type": "string",
+        "default": null,
+        "reference": "chapters",
+        "nullable": false,
+        "required": true
+      },
+      "storylineNodeId": {
+        "label": "剧情节点",
+        "type": "string",
+        "default": null,
+        "reference": "storylineNodes",
+        "nullable": true,
+        "required": false
+      },
+      "timelineEventId": {
+        "label": "时间线事件",
+        "type": "string",
+        "default": null,
+        "reference": "timelineEvents",
+        "nullable": true,
+        "required": false
+      },
+      "anchorLabel": {
+        "label": "引用说明",
+        "type": "string",
+        "default": ""
+      },
+      "note": {
+        "label": "备注",
+        "type": "string",
+        "default": ""
+      }
+    }
+  }
+}

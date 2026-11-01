@@ -942,7 +942,7 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--ui-glass-bg) 70%, transparent);
 
   .panel-title {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
   }
@@ -1071,7 +1071,7 @@ onBeforeUnmount(() => {
     min-width: 48px;
     text-align: center;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1081,7 +1081,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .icon-action {
@@ -1109,14 +1109,14 @@ onBeforeUnmount(() => {
 
   h3 {
     margin: 8px 0 6px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     line-height: 1.35;
   }
 
   p {
     margin: 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.55;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1126,7 +1126,7 @@ onBeforeUnmount(() => {
 }
 
 .plot-state-hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   opacity: 0.75;
 }
 
@@ -1136,7 +1136,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .node-top em {
@@ -1155,7 +1155,7 @@ onBeforeUnmount(() => {
   text-align: center;
 
   i {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
   }
 
   button {
@@ -1194,19 +1194,19 @@ onBeforeUnmount(() => {
   span,
   em {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 
   h3 {
     margin: 4px 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   p {
     margin: 0 0 4px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.55;
   }
 }
@@ -1229,7 +1229,7 @@ onBeforeUnmount(() => {
   span {
     margin-top: 4px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1255,7 +1255,7 @@ onBeforeUnmount(() => {
 
   span {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong {
@@ -1269,7 +1269,7 @@ onBeforeUnmount(() => {
   p {
     margin: 5px 0 8px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.5;
   }
 
@@ -1308,7 +1308,7 @@ onBeforeUnmount(() => {
 .suggestion-title {
   justify-content: space-between;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   button {
     border: 0;
@@ -1335,7 +1335,7 @@ onBeforeUnmount(() => {
   p {
     margin: 4px 0 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   button {

@@ -4,6 +4,7 @@ export type MenuId =
   | 'home'
   | 'books'
   | 'agentCreation'
+  | 'agentPi'
   | 'workflowBook'
   | 'writeStatistics'
   | 'novelRank'
@@ -15,6 +16,8 @@ export type MenuId =
   | 'updates'
 
 export interface UiPreferences {
+  /** 界面基准字号；14 保留原有字号层级，不影响正文。 */
+  uiFontSize: number
   hiddenMenus: MenuId[]
   wordCountMode: WordCountMode
   /** 进入作品时自动打开上次编辑的章节并恢复光标、滚动位置 */

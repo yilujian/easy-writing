@@ -274,7 +274,7 @@ const handleClose = () => {
 
 .toolbar-sub {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -361,12 +361,12 @@ const handleClose = () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .meta {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   flex: 0 0 auto;
 }
 
@@ -411,19 +411,19 @@ const handleClose = () => {
 
 .format-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .format-desc {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.5;
 }
 
 .tip {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -437,7 +437,7 @@ const handleClose = () => {
 
 .selected-hint {
   margin-right: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 

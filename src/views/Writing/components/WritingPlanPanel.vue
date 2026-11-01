@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     font-family: 'Noto Serif SC', serif;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     font-weight: 700;
     letter-spacing: 0.08em;
 
@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ui-border);
   background: var(--btn-ghost-bg);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   letter-spacing: 0.05em;
 
   .status-dot {
@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
 
 .plan-desc {
   font-family: 'Noto Serif SC', serif;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   letter-spacing: 0.08em;
 }
@@ -518,20 +518,20 @@ onBeforeUnmount(() => {
 
 .ring-number {
   font-family: 'Noto Serif SC', serif;
-  font-size: 48px;
+  font-size: calc(48px * var(--ui-font-scale, 1));
   font-weight: 600;
   line-height: 1.1;
   color: var(--ink-main);
   font-variant-numeric: tabular-nums;
 
   &.is-long {
-    font-size: 34px;
+    font-size: calc(34px * var(--ui-font-scale, 1));
   }
 }
 
 .ring-label {
   font-family: 'Noto Serif SC', serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   letter-spacing: 0.2em;
   text-indent: 0.2em;
@@ -540,7 +540,7 @@ onBeforeUnmount(() => {
 .ring-percent {
   margin-top: 6px;
   font-family: 'Noto Serif SC', serif;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   letter-spacing: 0.08em;
 }
@@ -553,7 +553,7 @@ onBeforeUnmount(() => {
   color: var(--ink-accent);
   background: color-mix(in srgb, var(--ink-accent) 8%, transparent);
   font-family: 'Noto Serif SC', serif;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
@@ -579,7 +579,7 @@ onBeforeUnmount(() => {
   > i {
     flex: 0 0 auto;
     width: 22px;
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     text-align: center;
     color: var(--ink-accent);
     opacity: 0.85;
@@ -594,14 +594,14 @@ onBeforeUnmount(() => {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   letter-spacing: 0.05em;
 }
 
 .stat-value {
   font-family: 'Noto Serif SC', serif;
-  font-size: 19px;
+  font-size: calc(19px * var(--ui-font-scale, 1));
   font-weight: 600;
   line-height: 1.2;
   color: var(--ink-main);
@@ -609,7 +609,7 @@ onBeforeUnmount(() => {
 
   em {
     font-style: normal;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     margin-left: 4px;
     letter-spacing: 0;
@@ -617,7 +617,7 @@ onBeforeUnmount(() => {
 
   &.is-mono {
     font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     letter-spacing: 0.04em;
   }
 }
@@ -633,13 +633,13 @@ onBeforeUnmount(() => {
 .footer-text {
   margin: 0;
   font-family: 'Noto Serif SC', serif;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   letter-spacing: 0.06em;
 
   strong {
     color: var(--ink-accent);
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-font-scale, 1));
     margin: 0 2px;
   }
 }
@@ -690,7 +690,7 @@ onBeforeUnmount(() => {
 
   .settings-tip {
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }

@@ -53,6 +53,20 @@
               <span>{{ state.error }}</span>
             </div>
 
+            <details v-if="releaseNotesOnly || ['available', 'error'].includes(state.phase)" class="update-contacts">
+              <summary>微信联系与反馈群</summary>
+              <div class="update-qr-list">
+                <figure>
+                  <figcaption>微信联系开发者</figcaption>
+                  <img :src="personalQr" alt="开发者微信二维码" />
+                </figure>
+                <figure>
+                  <figcaption>易创网文反馈群</figcaption>
+                  <img :src="groupQr" alt="易创网文反馈群二维码" />
+                </figure>
+              </div>
+            </details>
+
             <div class="desktop-update-actions">
               <template v-if="state.phase === 'available' && !releaseNotesOnly">
                 <button class="ink-btn" type="button" @click="$emit('close')">稍后再说</button>
@@ -83,6 +97,8 @@
 import { computed, ref, watch, nextTick } from 'vue'
 import type { DesktopUpdateSnapshot } from '@/utils/desktop-update'
 import { inkConfirm } from '@/utils/ink-confirm'
+import personalQr from '@/assets/images/feedback-wechat.png'
+import groupQr from '@/assets/images/feedback-wechat-group.png'
 
 const props = defineProps<{
   visible: boolean
@@ -133,9 +149,9 @@ const handleKeydown = (event: KeyboardEvent) => {
     emit('close')
   }
   if (event.key !== 'Tab') return
-  const buttons = Array.from(dialogRef.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || [])
-  const first = buttons[0]
-  const last = buttons[buttons.length - 1]
+  const controls = dialogRef.value?.querySelectorAll<HTMLElement>('summary, button:not(:disabled)')
+  const first = controls?.[0]
+  const last = controls?.[controls.length - 1]
   if (!first) {
     event.preventDefault()
     dialogRef.value?.focus()
@@ -229,7 +245,7 @@ const downloadText = computed(() => {
   outline: none;
   width: min(560px, calc(100vw - 48px));
   max-height: min(720px, calc(100vh - 48px));
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -274,19 +290,19 @@ const downloadText = computed(() => {
   background: var(--selection-bg-color);
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
   }
 }
 
 .desktop-update-eyebrow {
   margin: 0 0 4px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-font-scale, 1));
   line-height: 1.25;
   font-weight: 700;
 }
@@ -294,7 +310,7 @@ h2 {
 .desktop-update-subtitle {
   margin: 8px 0 0;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -306,7 +322,7 @@ h2 {
   padding: 10px 12px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--ink-main) 5%, transparent);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   span,
   strong {
@@ -318,7 +334,7 @@ h2 {
   i {
     flex: 0 0 auto;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong {
@@ -329,7 +345,7 @@ h2 {
     margin-left: auto;
     flex: 0 0 auto;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -342,7 +358,7 @@ h2 {
 
 .release-notes-title {
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .release-notes-body {
@@ -352,7 +368,7 @@ h2 {
   border: 1px solid var(--ui-border, rgba(128, 128, 128, 0.18));
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-main) 80%, transparent);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.75;
   white-space: pre-wrap;
 }
@@ -368,7 +384,7 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   strong {
     color: var(--ink-accent);
@@ -398,7 +414,7 @@ h2 {
 
 .progress-size {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .update-error {
@@ -409,7 +425,35 @@ h2 {
   border-radius: 8px;
   background: var(--state-danger-surface);
   color: var(--state-danger-on);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+
+.update-contacts {
+  font-size: calc(14px * var(--ui-font-scale, 1));
+
+  summary {
+    cursor: pointer;
+    color: var(--ink-accent);
+  }
+}
+
+.update-qr-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 12px;
+  margin-top: 12px;
+
+  figure {
+    margin: 0;
+    text-align: center;
+  }
+
+  img {
+    display: block;
+    width: min(100%, 200px);
+    height: auto;
+    margin: 6px auto 0;
+  }
 }
 
 .desktop-update-actions {

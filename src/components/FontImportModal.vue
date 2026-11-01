@@ -115,7 +115,7 @@ const confirmImport = async () => {
 <style scoped lang="scss">
 .font-import-form { display: grid; gap: 20px; }
 .font-field { display: grid; gap: 9px; }
-.font-field-label { color: var(--ink-main); font-size: 14px; font-weight: 600; }
+.font-field-label { color: var(--ink-main); font-size: calc(14px * var(--ui-font-scale, 1)); font-weight: 600; }
 .font-file-picker {
   display: flex;
   align-items: center;
@@ -126,7 +126,7 @@ const confirmImport = async () => {
   background: var(--input-bg);
   color: var(--ink-sec);
 
-  > i { font-size: 22px; }
+  > i { font-size: calc(22px * var(--ui-font-scale, 1)); }
   button { flex-shrink: 0; }
 }
 .font-file-info {
@@ -134,20 +134,20 @@ const confirmImport = async () => {
   flex: 1;
   min-width: 0;
   gap: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
-.font-field-hint { margin: 0; font-size: 12px; color: var(--ink-sec); }
+.font-field-hint { margin: 0; font-size: calc(12px * var(--ui-font-scale, 1)); color: var(--ink-sec); }
 .font-import-tips {
   border-top: 1px solid var(--ui-border);
   padding-top: 16px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.8;
 
   > div { display: flex; gap: 7px; align-items: center; color: var(--ink-main); }
   ul { margin: 7px 0 0; padding-left: 18px; }
 }
-.font-import-error { margin: 0; color: var(--state-danger); font-size: 13px; }
+.font-import-error { margin: 0; color: var(--state-danger); font-size: calc(13px * var(--ui-font-scale, 1)); }
 </style>

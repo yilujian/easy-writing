@@ -414,12 +414,12 @@ onBeforeUnmount(() => {
 
   i {
     color: var(--ink-accent);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   strong {
     overflow: hidden;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -501,11 +501,11 @@ onBeforeUnmount(() => {
   transition: color var(--rail-transition) ease, background var(--rail-transition) ease;
 
   i {
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
   }
 
   span {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     transform: scale(0.9);
   }
 

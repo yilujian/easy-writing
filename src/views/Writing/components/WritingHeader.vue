@@ -181,7 +181,7 @@ const confirmExit = async () => {
       background: none;
       border: none;
       color: var(--ink-sec);
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       cursor: pointer;
       transition: color 0.3s ease;
 
@@ -198,7 +198,7 @@ const confirmExit = async () => {
     }
 
     .book-title {
-      font-size: 20px;
+      font-size: calc(20px * var(--ui-font-scale, 1));
       font-weight: bold;
       color: var(--ink-main);
       letter-spacing: 1px;
@@ -235,7 +235,7 @@ const confirmExit = async () => {
       gap: 8px;
 
       .tag {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         padding: 2px 8px;
         border-radius: 2px;
       }
@@ -245,7 +245,7 @@ const confirmExit = async () => {
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       opacity: 0.7;
       font-family: system-ui, sans-serif;
@@ -317,7 +317,7 @@ const confirmExit = async () => {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       padding-right: 20px;
       border-right: 1px solid var(--ink-main);
@@ -358,7 +358,7 @@ const confirmExit = async () => {
         background: none;
         border: none;
         color: var(--ink-sec);
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         cursor: pointer;
         transition: color 0.3s ease;
 
@@ -383,13 +383,13 @@ const confirmExit = async () => {
 
   .exit-highlight {
     margin: 0;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     display: flex;
     align-items: baseline;
     gap: 8px;
 
     strong {
-      font-size: 28px;
+      font-size: calc(28px * var(--ui-font-scale, 1));
       font-weight: 700;
       color: var(--ink-accent);
       font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
@@ -411,14 +411,14 @@ const confirmExit = async () => {
       align-items: center;
 
       strong {
-        font-size: 18px;
+        font-size: calc(18px * var(--ui-font-scale, 1));
         color: var(--ink-accent);
       }
     }
 
     .plan-tip {
       margin: 0;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
     }
   }

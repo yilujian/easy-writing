@@ -682,7 +682,7 @@ const handleGenerateWorld = async () => {
   cursor: pointer;
   border-radius: 10px;
   padding: 8px 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-sec);
   transition: all 0.2s ease;
@@ -720,7 +720,7 @@ const handleGenerateWorld = async () => {
 
 .tabs-group--compact .tab-item {
   padding: 8px 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .create-grid {
@@ -764,7 +764,7 @@ const handleGenerateWorld = async () => {
     }
 
     label {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
     }
   }
@@ -779,7 +779,7 @@ const handleGenerateWorld = async () => {
 
 .small-tip {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -811,13 +811,13 @@ const handleGenerateWorld = async () => {
 .style-name {
   font-weight: 700;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .style-desc {
   margin-top: 6px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.4;
 }
 
@@ -854,7 +854,7 @@ const handleGenerateWorld = async () => {
   color: var(--ink-sec);
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
   }
 
   .empty-title {
@@ -863,7 +863,7 @@ const handleGenerateWorld = async () => {
   }
 
   .empty-desc {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -895,7 +895,7 @@ const handleGenerateWorld = async () => {
       color: var(--ink-main);
     }
     .t2 {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 }
@@ -925,7 +925,7 @@ const handleGenerateWorld = async () => {
     color: var(--ink-main);
   }
   .t2 {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -946,7 +946,7 @@ const handleGenerateWorld = async () => {
   color: var(--ink-sec);
 
   i {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
   }
 
   .empty-title {
@@ -955,7 +955,7 @@ const handleGenerateWorld = async () => {
   }
 
   .empty-desc {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1001,7 +1001,7 @@ const handleGenerateWorld = async () => {
     align-items: center;
     justify-content: center;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1018,7 +1018,7 @@ const handleGenerateWorld = async () => {
 }
 
 .meta-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   display: flex;
   gap: 6px;
@@ -1031,7 +1031,7 @@ const handleGenerateWorld = async () => {
 }
 
 .meta-prompt {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.5;
   max-height: 54px;
@@ -1039,7 +1039,7 @@ const handleGenerateWorld = async () => {
 }
 
 .meta-error {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--state-danger);
   line-height: 1.4;
   max-height: 40px;

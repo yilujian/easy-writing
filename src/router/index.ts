@@ -33,28 +33,10 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '我的作品' }
       },
       {
-        path: '/agent-creation',
-        name: 'AgentCreation',
-        component: () => import('@/views/AgentCreation/index.vue'),
-        meta: { title: 'Agent 创作', hideLayout: true, agentView: 'chat' }
-      },
-      {
-        path: '/agent-creation/memory',
-        name: 'AgentCreationMemory',
-        component: () => import('@/views/AgentCreation/index.vue'),
-        meta: { title: 'Agent 记忆', hideLayout: true, agentView: 'memory' }
-      },
-      {
-        path: '/agent-creation/skills',
-        name: 'AgentCreationSkills',
-        component: () => import('@/views/AgentCreation/index.vue'),
-        meta: { title: 'Agent Skills', hideLayout: true, agentView: 'skills' }
-      },
-      {
-        path: '/agent-creation/automation',
-        name: 'AgentCreationAutomation',
-        component: () => import('@/views/AgentCreation/index.vue'),
-        meta: { title: 'Agent 自动任务', hideLayout: true, agentView: 'automation' }
+        path: '/agent-pi',
+        name: 'AgentPi',
+        component: () => import('@/views/AgentPi/index.vue'),
+        meta: { title: 'Agent写作', hideLayout: true }
       },
       {
         path: '/feedback',
@@ -115,6 +97,12 @@ const routes: RouteRecordRaw[] = [
         name: 'AiModelManage',
         component: () => import('@/views/AiModelManage/index.vue'),
         meta: { title: '模型管理' }
+      },
+      {
+        path: '/listen/:bookId',
+        name: 'Listen',
+        component: () => import('@/views/Listen/index.vue'),
+        meta: { title: '听书', hideLayout: true }
       },
       {
         path: '/writing/:bookId',

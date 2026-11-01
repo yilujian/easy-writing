@@ -91,12 +91,10 @@
       </div>
       <div class="prompt-file-list">
         <div class="prompt-file">
-          <button class="prompt-file-head" type="button" @click="router.push('/agent-creation/skills')">
+          <button class="prompt-file-head" type="button" @click="openPiSkills">
             <span class="prompt-file-name">Agent 创作技能</span>
             <span class="prompt-file-desc">
-              开书定位、黄金三章、章节写作、去 AI 味等写作方法在 Agent 的 Skills 页查看、修改与恢复默认{{
-                desktopSupported ? '；也可以在上面目录的 skills/技能名/SKILL.md 放同名文件覆盖内置版本' : ''
-              }}
+              在 Agent 的技能页查看建书策划、小说写作等内置方法，或管理自己的写作技能。
             </span>
             <i class="fa-solid fa-arrow-right"></i>
           </button>
@@ -160,6 +158,11 @@ import { isTauriRuntime } from '@/storage'
 
 const desktopSupported = isTauriRuntime()
 const router = useRouter()
+async function openPiSkills() {
+  const { usePiWorkspace } = await import('@/views/AgentPi/use-pi-workspace')
+  usePiWorkspace().view = 'skills'
+  await router.push('/agent-pi')
+}
 const promptDir = ref('')
 const expandedId = ref('')
 const saving = ref(false)
@@ -318,14 +321,14 @@ onMounted(() => {
 .prompts-header {
   .prompts-title {
     h1 {
-      font-size: 22px;
+      font-size: calc(22px * var(--ui-font-scale, 1));
       font-weight: 700;
       margin: 0 0 8px;
     }
 
     p {
       margin: 0;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       line-height: 1.8;
       color: var(--ink-sec);
       max-width: 860px;
@@ -340,7 +343,7 @@ onMounted(() => {
   margin-top: 10px;
 
   .dir-path {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     word-break: break-all;
   }
@@ -355,7 +358,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   margin-bottom: 12px;
 
@@ -400,7 +403,7 @@ onMounted(() => {
   .prompt-modified-badge,
   .prompt-updated-badge {
     font-style: normal;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-accent);
     margin-left: 6px;
   }
@@ -411,7 +414,7 @@ onMounted(() => {
 
   .prompt-file-desc {
     flex: 1;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -431,6 +434,15 @@ onMounted(() => {
   gap: 12px;
 }
 
+html[data-ui-enlarged] .prompt-file-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  .prompt-file-name { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  .prompt-file-desc { grid-column: 1 / -1; grid-row: 2; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  > i { grid-column: 2; grid-row: 1; }
+}
+
 .prompt-slot-head {
   display: flex;
   align-items: center;
@@ -438,7 +450,7 @@ onMounted(() => {
   margin: 8px 0 6px;
 
   .prompt-slot-label {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-main);
   }
@@ -452,7 +464,7 @@ onMounted(() => {
     border-radius: 999px;
     background: transparent;
     color: var(--state-warning, var(--ink-accent));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover {
@@ -466,11 +478,11 @@ onMounted(() => {
     grid-template-columns: auto 150px 34px;
     align-items: center;
     gap: 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
 
     strong {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-main);
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -483,7 +495,7 @@ onMounted(() => {
   }
 
   .prompt-slot-vars {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
 
     code {
@@ -517,7 +529,7 @@ onMounted(() => {
 
   .prompt-slot-preview-text {
     flex: 1;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
     color: var(--ink-main);
     white-space: pre-wrap;
@@ -534,7 +546,7 @@ onMounted(() => {
 
   i {
     margin-top: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     flex-shrink: 0;
   }
@@ -554,7 +566,7 @@ onMounted(() => {
 
 .prompt-editor-vars {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   code {
@@ -591,7 +603,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-sec);
 }
@@ -605,7 +617,7 @@ onMounted(() => {
   border-radius: 6px;
   background: var(--surface-2);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.8;
   font-family: inherit;
   white-space: pre-wrap;
@@ -621,7 +633,7 @@ onMounted(() => {
   border-radius: 6px;
   background: var(--surface-1);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.8;
   font-family: inherit;
 

@@ -42,7 +42,7 @@
     margin: 0;
     /* 使用 calc 和 CSS 变量控制段间空行 */
     margin-bottom: calc(var(--ruler-step, 28px) * var(--paragraph-gap-factor, 0));
-    text-indent: 2em;
+    text-indent: var(--editor-text-indent, 2em);
     padding: 0;
     position: relative;
 
@@ -59,7 +59,7 @@
     float: left;
     height: 0;
     pointer-events: none;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   .is-editor-empty:has(.ghost-text)::before,
@@ -107,7 +107,7 @@
     color: var(--ink-main);
     border: 1px solid var(--ui-border);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;
@@ -129,11 +129,11 @@
       display: inline-block;
       padding: 0 6px;
       height: 18px;
-      line-height: 17px;
+      line-height: calc(17px * var(--ui-font-scale, 1));
       background-color: var(--tag-bg);
       border: 1px solid var(--tag-border);
       border-radius: 3px;
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       font-weight: 600;
       color: var(--ink-main);
       font-family: monospace;
@@ -287,8 +287,8 @@
   transform: translateX(-100%);
   padding: 1px 6px;
   border-radius: 3px;
-  font-size: 11px;
-  line-height: 18px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  line-height: calc(18px * var(--ui-font-scale, 1));
   white-space: nowrap;
   color: #fff;
   background: rgba(64, 158, 255, 0.85);
@@ -318,7 +318,7 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--ui-shadow, 0 6px 24px rgba(0, 0, 0, 0.1));
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.7;
   user-select: text;
 }
@@ -328,7 +328,7 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   button {
@@ -339,7 +339,7 @@
     border-radius: 4px;
     background: transparent;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1;
     cursor: pointer;
 
@@ -357,7 +357,7 @@
   gap: 8px;
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
@@ -366,13 +366,13 @@
     border: 1px solid rgba(64, 158, 255, 0.5);
     border-radius: 4px;
     font-style: normal;
-    font-size: 11px;
-    line-height: 18px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
+    line-height: calc(18px * var(--ui-font-scale, 1));
     color: #1c6dbb;
   }
 
   span {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-tertiary, var(--ink-sec));
   }
 }
@@ -385,7 +385,7 @@
   background: color-mix(in srgb, var(--ink-main) 4%, transparent);
 
   small {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-tertiary, var(--ink-sec));
   }
@@ -427,7 +427,7 @@
   background: transparent;
   color: #1c6dbb;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 }
 
@@ -439,7 +439,7 @@
   background: transparent;
   color: var(--ink-main);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   resize: vertical;
 }
 
@@ -455,7 +455,7 @@
     background: transparent;
     color: var(--ink-main);
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:disabled {
@@ -517,7 +517,7 @@
 
 .entity-hover-title {
   min-width: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -531,7 +531,7 @@
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .entity-hover-action {
@@ -542,8 +542,8 @@
   border-radius: 6px;
   background: var(--btn-ghost-bg);
   color: var(--ink-sec);
-  font-size: 12px;
-  line-height: 22px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: calc(22px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: all 0.16s ease;
 
@@ -579,7 +579,7 @@
 .entity-hover-kind {
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 700;
 
   &.is-character {
@@ -595,13 +595,13 @@
 
 .entity-hover-label {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .entity-hover-summary {
   margin: 0;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 
   &.is-empty {
@@ -797,7 +797,7 @@
 /* 鼓励 (Cheer) */
 .effect-cheer-text {
   position: absolute;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: bold;
   color: #b45309;
   /* 琥珀色 */

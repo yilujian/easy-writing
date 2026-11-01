@@ -198,6 +198,6 @@ export interface LocalLibraryStorage {
   deleteLocalChapter(ids: number[]): Promise<void>
   /** 按给定顺序重编序号；`keepTime` 时不改章节与书的修改时间（进书时修旧数据用） */
   sortLocalChapters(payload: { volumeId: number | string; chapterIds: number[] }, options?: { keepTime?: boolean }): Promise<void>
-  /** 返回刷新后的书籍统计，调用方据此更新书籍总字数，不必再触发整棵目录树重载 */
-  updateLocalChapterContentMeta(payload: { bookId: number | string; chapterId: number; wordCount: number; title?: string }): Promise<LocalBook | null | undefined>
+  /** 返回刷新后的书籍统计。桌面 SQLite 可携带正文版本，跳过过期保存回调。 */
+  updateLocalChapterContentMeta(payload: { bookId: number | string; chapterId: number; wordCount: number; title?: string; expectedLocalVersion?: number }): Promise<LocalBook | null | undefined>
 }

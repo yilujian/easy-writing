@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { agentCommand } from '@/agent/client'
+import { writingCommand } from '@/writing-service/client'
 const props = defineProps<{ projectId: string; initialSaved?: boolean; beforeSave?: () => Promise<void> }>()
 const emit = defineEmits<{ saved: [] }>()
 const saved = ref(false)
@@ -20,7 +20,7 @@ watch(
     const id = props.projectId
     checking.value = true
     try {
-      const result = await agentCommand<{ saved: boolean }>('reference_publication', { projectId: id })
+      const result = await writingCommand<{ saved: boolean }>('reference_publication', { projectId: id })
       if (id === props.projectId) saved.value = result.saved
     } catch (error) {
       ElMessage.error(String(error))
@@ -35,7 +35,7 @@ async function save() {
   busy.value = true
   try {
     await props.beforeSave?.()
-    await agentCommand('reference_publish', { projectId: props.projectId })
+    await writingCommand('reference_publish', { projectId: props.projectId })
     saved.value = true
     emit('saved')
     ElMessage.success('已保存到拆书工作台')

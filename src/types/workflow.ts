@@ -429,6 +429,8 @@ export interface WorkflowOutlineAdjustProgress {
 /** 步骤生成后台任务（灵感/大纲/设定/大纲调整）：提交即返回，服务端执行并持久化终态 */
 export interface WorkflowStepTask extends Omit<WorkflowTask, 'payload'> {
   payload?: {
+    generationId?: number;
+    unitProgress?: { completed: number; total: number; current: string };
     step?: WorkflowStepGenerateStep;
     input?: JsonRecord;
     adjustProgress?: WorkflowOutlineAdjustProgress;

@@ -19,7 +19,6 @@ src-tauri/target
 /verification/
 **/vitest.config.*
 /src-tauri/src/*_tests.rs
-/experiments/agent-runtime/scripts/collect_evidence.py
 **/.pytest_cache/
 
 # Editor directories and files
@@ -52,8 +51,8 @@ stats.html
 
 docs/design/
 
-# 桌面内置 Agent 的冻结运行时由构建脚本产生，不提交可执行文件和依赖缓存。
-src-tauri/binaries/agent/*
-!src-tauri/binaries/agent/.gitkeep
-
-src-tauri/binaries/.agent-*
+# 独立 Pi 源码构建缓存；只提交上游锁定信息和易创扩展。
+/agent-pi/upstream/
+/agent-pi/runtime.json
+/agent-pi/.cache/
+/src-tauri/resources/agent-pi/

@@ -261,7 +261,7 @@ const handleClose = () => {
   }
 
   .step-desc {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -289,7 +289,7 @@ const handleClose = () => {
   gap: 14px;
 
   i {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
     color: var(--ink-accent);
   }
 
@@ -305,7 +305,7 @@ const handleClose = () => {
     }
 
     .secondary {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
     }
   }
@@ -317,7 +317,7 @@ const handleClose = () => {
   gap: 12px;
 
   .hint {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
 
     strong {
@@ -344,7 +344,7 @@ const handleClose = () => {
   }
 
   .panel-subtitle {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -355,7 +355,7 @@ const handleClose = () => {
   border-top: 1px solid var(--divider);
 
   .warnings-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-sec);
     margin-bottom: 6px;
@@ -365,7 +365,7 @@ const handleClose = () => {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     margin: 4px 0;
 
@@ -397,7 +397,7 @@ const handleClose = () => {
   }
 
   .count {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -424,7 +424,7 @@ const handleClose = () => {
 
   .v-name {
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -432,7 +432,7 @@ const handleClose = () => {
 
   .v-count {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     flex: 0 0 auto;
   }
 }
@@ -459,7 +459,7 @@ const handleClose = () => {
 
   .ch-name {
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -467,7 +467,7 @@ const handleClose = () => {
 
   .ch-words {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     flex: 0 0 auto;
   }
 }
@@ -482,7 +482,7 @@ const handleClose = () => {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   .k {

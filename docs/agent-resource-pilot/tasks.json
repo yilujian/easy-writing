@@ -1,0 +1,126 @@
+{
+  "format": "yichuang-resource-eval-tasks-v1",
+  "repeats": 2,
+  "tasks": [
+    {
+      "id": "task-01",
+      "partition": "development",
+      "title": "活动排班",
+      "prompt": "写一个300—450字的中文小说场景。策展助理发现夜班总被转给自己，明晚有既定安排；她想维持合作，但不接这次夜班。对话双方各有诉求，请让回应符合人物处境，不写成互相讲道理。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-dialogue-1"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-02",
+      "partition": "development",
+      "title": "科研署名",
+      "prompt": "写一个300—450字的中文小说场景。实验助理保留了公开设备日志，想取回实际参与署名，不能泄露提醒他的同事。主角的行动应造成可见后果，不能凭空添加证据或让对手突然无能。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-counter-2"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-03",
+      "partition": "development",
+      "title": "餐厅交接",
+      "prompt": "写一个300—450字的中文小说场景。领班要离职，老板一直谈感情却不确定交接人；本场景以明确交接安排结束。删去重复说明，保留理解行动所需的信息，不把一切都改成对白。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-exposition-3"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-04",
+      "partition": "development",
+      "title": "维修报价",
+      "prompt": "写一个300—450字的中文小说场景。维修员手里有签收记录，却只有部分故障照片，需要先补齐材料而不是立即当众指责。对话双方各有诉求，请让回应符合人物处境，不写成互相讲道理。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-dialogue-4"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-05",
+      "partition": "development",
+      "title": "展览改稿",
+      "prompt": "写一个300—450字的中文小说场景。设计师反复改稿，客户直到此刻才说场地没有电源；不改动这一限制。主角的行动应造成可见后果，不能凭空添加证据或让对手突然无能。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-counter-1"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-06",
+      "partition": "development",
+      "title": "社区钥匙",
+      "prompt": "写一个300—450字的中文小说场景。管理员收到归还的储物间钥匙，前文已讲明住户搬走，本段只需承接离开后的日常。删去重复说明，保留理解行动所需的信息，不把一切都改成对白。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-exposition-2"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-07",
+      "partition": "holdout",
+      "title": "物流签收",
+      "prompt": "写一个300—450字的中文小说场景。仓库负责人被要求签收不属于自己的货单，已有编号记录，必须留下清晰处理结果。对话双方各有诉求，请让回应符合人物处境，不写成互相讲道理。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-dialogue-3"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-08",
+      "partition": "holdout",
+      "title": "剧场排练",
+      "prompt": "写一个300—450字的中文小说场景。新人想让前辈再次代签安全清单；前辈愿意指导但不愿继续代担责任。主角的行动应造成可见后果，不能凭空添加证据或让对手突然无能。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-counter-4"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-09",
+      "partition": "holdout",
+      "title": "修复工坊",
+      "prompt": "写一个300—450字的中文小说场景。负责人知道样品还不齐，要求助手先整理可核对记录；不能让角色凭空拿到最终证据。删去重复说明，保留理解行动所需的信息，不把一切都改成对白。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-exposition-1"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-10",
+      "partition": "holdout",
+      "title": "医院行政",
+      "prompt": "写一个300—450字的中文小说场景。排班协调员有旧值班表，争取一次已承诺的调休；只写行政工作，不涉及医疗诊断。对话双方各有诉求，请让回应符合人物处境，不写成互相讲道理。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-dialogue-2"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-11",
+      "partition": "holdout",
+      "title": "出版社退稿",
+      "prompt": "写一个300—450字的中文小说场景。编辑收到退稿结果，要通知作者；不重复解释前文已经写明的背景。主角的行动应造成可见后果，不能凭空添加证据或让对手突然无能。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-counter-3"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    },
+    {
+      "id": "task-12",
+      "partition": "holdout",
+      "title": "摄影工作室",
+      "prompt": "写一个300—450字的中文小说场景。摄影师无法重拍，只能在已有素材中调整；场景重点是客户第一次说清真正限制。删去重复说明，保留理解行动所需的信息，不把一切都改成对白。只交正文，保持人物目标与既有事实，不自评、不重写。",
+      "resourceIds": [
+        "pilot-exposition-4"
+      ],
+      "selectionStatus": "AI拟选，待内容负责人确认"
+    }
+  ]
+}

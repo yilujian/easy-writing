@@ -31,8 +31,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const textModel = ref('')
   const workflowModel = ref('')
   const imageModel = ref('')
-  /** 向量检索模型（embedding）；空 = 不启用语义检索 */
-  const embeddingModel = ref('')
   /** 后台整理模型（故事状态抽取、章节摘要等批量任务）；空 = 跟随写作助手 */
   const backgroundModel = ref('')
   /** 微信助手（ClawBot 通道）回答用的模型；空 = 跟随写作助手 */
@@ -44,13 +42,12 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const textModels = computed(() => groups.value.text_assist?.models || [])
   const workflowModels = computed(() => groups.value.workflow_book?.models || [])
   const imageModels = computed(() => groups.value.image_generation?.models || [])
-  const embeddingModels = computed(() => groups.value.embedding?.models || [])
   const backgroundModels = computed(() => groups.value.background?.models || [])
   const weixinModels = computed(() => groups.value.weixin?.models || [])
 
   /**
    * 各分组实际生效的模型（分组列表已只含启用的模型）：
-   * - 写作助手 / 图像生成 / 语义记忆：没选时自动用该用途列表里的第一个，加完模型就能用；
+   * - 写作助手 / 图像生成：没选时自动用该用途列表里的第一个，加完模型就能用；
    * - 后台整理 / 微信助手：没选时跟随写作助手；
    * - 工作流建书：不自动兜底、也不借用写作助手——建书是大额消耗，必须由用户明确选择
    *   （见 tests/workflow-model-selection.test.ts）。
@@ -59,7 +56,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const effectiveTextModel = computed(() => textModel.value || firstEnabled(textModels.value))
   const effectiveWorkflowModel = computed(() => workflowModel.value)
   const effectiveImageModel = computed(() => imageModel.value || firstEnabled(imageModels.value))
-  const effectiveEmbeddingModel = computed(() => embeddingModel.value || firstEnabled(embeddingModels.value))
   const effectiveBackgroundModel = computed(() => backgroundModel.value || effectiveTextModel.value)
   const effectiveWeixinModel = computed(() => weixinModel.value || effectiveTextModel.value)
 
@@ -68,7 +64,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     if (groupCode === 'text_assist') return textModel.value
     if (groupCode === 'workflow_book') return workflowModel.value
     if (groupCode === 'image_generation') return imageModel.value
-    if (groupCode === 'embedding') return embeddingModel.value
     if (groupCode === 'background') return backgroundModel.value
     if (groupCode === 'weixin') return weixinModel.value
     return selected.value[groupCode] || ''
@@ -82,7 +77,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     if (groupCode === 'text_assist') return effectiveTextModel.value
     if (groupCode === 'workflow_book') return effectiveWorkflowModel.value
     if (groupCode === 'image_generation') return effectiveImageModel.value
-    if (groupCode === 'embedding') return effectiveEmbeddingModel.value
     if (groupCode === 'background') return effectiveBackgroundModel.value
     if (groupCode === 'weixin') return effectiveWeixinModel.value
     // Agent 角色：自己选了用自己的，否则沿分组表的回退链（写作/评审/索引 → 规划 → 写作助手）
@@ -95,7 +89,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const textSelectOptions = computed(() => toSelectOptions(textModels.value))
   const workflowSelectOptions = computed(() => toSelectOptions(workflowModels.value))
   const imageSelectOptions = computed(() => toSelectOptions(imageModels.value))
-  const embeddingSelectOptions = computed(() => toSelectOptions(embeddingModels.value))
   const backgroundSelectOptions = computed(() => toSelectOptions(backgroundModels.value))
 
   const normalizeSelectedModel = (groupCode: AiModelGroupCode, value: string) => {
@@ -111,7 +104,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     if (groupCode === 'text_assist') textModel.value = modelCode
     if (groupCode === 'workflow_book') workflowModel.value = modelCode
     if (groupCode === 'image_generation') imageModel.value = modelCode
-    if (groupCode === 'embedding') embeddingModel.value = modelCode
     if (groupCode === 'background') backgroundModel.value = modelCode
     if (groupCode === 'weixin') weixinModel.value = modelCode
   }
@@ -126,7 +118,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
   const setTextModel = (value: string) => setGroupModel('text_assist', value)
   const setWorkflowModel = (value: string) => setGroupModel('workflow_book', value)
   const setImageModel = (value: string) => setGroupModel('image_generation', value)
-  const setEmbeddingModel = (value: string) => setGroupModel('embedding', value)
   const setBackgroundModel = (value: string) => setGroupModel('background', value)
   const setWeixinModel = (value: string) => setGroupModel('weixin', value)
 
@@ -165,12 +156,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     return effectiveWorkflowModel.value
   }
   const loadImageModels = (force = false) => loadGroup('image_generation', force)
-  const loadEmbeddingModels = (force = false) => loadGroup('embedding', force)
-  /** 语义记忆取模型：没选时自动用第一个启用的向量模型；返回空串表示没有向量模型、功能不启用 */
-  const ensureEmbeddingModel = async (): Promise<string> => {
-    if (!loaded.value.embedding) await loadEmbeddingModels()
-    return effectiveEmbeddingModel.value
-  }
   const loadBackgroundModels = (force = false) => loadGroup('background', force)
   /** 后台批量任务取模型：优先"后台整理"分组，没选则跟随写作助手；都没有返回空串 */
   const ensureBackgroundModel = async (): Promise<string> => {
@@ -205,24 +190,20 @@ export const useAiModelStore = defineStore('ai-model', () => {
     textModel,
     workflowModel,
     imageModel,
-    embeddingModel,
     backgroundModel,
     weixinModel,
     textModels,
     workflowModels,
     imageModels,
-    embeddingModels,
     backgroundModels,
     weixinModels,
     textSelectOptions,
     workflowSelectOptions,
     imageSelectOptions,
-    embeddingSelectOptions,
     backgroundSelectOptions,
     effectiveTextModel,
     effectiveWorkflowModel,
     effectiveImageModel,
-    effectiveEmbeddingModel,
     effectiveBackgroundModel,
     effectiveWeixinModel,
     preferenceOf,
@@ -235,7 +216,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     setTextModel,
     setWorkflowModel,
     setImageModel,
-    setEmbeddingModel,
     setBackgroundModel,
     setWeixinModel,
     loadGroup,
@@ -244,8 +224,6 @@ export const useAiModelStore = defineStore('ai-model', () => {
     loadWorkflowModels,
     ensureWorkflowModel,
     loadImageModels,
-    loadEmbeddingModels,
-    ensureEmbeddingModel,
     loadBackgroundModels,
     ensureBackgroundModel,
     loadWeixinModels,

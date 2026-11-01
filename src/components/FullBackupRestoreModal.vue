@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
 
 .restore-hint {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -246,14 +246,14 @@ onBeforeUnmount(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
 
 .restore-error {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--state-danger);
 }
 
@@ -264,7 +264,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   div {
     display: flex;
@@ -315,12 +315,12 @@ onBeforeUnmount(() => {
   }
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
   small {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
     color: var(--ink-sec);
   }
@@ -330,13 +330,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .restore-progress {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
 }
 
@@ -347,7 +347,7 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: var(--state-success-surface);
   color: var(--state-success-on, var(--ink-main));
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.7;
 
   p {

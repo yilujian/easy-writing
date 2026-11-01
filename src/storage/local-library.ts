@@ -1,6 +1,5 @@
 import { getWritingStorage } from '@/storage'
 import { usesSqliteCore } from './storage-mode'
-import { isTauriRuntime } from './writing-storage'
 import { saveBlobFile } from '@/utils/download'
 import { IndexedDbLocalLibraryStorage } from './indexeddb-local-library'
 import { SqliteLocalLibraryStorage } from './sqlite-local-library'
@@ -373,11 +372,7 @@ export const purgeLocalBookCompletely = async (bookId: number | string) => {
   const { data: sessions } = await listLocalChatSessions({ bookId: String(bookId) })
   if (sessions.length) await deleteLocalChatSessions({ ids: sessions.map(session => session.id) })
   await storage.purgeLocalBook([Number(bookId)])
-  // Agent 板块：这本书的妙笔会话一起删，只是引用过它的对话摘掉引用；网页端没有宿主
-  if (isTauriRuntime()) {
-    const { agentCommand } = await import('@/agent/client')
-    await agentCommand('book_purged', { bookId: String(bookId) }).catch(error => console.warn('清理作品会话失败', error))
-  }
+
 }
 
 export { isLocalEntityId, LOCAL_USER_ID }

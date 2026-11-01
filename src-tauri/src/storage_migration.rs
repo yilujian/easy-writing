@@ -525,14 +525,14 @@ pub async fn inspect_at(root: &Path) -> Result<Inspection, String> {
                 "desktop_migrations",
                 "desktop_migration_parts",
                 "_sqlx_migrations",
-                // Agent 索引器的派生表在每次连接时随核心表一起建立（agent_indexer::ensure_schema），
+                // Agent 索引器的派生表在每次连接时随核心表一起建立（story_index::ensure_schema），
                 // 全新安装的库里也有；FTS5 虚拟表还会带出 chapter_fts_* 影子表。
                 "agent_outbox",
                 "chapter_chunks",
                 "canon_entities",
                 // 记忆检索表（索引版本 2），同样随连接建立、可重建
                 "memory_chunks",
-                // 向量表（索引版本 3）：切块与记忆的向量，随连接建立、可重算
+                // 旧版本的派生缓存：仅兼容识别已有库，当前版本不再创建或使用。
                 "chapter_vectors",
                 "memory_vectors",
             ])

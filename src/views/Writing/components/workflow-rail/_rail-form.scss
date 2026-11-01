@@ -31,17 +31,17 @@
 
   i {
     margin-bottom: 4px;
-    font-size: 26px;
+    font-size: calc(26px * var(--ui-font-scale, 1));
     opacity: 0.7;
   }
 
   strong {
     color: var(--ink-main);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   span {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
   }
 }
@@ -58,7 +58,7 @@
   border-radius: 7px;
   color: var(--state-warning-on);
   background: var(--state-warning-surface);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   span {
     display: inline-flex;
@@ -90,12 +90,12 @@
   margin-bottom: 14px;
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   span {
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     line-height: 1.55;
   }
 }
@@ -114,7 +114,7 @@
     margin-bottom: 6px;
     padding: 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 }
@@ -151,7 +151,7 @@
   right: 10px;
   bottom: 7px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -165,7 +165,7 @@
   border-radius: 7px;
   color: var(--ink-sec);
   background: color-mix(in srgb, var(--ink-sec) 6%, transparent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   &.is-error {
     justify-content: space-between;
@@ -197,7 +197,7 @@
 .rail-form-footer-hint {
   margin: 0;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 

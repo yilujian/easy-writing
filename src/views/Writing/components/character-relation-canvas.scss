@@ -37,7 +37,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
 
     button {
@@ -58,7 +58,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   span,
@@ -93,9 +93,9 @@
   gap: 8px;
   color: var(--ink-sec);
 
-  i { font-size: 28px; opacity: 0.7; }
-  p { font-size: 14px; margin: 0; }
-  span { font-size: 12px; }
+  i { font-size: calc(28px * var(--ui-font-scale, 1)); opacity: 0.7; }
+  p { font-size: calc(14px * var(--ui-font-scale, 1)); margin: 0; }
+  span { font-size: calc(12px * var(--ui-font-scale, 1)); }
 }
 
 .relation-empty-hint {
@@ -110,9 +110,9 @@
   color: var(--ink-sec);
   pointer-events: none;
 
-  i { font-size: 28px; opacity: 0.7; }
-  p { font-size: 14px; margin: 0; }
-  span { font-size: 12px; }
+  i { font-size: calc(28px * var(--ui-font-scale, 1)); opacity: 0.7; }
+  p { font-size: calc(14px * var(--ui-font-scale, 1)); margin: 0; }
+  span { font-size: calc(12px * var(--ui-font-scale, 1)); }
 }
 
 // 五类线色：注入公共画布壳（Vue Flow 的边类名）
@@ -130,7 +130,7 @@
 
   h3 {
     margin: 0 0 4px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     white-space: nowrap;
     overflow: hidden;
@@ -138,7 +138,7 @@
   }
 
   span {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
 
     &.role-0 { color: var(--ink-accent); }
@@ -183,7 +183,7 @@
       border-radius: 6px;
       background: transparent;
       color: var(--ink-main);
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
     }
 
     .danger { color: var(--state-danger); }

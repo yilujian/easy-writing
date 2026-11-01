@@ -1,0 +1,190 @@
+{
+  "format": "yichuang-resource-selection-v1",
+  "labelStatus": "待人工标注，AI拟定答案不可作为效果验收",
+  "scenarios": [
+    {
+      "id": "select-01",
+      "query": "对白像讲道理",
+      "context": "双方有明确工作诉求；尚有协商空间",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-dialogue-1"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-02",
+      "query": "对白缺少人物差异",
+      "context": "两人关系已有铺垫；双方知道一件旧事",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-dialogue-2"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-03",
+      "query": "拒绝对白变成训话",
+      "context": "人物希望维持同事关系；边界可以清楚执行",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-dialogue-3"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-04",
+      "query": "人物对话过于直白",
+      "context": "人物有保留且不能直接揭露；读者能理解当前利害",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-dialogue-4"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-05",
+      "query": "主角反击无力且要保护帮助者",
+      "context": "主角已有可核验记录；关键来源必须保密；对方在意项目权限",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-counter-1"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-06",
+      "query": "反击结束后局势没有改变",
+      "context": "已有可公开的成果记录；有人具备调整分工的权力",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-counter-2"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-07",
+      "query": "冲突只有情绪输出",
+      "context": "主角有完整往来记录；对方有处理此事的职责",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-counter-3"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-08",
+      "query": "为制造爽点过早暴露证据",
+      "context": "主角持有尚未完整的线索；当前目标是继续取得材料",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-counter-4"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-09",
+      "query": "旁白重复读者已经知道的事实",
+      "context": "前文已经交代相关关系；当前动作足以承接",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-exposition-1"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-10",
+      "query": "每句对白后都解释人物心情",
+      "context": "情绪已有具体触发点；行动不改变已有事实",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-exposition-2"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-11",
+      "query": "设定说明打断当前场景",
+      "context": "读者只需知道一条当前规则；其他背景可以延后",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-exposition-3"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-12",
+      "query": "误把所有叙述都替换成对白",
+      "context": "重复过程不含关键转折；读者需要知道时间已过去",
+      "constraints": "不改变既有事实",
+      "provisionalExpectedIds": [
+        "pilot-exposition-4"
+      ],
+      "humanLabel": null
+    },
+    {
+      "id": "select-13",
+      "query": "要反击但没有任何证据",
+      "context": "不能凭空造出邮件",
+      "constraints": "不能凭空造出邮件",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-14",
+      "query": "要保护线人，准备公开所有聊天记录",
+      "context": "不能泄露线人",
+      "constraints": "不能泄露线人",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-15",
+      "query": "用户 Skill 已完整覆盖对白方法",
+      "context": "不再添加另一套方法",
+      "constraints": "不再添加另一套方法",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-16",
+      "query": "只要两个人物名字",
+      "context": "无需场景资源",
+      "constraints": "无需场景资源",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-17",
+      "query": "只核对已有正文的日期",
+      "context": "无需写法资源",
+      "constraints": "无需写法资源",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-18",
+      "query": "当前章必须继续隐藏证据",
+      "context": "不要套立即公开的反击",
+      "constraints": "不要套立即公开的反击",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-19",
+      "query": "量子纠缠拓扑绝缘体",
+      "context": "超出此试点范围",
+      "constraints": "超出此试点范围",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    },
+    {
+      "id": "select-20",
+      "query": "整篇小说的结尾兑现",
+      "context": "不将单一局部案例当完整结构",
+      "constraints": "不将单一局部案例当完整结构",
+      "provisionalExpectedIds": [],
+      "humanLabel": null
+    }
+  ]
+}

@@ -229,7 +229,6 @@
               <el-select v-model="form.scene" size="small" popper-class="ai-model-select-popper">
                 <el-option label="文字生成（续写、建书、对话）" value="text" />
                 <el-option label="图像生成（封面）" value="image" />
-                <el-option label="向量（全书语义记忆，如 bge-m3、text-embedding-3）" value="embedding" />
               </el-select>
             </label>
             <label class="field">
@@ -306,7 +305,7 @@
                 controls-position="right"
               />
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label class="field">
               <span>最大输出 Tokens<small class="key-local-hint">（各家上限不同，思考型模型建议 32768 以上）</small></span>
               <el-input-number
                 v-model="form.maxOutputTokens"
@@ -317,7 +316,7 @@
                 controls-position="right"
               />
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label class="field">
               <span>思考模式<small class="key-local-hint">{{ thinkingSupportHint }}</small></span>
               <el-select v-model="form.thinking" size="small" class="ink-select" popper-class="ink-select-popper">
                 <el-option label="关闭（结构化任务更快更稳）" value="off" />
@@ -325,7 +324,7 @@
                 <el-option label="开启（请调大最大输出 Tokens）" value="on" />
               </el-select>
             </label>
-            <label v-if="form.scene !== 'embedding'" class="field">
+            <label class="field">
               <span>额外请求参数<small class="key-local-hint">（JSON 对象，原样合并进请求体）</small></span>
               <el-input
                 v-model="form.extraParams"
@@ -463,12 +462,11 @@ const thinkingSupportHint = computed(() => {
 const sceneLabels: Record<string, string> = {
   text: '文字',
   image: '生图',
-  embedding: '向量',
 }
 
 /**
  * 「默认模型」的槽位定义。主槽位是用户直接感知的三类功能；进阶槽位要么是省钱开关、
- * 要么需要特殊类型的模型，默认跟随/自动。六个一起平铺，进阶那行前面加一行小字分组。
+ * 要么用于后台处理，默认跟随/自动；进阶槽位单独分组。
  */
 type SlotDef = {
   group: AiModelGroupCode
@@ -489,7 +487,6 @@ const primarySlots: SlotDef[] = [
 const advancedSlots: SlotDef[] = [
   { group: 'weixin', label: '微信助手', hint: '在微信里跟易创对话时用', icon: 'fa-comment-dots', scene: 'text', sceneName: '文本' },
   { group: 'background', label: '后台整理', hint: '每章写完后自动整理人物状态与伏笔，调用次数多，可选便宜的', icon: 'fa-clipboard-list', scene: 'text', sceneName: '文本' },
-  { group: 'embedding', label: '全书语义记忆', hint: '让妙笔和续写按意思找到前文相关段落，需要向量（embedding）模型', icon: 'fa-brain', scene: 'embedding', sceneName: '向量' },
   { group: 'agent_planner', label: 'Agent 规划', hint: 'Agent 对话主循环：理解指令、调用工具、规划拍子', icon: 'fa-diagram-project', scene: 'text', sceneName: '文本' },
   { group: 'agent_writer', label: 'Agent 写作', hint: '生成正文与定向修订，可以选更强的模型', icon: 'fa-pen-nib', scene: 'text', sceneName: '文本' },
   { group: 'agent_critic', label: 'Agent 评审', hint: '读者模拟体检，可与写作模型不同', icon: 'fa-magnifying-glass', scene: 'text', sceneName: '文本' },
@@ -770,7 +767,7 @@ const closeRemoteModelPanelOnOutside = (event: MouseEvent) => {
 const editModel = (model: AiModelOption) => {
   editingId.value = model.id
   form.name = model.name || ''
-  form.scene = model.scene === 'image' ? 'image' : model.scene === 'embedding' ? 'embedding' : 'text'
+  form.scene = model.scene === 'image' ? 'image' : 'text'
   form.provider = model.provider || 'custom'
   form.protocol = 'openai_compatible'
   form.modelCode = model.modelCode || ''
@@ -995,14 +992,14 @@ const getTestClass = (status?: number) => {
 .pane-head {
   h3 {
     margin: 0 0 8px;
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
   p {
     margin: 0;
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
   }
 }
@@ -1071,7 +1068,7 @@ const getTestClass = (status?: number) => {
   background: color-mix(in srgb, var(--input-bg) 82%, var(--bg-main) 18%);
   border: 1px solid color-mix(in srgb, var(--input-border) 72%, var(--bg-main) 28%);
   color: var(--ink-accent);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1104,13 +1101,13 @@ const getTestClass = (status?: number) => {
   }
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.35;
   }
 
   small {
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     line-height: 1.45;
   }
 }
@@ -1127,7 +1124,7 @@ const getTestClass = (status?: number) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   box-shadow: 0 6px 16px rgba(var(--ink-accent-rgb, 180, 100, 40), 0.24);
 }
 
@@ -1146,14 +1143,14 @@ const getTestClass = (status?: number) => {
 
   h4 {
     margin: 0 0 4px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
   p {
     margin: 0;
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
   }
 }
@@ -1201,7 +1198,7 @@ const getTestClass = (status?: number) => {
   }
 
   i {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1231,7 +1228,7 @@ const getTestClass = (status?: number) => {
 
   span {
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 600;
   }
 }
@@ -1261,7 +1258,7 @@ const getTestClass = (status?: number) => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   white-space: nowrap;
 
   &:hover:not(:disabled) {
@@ -1302,7 +1299,7 @@ const getTestClass = (status?: number) => {
     color: var(--ink-main);
     cursor: pointer;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.45;
     text-align: left;
     overflow-wrap: anywhere;
@@ -1325,7 +1322,7 @@ const getTestClass = (status?: number) => {
 .compact-btn {
   min-height: 30px;
   padding: 0 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 // 连接测试结果：弹窗底部一条状态条，耗时/时间/地址横着排在右侧
@@ -1361,7 +1358,7 @@ const getTestClass = (status?: number) => {
 .test-icon {
   width: 28px;
   height: 28px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   border-radius: 50%;
   border: 1px solid currentColor;
   display: inline-flex;
@@ -1385,11 +1382,11 @@ const getTestClass = (status?: number) => {
   }
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   span {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1399,7 +1396,7 @@ const getTestClass = (status?: number) => {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 14px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   div {
     display: flex;
@@ -1452,7 +1449,7 @@ const getTestClass = (status?: number) => {
   border: 1px dashed var(--input-border);
   color: var(--settings-muted-color, var(--ink-sec));
   text-align: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   p {
     margin: 0 0 12px;
@@ -1468,7 +1465,7 @@ const getTestClass = (status?: number) => {
   width: 100%;
   min-width: 820px;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   th,
   td {
@@ -1492,7 +1489,7 @@ const getTestClass = (status?: number) => {
     display: block;
     margin-top: 3px;
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1569,7 +1566,7 @@ const getTestClass = (status?: number) => {
     background: transparent;
     color: var(--ink-accent);
     cursor: pointer;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
 
     &:disabled {
       color: var(--settings-muted-color, var(--ink-sec));
@@ -1641,7 +1638,7 @@ const getTestClass = (status?: number) => {
   --el-color-primary: var(--ink-accent);
   --el-text-color-primary: var(--ink-sec);
   height: 24px;
-  line-height: 24px;
+  line-height: calc(24px * var(--ui-font-scale, 1));
 }
 
 :deep(.el-switch__core) {
@@ -1667,7 +1664,7 @@ const getTestClass = (status?: number) => {
 // 列表里的状态开关：inline-prompt 把"启用/禁用"写进轨道，尺寸跟表格行高匹配
 :deep(.row-status-switch) {
   height: 22px;
-  line-height: 22px;
+  line-height: calc(22px * var(--ui-font-scale, 1));
 
   .el-switch__core {
     min-width: 52px;
@@ -1680,7 +1677,7 @@ const getTestClass = (status?: number) => {
   }
 
   .el-switch__inner {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1711,7 +1708,7 @@ const getTestClass = (status?: number) => {
 }
 
 :global(.ai-model-select-popper .model-option-desc) {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-weight: 400;
   line-height: 1.35;
   opacity: 0.72;
@@ -1821,7 +1818,7 @@ const getTestClass = (status?: number) => {
 
 .key-local-hint {
   margin-left: 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-weight: 400;
   color: var(--ink-sec);
 }
@@ -1835,7 +1832,7 @@ const getTestClass = (status?: number) => {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   span {
@@ -1844,7 +1841,7 @@ const getTestClass = (status?: number) => {
   }
 
   small {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1859,7 +1856,7 @@ const getTestClass = (status?: number) => {
   border: 1px dashed var(--input-border);
   border-radius: 6px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.5;
 
   i {
@@ -1873,7 +1870,7 @@ const getTestClass = (status?: number) => {
   border: 0;
   background: none;
   color: var(--ink-accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1915,11 +1912,11 @@ const getTestClass = (status?: number) => {
   }
 
   .provider-info strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .provider-info small {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     line-height: 1.35;
   }
 
@@ -1928,7 +1925,7 @@ const getTestClass = (status?: number) => {
     right: 8px;
     width: 16px;
     height: 16px;
-    font-size: 9px;
+    font-size: calc(9px * var(--ui-font-scale, 1));
   }
 
   .form-grid {
@@ -1944,14 +1941,14 @@ const getTestClass = (status?: number) => {
 
   h5 {
     margin: 0;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-main);
   }
 
   p {
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--settings-muted-color, var(--ink-sec));
   }
 }

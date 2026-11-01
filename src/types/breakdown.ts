@@ -55,6 +55,7 @@ export interface BreakdownChapterDetail {
   wordCount: number
   paragraphs: Array<{ id: number; text: string; insightId?: number }>
   analysis: {
+    findings?: import('./breakdown-task').BreakdownFinding[]
     summary?: string
     outline: Array<{ id: number; title: string; range: string; text: string; tags: Array<{ text: string; tone?: string }> }>
     rhythm: Array<{ label: string; value: string; desc: string }>

@@ -1,0 +1,14 @@
+{
+  "read_book": {
+    "selector": "view", "default": "info", "label": "读取作品与当前状态",
+    "operations": {"info":"read_book","chapters":"list_chapters","references":"read_references","drafts":"list_drafts","state":"read_platform_state"}
+  },
+  "save_draft": {
+    "selector": "kind", "default": "chapter", "label": "提交候选",
+    "operations": {"chapter":"save_draft","new_chapter":"save_new_chapter_draft","outline":"save_outline_draft","entity":"save_creation_draft","skill":"save_skill_draft"}
+  },
+  "read_writing_resource": {
+    "selector": "action", "default": "read", "label": "查询或读取写作资源",
+    "operations": {"search":"search_writing_resources","read":"read_writing_resource"}
+  }
+}

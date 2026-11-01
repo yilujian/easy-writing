@@ -987,7 +987,7 @@ const handleCopyName = (name: string, event: Event) => {
     cursor: pointer;
     color: var(--ink-sec);
     transition: all 0.3s;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     position: relative;
 
     &:hover {
@@ -1030,7 +1030,7 @@ const handleCopyName = (name: string, event: Event) => {
 
     .form-label {
       display: block;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       margin-bottom: 8px;
     }
@@ -1061,7 +1061,7 @@ const handleCopyName = (name: string, event: Event) => {
     text-align: center;
     padding: 6px 0;
     cursor: pointer;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     transition: all 0.3s;
     background: var(--btn-ghost-border);
@@ -1083,7 +1083,7 @@ const handleCopyName = (name: string, event: Event) => {
 }
 
 .helper-links {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   span {
     color: var(--ink-accent);
@@ -1114,18 +1114,18 @@ const handleCopyName = (name: string, event: Event) => {
 
 .char-count {
   text-align: right;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-top: 4px;
 }
 
 // .limit-hint {
-//   font-size: 12px;
+//   font-size: calc(12px * var(--ui-font-scale, 1));
 //   color: #9ca3af;
 // }
 
 .hint-text {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-top: auto;
   margin-bottom: 16px;
@@ -1150,7 +1150,7 @@ const handleCopyName = (name: string, event: Event) => {
   opacity: 0.5;
 
   i {
-    font-size: 32px;
+    font-size: calc(32px * var(--ui-font-scale, 1));
     margin-bottom: 16px;
   }
 }
@@ -1184,7 +1184,7 @@ const handleCopyName = (name: string, event: Event) => {
     position: relative;
 
     .name-text {
-      font-size: 18px;
+      font-size: calc(18px * var(--ui-font-scale, 1));
       font-family: var(--editor-font-family, 'KaiTi', 'STKaiti', serif);
       color: var(--ink-main);
       font-weight: 500;
@@ -1212,7 +1212,7 @@ const handleCopyName = (name: string, event: Event) => {
     opacity: 0.3;
 
     i {
-      font-size: 48px;
+      font-size: calc(48px * var(--ui-font-scale, 1));
       margin-bottom: 16px;
     }
   }
@@ -1221,7 +1221,7 @@ const handleCopyName = (name: string, event: Event) => {
     position: absolute;
     top: 20px;
     right: 20px;
-    font-size: 80px;
+    font-size: calc(80px * var(--ui-font-scale, 1));
     opacity: 0.05;
     transform: rotate(-15deg);
     pointer-events: none;

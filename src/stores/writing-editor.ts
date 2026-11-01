@@ -57,6 +57,7 @@ export interface WritingEditorState {
   fontLineHeight: number; // 行高
   contentWidth: number; // 内容宽度，百分比
   isParagraphGap: boolean; // 是否段间空一行
+  isFirstLineIndent: boolean; // 是否首行缩进两个字符
   rulerStyle: 'none' | 'solid' | 'dashed'; // 分割线样式
   alignMode: 'left' | 'center' | 'justify'; // 正文对齐方式
   entityHighlightEnabled: boolean; // 是否显示角色设定高亮
@@ -114,6 +115,7 @@ export const useWritingEditorStore = defineStore({
     fontLineHeight: 1.8,
     contentWidth: 60,
     isParagraphGap: true,
+    isFirstLineIndent: true,
     rulerStyle: 'none',
     alignMode: 'left',
     entityHighlightEnabled: true,
@@ -160,6 +162,7 @@ export const useWritingEditorStore = defineStore({
     setFontLineHeight(val: number) { this.fontLineHeight = val; },
     setContentWidth(val: number) { this.contentWidth = val; },
     setIsParagraphGap(val: boolean) { this.isParagraphGap = val; },
+    setIsFirstLineIndent(val: boolean) { this.isFirstLineIndent = val; },
     setRulerStyle(val: 'none' | 'solid' | 'dashed') { this.rulerStyle = val; },
     setAlignMode(val: 'left' | 'center' | 'justify') { this.alignMode = val; },
     setEntityHighlightEnabled(val: boolean) { this.entityHighlightEnabled = val; },
@@ -268,6 +271,7 @@ export const useWritingEditorStore = defineStore({
       this.fontLineHeight = 1.8;
       this.contentWidth = 60;
       this.isParagraphGap = true;
+      this.isFirstLineIndent = true;
       this.rulerStyle = 'none';
       this.alignMode = 'left';
       this.entityHighlightEnabled = true;
@@ -285,5 +289,5 @@ export const useWritingEditorStore = defineStore({
       // this.resetToDefaultPreferences();
     }
   },
-  persist: piniaPersistConfig('ew-writing-editor', ['fontFamily', 'fontBold', 'fontColor', 'fontSize', 'fontLineHeight', 'contentWidth', 'isParagraphGap', 'rulerStyle', 'alignMode', 'entityHighlightEnabled', 'quickPolishToolbarEnabled', 'sidebarWidth', 'rightPanelWidth', 'rightPanelActiveTool', 'outlineTreeWidth', 'characterTreeWidth', 'settingTreeWidth', 'typingSound', 'typingEffect', 'selfDestructMode', 'typewriterEnabled', 'typewriterRatio', 'focusMode', 'mobilePreviewWidth', 'mobilePreviewScreenType'])
+  persist: piniaPersistConfig('ew-writing-editor', ['fontFamily', 'fontBold', 'fontColor', 'fontSize', 'fontLineHeight', 'contentWidth', 'isParagraphGap', 'isFirstLineIndent', 'rulerStyle', 'alignMode', 'entityHighlightEnabled', 'quickPolishToolbarEnabled', 'sidebarWidth', 'rightPanelWidth', 'rightPanelActiveTool', 'outlineTreeWidth', 'characterTreeWidth', 'settingTreeWidth', 'typingSound', 'typingEffect', 'selfDestructMode', 'typewriterEnabled', 'typewriterRatio', 'focusMode', 'mobilePreviewWidth', 'mobilePreviewScreenType'])
 })

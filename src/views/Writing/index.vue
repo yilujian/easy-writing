@@ -1936,7 +1936,7 @@ onBeforeUnmount(() => {
   /* 最高层级 */
   font-family: 'Courier New', Courier, monospace;
   /* 打字机字体 */
-  font-size: 3rem;
+  font-size: calc(3rem * var(--ui-font-scale, 1));
   font-weight: bold;
   color: var(--state-danger);
   /* 鲜红 */
@@ -1968,7 +1968,7 @@ onBeforeUnmount(() => {
 
 .warning-title {
   color: var(--on-inverse);
-  font-size: 2.25rem;
+  font-size: calc(2.25rem * var(--ui-font-scale, 1));
   font-weight: bold;
   letter-spacing: 0.1em;
   margin-bottom: 1.5rem;
@@ -1980,14 +1980,14 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
 
   i {
-    font-size: 3.75rem;
+    font-size: calc(3.75rem * var(--ui-font-scale, 1));
     margin-bottom: 1rem;
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
 
 .countdown-text {
-  font-size: 200px;
+  font-size: calc(200px * var(--ui-font-scale, 1));
   font-weight: 900;
   color: var(--on-inverse);
   line-height: 1;
@@ -1997,7 +1997,7 @@ onBeforeUnmount(() => {
 .warning-tips {
   color: rgba(255, 255, 255, 0.8);
   margin-top: 2.5rem;
-  font-size: 1.25rem;
+  font-size: calc(1.25rem * var(--ui-font-scale, 1));
   font-weight: bold;
   background-color: rgba(0, 0, 0, 0.2);
   padding: 0.75rem 1.5rem;

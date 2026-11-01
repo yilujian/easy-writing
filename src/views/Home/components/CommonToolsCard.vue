@@ -163,7 +163,7 @@ const handleToolClick = (tool: ToolItem) => {
 }
 
 .tool-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   white-space: nowrap;
   overflow: hidden;

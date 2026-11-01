@@ -1,5 +1,4 @@
-//! 提示词与技能包的统一文件范围：普通提示词只带文档，skills/<id> 带完整资源。
-//! 备份、恢复及恢复日志必须使用同一范围，避免回滚时留下新脚本。
+//! 提示词文档的文件范围；备份、恢复和回滚使用同一份清单。
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -29,13 +28,6 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> 
         }
         let path = entry.path();
         let relative = path.strip_prefix(root).map_err(|e| e.to_string())?;
-        let parts: Vec<_> = relative.iter().collect();
-        if parts.first().is_some_and(|v| *v == "skills")
-            && parts.len() >= 2
-            && !crate::agent_skill_files::valid_id(&parts[1].to_string_lossy())
-        {
-            continue;
-        }
         let kind = entry.file_type().map_err(|e| e.to_string())?;
         if kind.is_symlink() {
             return Err(format!(
@@ -46,12 +38,11 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> 
         if kind.is_dir() {
             visit(root, &path, out)?;
         } else if kind.is_file() {
-            let skill = parts.len() >= 3 && parts[0] == "skills";
             let document = path
                 .extension()
                 .and_then(|v| v.to_str())
                 .is_some_and(|v| v.eq_ignore_ascii_case("md") || v.eq_ignore_ascii_case("txt"));
-            if skill || document {
+            if document {
                 out.push(path);
             }
         } else {

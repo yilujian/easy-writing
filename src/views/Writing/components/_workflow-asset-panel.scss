@@ -82,7 +82,7 @@
   align-items: center;
   justify-content: center;
   color: var(--tag-color);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .asset-avatar {
@@ -109,12 +109,12 @@
   }
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   small {
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 }
 
@@ -125,7 +125,7 @@
   border-radius: 999px;
   color: var(--tag-color);
   background: var(--tag-bg);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
 }
 
 .asset-delete-button {
@@ -179,12 +179,12 @@
   }
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   span {
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 
   .asset-dirty {
@@ -216,7 +216,7 @@
 
   > span {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -229,7 +229,7 @@
     right: 10px;
     bottom: 7px;
     color: var(--ink-sec);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     font-variant-numeric: tabular-nums;
     pointer-events: none;
   }
@@ -263,11 +263,11 @@
   justify-content: center;
   gap: 7px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   text-align: center;
 
   i {
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-font-scale, 1));
   }
 
   &.is-error {

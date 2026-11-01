@@ -172,9 +172,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { uiChartFontSize } from '@/utils/ui-typography'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useUiPreferencesStore } from '@/stores/ui-preferences'
 import { ElMessage } from 'element-plus'
-import { agentCommand } from '@/agent/client'
+import { writingCommand } from '@/writing-service/client'
 import { isTauriRuntime } from '@/storage'
 import { getLocalLibraryStorage } from '@/storage/local-library'
 import { inkConfirm } from '@/utils/ink-confirm'
@@ -270,13 +272,13 @@ function baseOption(): Pick<EChartsOption, 'grid' | 'yAxis' | 'textStyle'> {
   const sec = css('--ink-sec', '#655E56')
   return {
     grid: { left: 36, right: 16, top: 28, bottom: 28 },
-    textStyle: { color: sec, fontSize: 11 },
+    textStyle: { color: sec, fontSize: uiChartFontSize(11) },
     yAxis: {
       type: 'value',
       min: 0,
       max: 5,
       interval: 1,
-      axisLabel: { color: sec, fontSize: 11 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(11) },
       splitLine: { lineStyle: { color: css('--ui-border', 'rgba(0,0,0,0.08)'), width: 1, type: 'solid' } }
     }
   }
@@ -286,7 +288,7 @@ function tooltip(): EChartsOption['tooltip'] {
     trigger: 'axis',
     backgroundColor: css('--popover-bg', '#fcfbf7'),
     borderColor: css('--ui-border', 'rgba(0,0,0,0.08)'),
-    textStyle: { color: css('--ink-main', '#241F1B'), fontSize: 12 },
+    textStyle: { color: css('--ink-main', '#241F1B'), fontSize: uiChartFontSize(12) },
     axisPointer: { type: 'line', lineStyle: { color: css('--ui-border', 'rgba(0,0,0,0.12)') } }
   }
 }
@@ -312,7 +314,7 @@ function renderProfile() {
       xAxis: {
         type: 'category',
         data: points.map(point => String(point.no)),
-        axisLabel: { color: css('--ink-sec', '#655E56'), fontSize: 11 },
+        axisLabel: { color: css('--ink-sec', '#655E56'), fontSize: uiChartFontSize(11) },
         axisLine: { lineStyle: { color: css('--ui-border', 'rgba(0,0,0,0.12)') } },
         axisTick: { show: false }
       },
@@ -349,13 +351,13 @@ function renderCompare() {
         left: 0,
         itemWidth: 18,
         itemHeight: 2,
-        textStyle: { color: css('--ink-main', '#241F1B'), fontSize: 12 }
+        textStyle: { color: css('--ink-main', '#241F1B'), fontSize: uiChartFontSize(12) }
       },
       tooltip: tooltip(),
       xAxis: {
         type: 'category',
         data: Array.from({ length }, (_, index) => `第${index + 1}章`),
-        axisLabel: { color: context, fontSize: 11 },
+        axisLabel: { color: context, fontSize: uiChartFontSize(11) },
         axisLine: { lineStyle: { color: css('--ui-border', 'rgba(0,0,0,0.12)') } },
         axisTick: { show: false }
       },
@@ -388,7 +390,7 @@ function renderCompare() {
 
 async function loadProfile() {
   try {
-    profile.value = await agentCommand<Profile>('breakdown_profile', { projectId: String(props.projectId) })
+    profile.value = await writingCommand<Profile>('breakdown_profile', { projectId: String(props.projectId) })
     error.value = ''
     await nextTick()
     renderProfile()
@@ -431,7 +433,7 @@ async function build() {
         cancelButtonText: '取消'
       }
     )
-    const { queued } = await agentCommand<{ queued: number }>('index_rebuild', {
+    const { queued } = await writingCommand<{ queued: number }>('index_rebuild', {
       bookId: `breakdown:${props.projectId}`,
       onlyMissing: true
     })
@@ -446,7 +448,7 @@ async function runCompare() {
   if (!bookId.value) return
   busy.value = true
   try {
-    comparison.value = await agentCommand<Comparison>('breakdown_compare', {
+    comparison.value = await writingCommand<Comparison>('breakdown_compare', {
       projectId: String(props.projectId),
       bookId: bookId.value
     })
@@ -465,7 +467,7 @@ async function removeRecipe(id: string) {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await agentCommand('delete_recipe', { id })
+    await writingCommand('delete_recipe', { id })
     await loadProfile()
   } catch (reason) {
     if (reason !== 'cancel' && reason !== 'close') ElMessage.error(String(reason))
@@ -477,6 +479,8 @@ function disposeCharts() {
   profileChart = null
   compareChart = null
 }
+const uiPreferences = useUiPreferencesStore()
+watch(() => uiPreferences.uiFontSize, () => { renderProfile(); renderCompare() }, { flush: 'post' })
 const onResize = () => {
   profileChart?.resize()
   compareChart?.resize()
@@ -496,7 +500,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 14px;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.7;
 }
 
@@ -521,7 +525,7 @@ onBeforeUnmount(() => {
 
   small {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -553,18 +557,18 @@ onBeforeUnmount(() => {
 
   span {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     font-weight: 600;
   }
 }
 
 .pacing-title {
   margin-top: 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 

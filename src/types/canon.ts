@@ -1,5 +1,4 @@
-// 由 agent-runtime/export_contracts.py --ts 生成，请勿手改。
-// 修改 agent-runtime/contracts.py 后运行 `uv run python export_contracts.py --ts`。
+// 作品状态与体检的数据类型；与 src-tauri/src/contracts/documents.json 对齐。
 // 模型侧、Rust 宿主与前端共用同一份契约。
 
 /** 内容来源：author 为作者明确表达，assumed 为作者委托 AI 拟定，suggested 为尚未确认的 AI 建议。不能把建议记成作者决定。 */

@@ -769,14 +769,14 @@ watch(
 
   h1 {
     margin: 0;
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
   }
 
   p {
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -789,7 +789,7 @@ watch(
 .search-input {
   width: 100%;
   padding: 8px 12px 8px 30px !important;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   border: 1px solid var(--input-border);
   border-radius: 18px;
   background: var(--input-bg);
@@ -816,7 +816,7 @@ watch(
   transform: translateY(-50%);
   color: var(--ink-sec);
   opacity: 0.6;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   pointer-events: none;
 }
 
@@ -857,7 +857,7 @@ watch(
 }
 
 .input-meta {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -873,7 +873,7 @@ watch(
   display: flex;
   gap: 12px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .tool-item {
@@ -910,7 +910,7 @@ watch(
   border: none;
   background: transparent;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   padding: 6px 0;
@@ -942,7 +942,7 @@ watch(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
@@ -952,7 +952,7 @@ watch(
 }
 
 .list-meta {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -990,7 +990,7 @@ watch(
   position: absolute;
   top: 10px;
   right: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
   opacity: 0.6;
 }
@@ -1001,7 +1001,7 @@ watch(
 
 
 .item-content {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   line-height: 1.6;
   display: -webkit-box;
@@ -1032,7 +1032,7 @@ watch(
 }
 
 .item-footer {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   display: flex;
   align-items: center;
@@ -1053,7 +1053,7 @@ watch(
   background: transparent;
   color: var(--ink-accent);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding: 0;
 }
 
@@ -1089,7 +1089,7 @@ watch(
   border-radius: 12px;
   padding: 20px;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--btn-ghost-bg);
   display: flex;
@@ -1149,7 +1149,7 @@ watch(
   border: 1px solid var(--btn-ghost-border);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 }
 
@@ -1159,7 +1159,7 @@ watch(
 }
 
 .tag-empty {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.6;
   padding: 6px 2px;
@@ -1170,7 +1170,7 @@ watch(
   border: 1px solid color-mix(in srgb, var(--ink-accent) 30%, transparent);
   background: color-mix(in srgb, var(--ink-accent) 8%, transparent);
   padding: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   line-height: 1.6;
 }
@@ -1200,7 +1200,7 @@ watch(
 
 .link-button {
   align-self: flex-end;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
   border: none;
   background: transparent;

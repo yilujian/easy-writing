@@ -1,3 +1,4 @@
+import { mutateDesktopRecord } from '@/storage/desktop-records'
 import type { JsonRecord } from '@/types/json'
 import type { BreakdownChapterDetail, BreakdownContinueResult } from '@/types/breakdown'
 import { buildBookReportMessages, buildChapterBreakdownMessages } from '@/config/breakdown-prompts'
@@ -16,6 +17,7 @@ import { NO_MODEL_MESSAGE, requestLocalChatCompletion } from '@/utils/local-ai-c
 import { promptTemperature } from '@/storage/local-prompts'
 import {
   registerLiveLocalTask,
+  getLiveLocalTask,
   unregisterLiveLocalTask,
 } from '@/utils/local-workflow-runtime'
 
@@ -42,7 +44,7 @@ const resolveBreakdownModel = async () => {
 type OutlineCard = BreakdownChapterDetail['analysis']['outline'][number]
 
 /** 把 AI 产物整形成工作台消费的 analysis + 段落高亮映射 */
-const normalizeChapterAnalysis = (
+export const normalizeChapterAnalysis = (
   parsed: JsonRecord,
   paragraphCount: number
 ): { analysis: BreakdownChapterDetail['analysis']; insightIds: Array<number | null> } => {
@@ -108,12 +110,18 @@ const mergeCharacterNames = (project: LocalBreakdownProject, analysis: Breakdown
   project.characterNames = [...names]
 }
 
-const analyzeOneChapter = async (project: LocalBreakdownProject, chapterId: number, modelCode: string) => {
+export interface BreakdownAnalysisResult { chapterId: number; expectedParagraphs: string[]; analysis: BreakdownChapterDetail['analysis']; paragraphInsightIds: Array<number | null> }
+interface BreakdownOptions { signal?: AbortSignal; wait?: boolean; modelCode?: string; timeoutMs?: number; onProgress?: (text: string) => void; commitAnalysis?: (result: BreakdownAnalysisResult) => Promise<unknown> }
+const analyzeOneChapter = async (project: LocalBreakdownProject, chapterId: number, modelCode: string, options: BreakdownOptions = {}) => {
+  const { signal } = options
+  signal?.throwIfAborted()
   const content = await readLocalBreakdownContent(chapterId)
   const item = project.chapters.find(chapter => chapter.id === chapterId)
   if (!content || !item) throw new Error('章节不存在')
   const paragraphs = content.paragraphs.slice(0, CHAPTER_MAX_PROMPT_PARAGRAPHS)
   const raw = await requestLocalChatCompletion({
+    signal,
+    timeoutMs: options.timeoutMs,
     scene: 'breakdown_chapter',
     sceneLabel: '拆书·单章拆解',
     modelCode,
@@ -126,6 +134,7 @@ const analyzeOneChapter = async (project: LocalBreakdownProject, chapterId: numb
       isGolden: item.sortNo <= GOLDEN_CHAPTER_LIMIT,
     }),
   })
+  signal?.throwIfAborted()
   let parsed: JsonRecord | null = null
   try {
     parsed = parseAiJson(raw, ['summary', 'outline'])
@@ -136,7 +145,13 @@ const analyzeOneChapter = async (project: LocalBreakdownProject, chapterId: numb
     throw new Error('拆解结果无法解析，请重试')
   }
   const { analysis, insightIds } = normalizeChapterAnalysis(parsed, content.paragraphs.length)
-  await writeLocalBreakdownContent({ ...content, analysis, paragraphInsightIds: insightIds })
+  signal?.throwIfAborted()
+  if (options.commitAnalysis) {
+    await options.commitAnalysis({ chapterId, expectedParagraphs: content.paragraphs, analysis, paragraphInsightIds: insightIds })
+    return
+  }
+  signal?.throwIfAborted()
+  await writeLocalBreakdownContent({ ...content, coverage: undefined, analysis, paragraphInsightIds: insightIds })
   mergeCharacterNames(project, analysis)
 }
 
@@ -146,51 +161,86 @@ export const continueLocalBreakdown = async (data: {
   count?: number
   chapterIds?: number[]
   async?: number
-}) => {
+}, options: BreakdownOptions = {}) => {
+  options.signal?.throwIfAborted()
+  if (getLiveLocalTask(data.projectId)) throw new Error('该拆书项目已有任务正在执行')
   const project = await readLocalBreakdownProject(data.projectId)
   if (!project) throw new Error('拆书项目不存在')
   const picked = pickLocalBreakdownChapters(project, data)
   if (!picked.length) throw new Error('暂无待拆章节')
   // 提交前确认模型可用，报错发生在用户点击的当下而不是后台静默失败
-  await resolveBreakdownModel()
-
-  for (const item of picked) {
-    item.status = 'processing'
-    item.errorMessage = undefined
-  }
-  recalcLocalBreakdownProject(project)
-  await writeLocalBreakdownProject(project)
-
-  registerLiveLocalTask({
-    taskId: Number(project.id),
-    runId: Number(project.id),
-    kind: 'breakdown',
-    requestCancel: () => undefined,
+  if (!options.modelCode) await resolveBreakdownModel()
+  options.signal?.throwIfAborted()
+  // 读取和模型校验之后再检查一次，防止两个入口同时启动同一项目。
+  if (getLiveLocalTask(data.projectId)) throw new Error('该拆书项目已有任务正在执行')
+  registerLiveLocalTask({ taskId: Number(project.id), runId: Number(project.id), kind: 'breakdown', requestCancel: () => undefined })
+  // Pi 的状态更新合并到最新记录，不能用启动时快照复活已删除的项目/章节。
+  const update = (change: (p: LocalBreakdownProject) => void) => mutateDesktopRecord('ew-local-breakdown/kv', `project:${project.id}`, value => {
+    if (!value) throw new Error('拆书项目已删除')
+    const current = value as LocalBreakdownProject
+    change(current); recalcLocalBreakdownProject(current)
+    return { value: current, result: undefined }
   })
-  void (async () => {
-    try {
+  try {
+    if (options.commitAnalysis) await update(current => {
       for (const item of picked) {
+        const c = current.chapters.find(c => c.id === item.id)
+        if (!c || !['wait', 'failed'].includes(c.status)) throw new Error('拆书章节状态已改变')
+        c.status = 'processing'; c.errorMessage = undefined
+      }
+    })
+    else {
+      for (const item of picked) { item.status = 'processing'; item.errorMessage = undefined }
+      recalcLocalBreakdownProject(project); await writeLocalBreakdownProject(project)
+    }
+  } catch (cause) { unregisterLiveLocalTask(Number(project.id)); throw cause }
+  const work = (async () => {
+    try {
+      for (const [index, item] of picked.entries()) {
+        options.signal?.throwIfAborted()
+        options.onProgress?.(`拆解 ${index + 1}/${picked.length}：${item.title}`)
         const fresh = await readLocalBreakdownProject(data.projectId)
         if (!fresh) return
         const chapter = fresh.chapters.find(entry => entry.id === item.id)
         // 拆解途中章节被删掉：跳过即可
         if (!chapter || chapter.status !== 'processing') continue
         try {
-          const modelCode = await resolveBreakdownModel()
-          await analyzeOneChapter(fresh, chapter.id, modelCode)
+          const modelCode = options.modelCode || await resolveBreakdownModel()
+          await analyzeOneChapter(fresh, chapter.id, modelCode, options)
+          if (options.commitAnalysis) continue
           chapter.status = 'done'
           chapter.errorMessage = undefined
         } catch (error) {
+          options.signal?.throwIfAborted()
           chapter.status = 'failed'
           chapter.errorMessage = error instanceof Error ? error.message : '拆解失败，请重试'
         }
-        recalcLocalBreakdownProject(fresh)
-        await writeLocalBreakdownProject(fresh)
+        if (options.commitAnalysis) await update(current => {
+          const c = current.chapters.find(c => c.id === chapter.id)
+          if (c?.status === 'processing') { c.status = chapter.status; c.errorMessage = chapter.errorMessage }
+        })
+        else { recalcLocalBreakdownProject(fresh); await writeLocalBreakdownProject(fresh) }
       }
     } finally {
-      unregisterLiveLocalTask(Number(project.id))
+      try {
+        if (options.signal?.aborted) {
+          const current = await readLocalBreakdownProject(project.id)
+          if (current && options.commitAnalysis) await update(latest => {
+            for (const item of latest.chapters) if (picked.some(p => p.id === item.id) && item.status === 'processing') { item.status = 'wait'; item.errorMessage = undefined }
+          })
+          else if (current) {
+            for (const item of current.chapters) if (picked.some(p => p.id === item.id) && item.status === 'processing') {
+              item.status = 'wait'; item.errorMessage = undefined
+            }
+            recalcLocalBreakdownProject(current)
+            await writeLocalBreakdownProject(current)
+          }
+        }
+      } finally { unregisterLiveLocalTask(Number(project.id)) }
     }
   })()
+  if (options.wait) await work
+  else void work.catch(error => console.error('拆书任务执行失败', error))
 
   const result: BreakdownContinueResult = {
     projectId: Number(project.id),

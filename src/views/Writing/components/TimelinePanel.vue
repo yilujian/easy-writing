@@ -763,7 +763,7 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--ui-glass-bg) 70%, transparent);
 
   .panel-title {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
   }
@@ -878,7 +878,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: var(--ui-glass-bg);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .timeline-body {
@@ -946,7 +946,7 @@ onBeforeUnmount(() => {
     background: var(--bg-main);
     border: 2px solid var(--line-main);
     color: var(--ink-main);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -969,14 +969,14 @@ onBeforeUnmount(() => {
 
   h3 {
     margin: 6px 0;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
   p {
     margin: 0;
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.55;
   }
 }
@@ -987,7 +987,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   em {
     font-style: normal;
@@ -1022,19 +1022,19 @@ onBeforeUnmount(() => {
   span,
   em {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 
   h3 {
     margin: 6px 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   p {
     margin: 0 0 8px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.5;
   }
 
@@ -1055,7 +1055,7 @@ onBeforeUnmount(() => {
 
   h3 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1067,7 +1067,7 @@ onBeforeUnmount(() => {
   min-height: 32px;
   border-top: 1px solid var(--ui-border);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   strong {
@@ -1127,14 +1127,14 @@ onBeforeUnmount(() => {
     display: block;
     margin-bottom: 5px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong,
   p {
     margin: 0;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.55;
   }
 }
@@ -1148,7 +1148,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-bottom: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   button {
     height: 26px;
@@ -1176,7 +1176,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--ui-border);
     border-radius: 999px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1227,7 +1227,7 @@ onBeforeUnmount(() => {
 .suggestion-title {
   justify-content: space-between;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   button {
     border: 0;
@@ -1251,12 +1251,12 @@ onBeforeUnmount(() => {
   p {
     margin: 4px 0 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   em {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 

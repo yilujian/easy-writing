@@ -677,19 +677,19 @@ onBeforeUnmount(() => {
       justify-content: center;
       gap: 6px;
       color: var(--on-inverse);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       pointer-events: none;
     }
   }
 
   .upload-text {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-family: "Noto Serif SC", serif;
     margin-top: 4px;
   }
 
   .upload-hint {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     transform: scale(0.9);
     margin-top: 2px;
@@ -701,7 +701,7 @@ onBeforeUnmount(() => {
   }
 
   .ai-draw-btn {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     color: var(--ink-accent);
     background: transparent;
     border: none;
@@ -735,7 +735,7 @@ onBeforeUnmount(() => {
 
 .form-label {
   display: block;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-sec);
   margin-bottom: 4px;
@@ -745,7 +745,7 @@ onBeforeUnmount(() => {
 
 /* 标题特殊样式 */
 .title-input {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 
@@ -757,7 +757,7 @@ onBeforeUnmount(() => {
   position: absolute;
   right: 0;
   bottom: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   pointer-events: none;
   transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -785,7 +785,7 @@ onBeforeUnmount(() => {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--input-border);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -858,7 +858,7 @@ onBeforeUnmount(() => {
 //   position: absolute;
 //   right: 0;
 //   top: 8px;
-//   font-size: 12px;
+//   font-size: calc(12px * var(--ui-font-scale, 1));
 //   color: var(--ink-muted);
 //   pointer-events: none;
 // }
@@ -882,7 +882,7 @@ onBeforeUnmount(() => {
   .tag-item {
     background-color: var(--tag-bg);
     color: var(--tag-color);
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     padding: 2px 8px;
     border-radius: 4px;
     border: 1px solid var(--tag-border);
@@ -913,12 +913,12 @@ onBeforeUnmount(() => {
     background: transparent;
     border: none;
     outline: none;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-main);
 
     &::placeholder {
       color: var(--ink-sec);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 }
@@ -944,7 +944,7 @@ onBeforeUnmount(() => {
 }
 
 .text-btn {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: transparent;
   border: none;
@@ -984,7 +984,7 @@ onBeforeUnmount(() => {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 99px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: #78350f;
   background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
@@ -1050,7 +1050,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--input-border);
   border-radius: 6px;
   padding: 12px 12px 34px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   resize: vertical;
   line-height: 1.6;
@@ -1073,7 +1073,7 @@ onBeforeUnmount(() => {
   position: absolute;
   bottom: 8px;
   right: 12px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   pointer-events: none;
 }

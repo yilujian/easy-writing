@@ -3,6 +3,7 @@
   <div id="app" :class="{ 'desktop-shell': desktopShell, 'web-shell': !desktopShell }">
     <DesktopTitleBar v-if="desktopShell" />
     <GlobalSearchPalette v-if="desktopShell" />
+    <PetHost v-if="mainDesktopWindow" />
 
     <div class="app-shell-body">
       <!-- 背景层 -->
@@ -33,7 +34,7 @@
     <div v-if="desktopClosing" class="app-closing-overlay">
       <div class="app-closing-card">
         <i class="fa-solid fa-spinner fa-spin"></i>
-        <span>正在保存并备份您的作品，即将退出…</span>
+        <span>{{ desktopClosingMessage }}</span>
       </div>
     </div>
 
@@ -59,8 +60,9 @@
 
 <script setup lang="ts">
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { ref, onBeforeUnmount, onMounted } from 'vue'
+import { ref, onBeforeUnmount, onMounted, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useThemeStore } from '@/stores/theme'
 import { isTauriRuntime } from '@/storage'
 import { getLocalBackupService } from '@/storage/local-backup-service'
@@ -78,8 +80,11 @@ import GlobalSearchPalette from '@/components/GlobalSearchPalette.vue'
 import DesktopUpdateModal from '@/components/DesktopUpdateModal.vue'
 
 const themeStore = useThemeStore()
+const PetHost = defineAsyncComponent(() => import('@/desktop-pet/PetHost.vue'))
 const backupService = getLocalBackupService()
 const desktopShell = isTauriRuntime()
+// 独立写作面板共用 App 外壳，但全局备份、更新与微信通道只由主窗口负责。
+const mainDesktopWindow = desktopShell && getCurrentWindow().label === 'main'
 /** 微信通道模块按需加载后的句柄；卸载时用它停监听 */
 let weixinChannel: typeof import('@/ai/channels/weixin/channel') | null = null
 let weixinChannelTimer: ReturnType<typeof setTimeout> | null = null
@@ -98,6 +103,8 @@ const appContextMenuItems = ref<Array<{ label: string; action: AppContextAction 
 let appContextTarget: HTMLElement | null = null
 let unlistenCloseRequested: (() => void) | null = null
 let desktopCloseConfirmed = false
+let desktopClosePending = false
+const desktopClosingMessage = ref('正在保存并备份您的作品，即将退出…')
 
 const desktopUpdateVisible = ref(false)
 // 关窗保存进行中（遮罩提示）
@@ -240,52 +247,78 @@ const setupDesktopCloseBackup = async () => {
     unlistenCloseRequested = await appWindow.onCloseRequested(async (event) => {
       if (desktopCloseConfirmed) return
       event.preventDefault()
-      desktopClosing.value = true
-
-      // 活动 Agent 由原生宿主持有。普通关窗隐藏窗口继续运行，Cmd-Q 由宿主先停止并保存。
+      if (desktopClosePending) return
+      desktopClosePending = true
+      let pi: ReturnType<typeof import('@/views/AgentPi/use-pi-workspace').usePiWorkspace> | undefined
       try {
-        const { useAgentWorkspace } = await import('@/views/AgentCreation/use-agent-workspace')
-        await useAgentWorkspace().flushDrafts()
-        const { invoke } = await import('@tauri-apps/api/core')
-        const action = await invoke<string>('agent_workspace', { action: 'prepare_close', args: {} })
-        if (action === 'hide') {
-          await appWindow.hide()
+        const { usePiWorkspace } = await import('@/views/AgentPi/use-pi-workspace')
+        pi = usePiWorkspace()
+        pi.beginClose()
+        desktopClosingMessage.value = '正在检查运行状态…'
+        desktopClosing.value = true
+        if (await pi.needsCloseConfirmation()) {
           desktopClosing.value = false
+          const { inkConfirm } = await import('@/utils/ink-confirm')
+          try {
+            await inkConfirm('Agent 正在执行任务。关闭将停止生成、保存草稿，并等待已确认的正式保存完成。是否继续关闭？', '关闭前停止 Agent', {
+              confirmButtonText: '停止并关闭', cancelButtonText: '继续使用', closeOnClickModal: false,
+            })
+          } catch { return }
+          desktopClosing.value = true
+        }
+        desktopClosingMessage.value = '正在停止 Agent 并保存内容，请稍候…'
+        await pi.prepareClose()
+        desktopClosingMessage.value = '正在保存并备份您的作品，即将退出…'
+        // 共享资料索引仍由宿主执行；退出前等待其停止并保存。
+        try {
+          const { invoke } = await import('@tauri-apps/api/core')
+          await invoke('writing_workspace', { action: 'prepare_close', args: {} })
+        } catch (error) {
+          desktopClosing.value = false
+          ElMessage.error(String(error))
           return
         }
-      } catch (error) {
-        desktopClosing.value = false
-        ElMessage.error(String(error))
-        return
-      }
 
-      try {
-        const backup = await backupService.backupBeforeExit()
-        if (!backup.ok) {
+        try {
+          const backup = await backupService.backupBeforeExit()
+          if (!backup.ok) {
+            desktopClosing.value = false
+            const message = backup.result.failed[0]?.message || '本地备份失败'
+            const shouldExit = await ask(`本地备份失败：${message}。是否仍然退出？`, {
+              title: '本地备份失败',
+              kind: 'warning',
+            })
+            if (!shouldExit) return
+            desktopClosing.value = true
+          }
+        } catch {
           desktopClosing.value = false
-          const message = backup.result.failed[0]?.message || '本地备份失败'
-          const shouldExit = await ask(`本地备份失败：${message}。是否仍然退出？`, {
+          const shouldExit = await ask('关闭前备份失败，是否仍然退出？', {
             title: '本地备份失败',
             kind: 'warning',
-          })
+          }).catch(() => true)
           if (!shouldExit) return
           desktopClosing.value = true
         }
-      } catch {
-        desktopClosing.value = false
-        const shouldExit = await ask('关闭前备份失败，是否仍然退出？', {
-          title: '本地备份失败',
-          kind: 'warning',
-        }).catch(() => true)
-        if (!shouldExit) return
-        desktopClosing.value = true
-      }
 
-      desktopCloseConfirmed = true
-      try {
-        await destroyDesktopSubWindows()
+        desktopCloseConfirmed = true
+        try {
+          await destroyDesktopSubWindows()
+          await appWindow.destroy()
+        } catch (error) {
+          desktopCloseConfirmed = false
+          throw error
+        }
+      } catch (error) {
+        ElMessage.error(`关闭未完成：${String(error)}`)
       } finally {
-        await appWindow.destroy()
+        if (!desktopCloseConfirmed) {
+          // 取消确认、保存失败或备份取消，都释放 Pi 退出屏障。
+          // 已停止的 Pi 不自动重启；只允许作者下一次手动发送。
+          await pi?.cancelClose().catch(error => ElMessage.error(`退出状态恢复失败，请重试关闭：${String(error)}`))
+          desktopClosing.value = false
+          desktopClosePending = false
+        }
       }
     })
   } catch (error) {
@@ -482,14 +515,16 @@ onMounted(() => {
   window.addEventListener('contextmenu', handleGlobalContextMenu, true)
   window.addEventListener('click', closeAppContextMenu)
   window.addEventListener('blur', closeAppContextMenu)
-  window.addEventListener('ew-desktop-update-check', handleDesktopUpdateRequest)
+  if (!desktopShell || mainDesktopWindow) window.addEventListener('ew-desktop-update-check', handleDesktopUpdateRequest)
   window.addEventListener('ew-writing-storage-unavailable', handleStorageUnavailable)
   window.addEventListener('ew-writing-storage-recovered', handleStorageRecovered)
-  void setupDesktopCloseBackup()
-  void schedulePeriodicBackup()
+  if (mainDesktopWindow) {
+    void setupDesktopCloseBackup()
+    void schedulePeriodicBackup()
+  }
   // 微信助手：已绑定就拉起长轮询，未绑定时内部直接返回。
   // 动态引入且让出一帧：通道模块不进首屏关键路径，避免 dev 模式下白屏等待转译
-  if (desktopShell) {
+  if (mainDesktopWindow) {
     weixinChannelTimer = setTimeout(() => {
       void import('@/ai/channels/weixin/channel').then(channel => {
         weixinChannel = channel
@@ -499,7 +534,7 @@ onMounted(() => {
   }
   if (desktopUpdatePreviewEnabled) {
     showDesktopUpdatePreview()
-  } else if (desktopShell) {
+  } else if (mainDesktopWindow) {
     void showPendingDesktopUpdateNotes()
     automaticUpdateTimer = setTimeout(() => void runDesktopUpdateCheck(true), 8000)
   }
@@ -570,7 +605,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: transparent;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: left;
   cursor: pointer;
 }
@@ -600,12 +635,12 @@ onBeforeUnmount(() => {
   background: var(--card-bg, #fff);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
   color: var(--ink-main, #333);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
 .app-closing-card i {
   color: var(--ink-accent, #b04a39);
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
 }
 </style>

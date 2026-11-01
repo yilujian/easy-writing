@@ -127,7 +127,7 @@ const handleExport = async () => {
 }
 
 .book-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-main);
 }
@@ -137,13 +137,13 @@ const handleExport = async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .book-intro {
   margin-top: 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.6;
   max-height: 88px;
@@ -155,7 +155,7 @@ const handleExport = async () => {
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-bottom: 10px;
 }
@@ -190,19 +190,19 @@ const handleExport = async () => {
 
 .format-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .format-desc {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.5;
 }
 
 .export-tip {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 

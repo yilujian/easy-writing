@@ -2,12 +2,15 @@ import { Extension, Command } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
+import { findDocumentMatches } from '@/utils/document-find'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     findReplace: {
       setFindQuery: (query: string) => ReturnType
       setReplaceText: (text: string) => ReturnType
+      setFindOptions: (query: string, replace: string) => ReturnType
+      goToFindMatch: (index: number) => ReturnType
       nextMatch: () => ReturnType
       prevMatch: () => ReturnType
       replaceCurrent: () => ReturnType
@@ -27,23 +30,7 @@ export interface FindReplaceState {
 export const findReplacePluginKey = new PluginKey<FindReplaceState>('findReplace')
 
 function collectMatches(doc: ProseMirrorNode, query: string) {
-  const matches: Array<{ from: number; to: number }> = []
-  if (!query) return matches
-  const q = query
-  doc.descendants((node, pos) => {
-    if (!node.isText) return
-    const text: string = node.text || ''
-    let idx = 0
-    while (true) {
-      const found = text.indexOf(q, idx)
-      if (found === -1) break
-      const from = pos + found
-      const to = from + q.length
-      matches.push({ from, to })
-      idx = found + q.length
-    }
-  })
-  return matches
+  return findDocumentMatches(doc, query)
 }
 
 function buildDecorations(doc: ProseMirrorNode, matches: Array<{ from: number; to: number }>, index: number) {
@@ -61,6 +48,27 @@ const FindReplace = Extension.create({
 
   addCommands() {
     return {
+      setFindOptions:
+        (query: string, replace: string): Command => ({ tr, state, dispatch }) => {
+          const prev = findReplacePluginKey.getState(state)!
+          const matches = collectMatches(state.doc, query)
+          const index = matches.length ? Math.min(prev.index, matches.length - 1) : 0
+          if (dispatch) dispatch(tr.setMeta(findReplacePluginKey, {
+            ...prev, query, replace, matches, index,
+            decorations: buildDecorations(state.doc, matches, index),
+          }))
+          return true
+        },
+      goToFindMatch:
+        (index: number): Command => ({ tr, state, dispatch }) => {
+          const prev = findReplacePluginKey.getState(state)!
+          if (!Number.isInteger(index) || index < 0 || index >= prev.matches.length) return false
+          const match = prev.matches[index]
+          if (dispatch) dispatch(tr.setMeta(findReplacePluginKey, {
+            ...prev, index, decorations: buildDecorations(state.doc, prev.matches, index),
+          }).setSelection(TextSelection.create(state.doc, match.from, match.to)).setMeta('scrolledToMatch', true).scrollIntoView())
+          return true
+        },
       setFindQuery:
         (query: string): Command => ({ tr, state, dispatch }) => {
           const prev = findReplacePluginKey.getState(state)!

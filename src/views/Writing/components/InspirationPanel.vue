@@ -507,13 +507,13 @@ loadInspirations()
 
     .panel-title {
       font-weight: bold;
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       color: var(--ink-main);
     }
 
     .panel-actions {
       .action-icon {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         color: var(--ink-sec);
         opacity: 0.6;
         cursor: pointer;
@@ -540,7 +540,7 @@ loadInspirations()
       .search-input {
         width: 100%;
         padding: 4px 24px 4px 8px;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         border: 1px solid var(--input-border);
         border-radius: 4px;
         background: var(--input-bg);
@@ -564,7 +564,7 @@ loadInspirations()
         right: 8px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 10px;
+        font-size: calc(10px * var(--ui-font-scale, 1));
         color: var(--ink-sec);
         opacity: 0.5;
       }
@@ -574,7 +574,7 @@ loadInspirations()
       background: none;
       border: none;
       color: var(--ink-sec);
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       cursor: pointer;
       transition: color 0.3s ease;
       width: auto;
@@ -608,7 +608,7 @@ loadInspirations()
       align-items: center;
       gap: 8px; // Space between text and icon
       cursor: pointer;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       transition: color 0.2s;
 
@@ -659,12 +659,12 @@ loadInspirations()
       opacity: 0.6;
 
       i {
-        font-size: 24px;
+        font-size: calc(24px * var(--ui-font-scale, 1));
         margin-bottom: 8px;
       }
 
       p {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
       }
     }
 
@@ -678,11 +678,11 @@ loadInspirations()
       gap: 8px;
 
       i {
-        font-size: 16px;
+        font-size: calc(16px * var(--ui-font-scale, 1));
       }
 
       p {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
       }
     }
 
@@ -729,7 +729,7 @@ loadInspirations()
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         color: var(--ink-sec);
         border-top: 1px solid color-mix(in srgb, var(--ink-main) 6%, transparent);
         padding-top: 10px;
@@ -749,7 +749,7 @@ loadInspirations()
           background: transparent;
           color: var(--ink-accent);
           cursor: pointer;
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
           padding: 0;
 
           &:hover {
@@ -830,7 +830,7 @@ loadInspirations()
       padding: 8px;
       cursor: pointer;
       border-radius: 4px;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       color: var(--state-danger); // Red for delete
 
       &:hover {
@@ -838,7 +838,7 @@ loadInspirations()
       }
 
       i {
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         color: var(--state-danger);
       }
     }
@@ -855,7 +855,7 @@ loadInspirations()
       padding: 2px 8px;
       height: 22px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       cursor: pointer;
       border: 1px solid var(--divider);
       display: flex;

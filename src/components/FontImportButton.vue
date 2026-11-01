@@ -33,7 +33,7 @@ const emit = defineEmits<{ click: [] }>()
   background: transparent;
   color: var(--ink-accent);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   white-space: nowrap;
   cursor: pointer;
 

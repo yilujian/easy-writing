@@ -99,24 +99,6 @@ pub fn endpoint(root: &Path) -> Result<Endpoint, String> {
     Ok(endpoint)
 }
 
-/// 交给 worker 的模型引用：编号、显示信息、上下文预算、网关地址与口令。没有 Key、供应商地址和额外参数。
-pub fn worker_model(endpoint: &Endpoint, model: &Value) -> Value {
-    let provider = providers::infer_provider(
-        model["provider"].as_str().unwrap_or(""),
-        model["baseUrl"].as_str().unwrap_or(""),
-    );
-    json!({
-        "id": model["id"],
-        "name": model["name"],
-        "modelCode": model["modelCode"],
-        "provider": model["provider"],
-        "thinking": model["thinking"],
-        "structuredOutput": providers::structured_output_mode(&provider),
-        "maxContext": model["maxContext"],
-        "maxOutputTokens": model["maxOutputTokens"],
-        "gateway": {"baseUrl": endpoint.base_url, "token": endpoint.token},
-    })
-}
 
 /// 场景码只在 HTTP 头里走 ASCII；中文标签在这里配
 fn scene_label(scene: &str) -> &'static str {
@@ -216,7 +198,7 @@ async fn handle(state: Arc<State>, req: Request<Incoming>) -> Result<Response<Bo
 
 async fn resolve_profile(root: &Path, model_ref: &str) -> Result<ModelProfile, String> {
     let mut db = crate::desktop_storage::connect_existing_at(root).await?;
-    let model = crate::agent_service::model_config(&mut db, model_ref, "agent_planner").await?;
+    let model = crate::writing_service::model_config(&mut db, model_ref, "agent_planner").await?;
     let _ = db.close().await;
     Ok(ModelProfile::from_record(&model))
 }

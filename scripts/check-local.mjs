@@ -8,14 +8,12 @@ const required = [
   'vitest.config.ts',
   'tests/desktop-migration.test.ts',
   'tests/full-backup-idb.test.ts',
-  'tests/agent-backup-restore.test.ts'
+  'tests/writing-backup-restore.test.ts'
 ]
 if (!frontendOnly) {
   const modules = [...readFileSync(`${root}/src-tauri/src/lib.rs`, 'utf8').matchAll(/mod (\w*tests);/g)]
   required.push(
     ...modules.map(([, name]) => `src-tauri/src/${name}.rs`),
-    'agent-runtime/tests/test_contracts.py',
-    'src-tauri/src/full_backup_skill_tests.rs',
     'src-tauri/src/desktop_storage_release_tests.rs'
   )
 }
@@ -31,8 +29,7 @@ const commands = frontendOnly
   : [
       ['pnpm', ['check']],
       ['pnpm', ['exec', 'vitest', 'run']],
-      ['cargo', ['test', '--manifest-path', 'src-tauri/Cargo.toml', '--features', 'local-tests', '--lib']],
-      ['uv', ['run', '--project', 'agent-runtime', '--locked', 'pytest', 'agent-runtime/tests', '-q']]
+      ['cargo', ['test', '--manifest-path', 'src-tauri/Cargo.toml', '--features', 'local-tests', '--lib']]
     ]
 for (const [command, args] of commands) {
   const env = { ...process.env }

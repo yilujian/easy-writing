@@ -37,8 +37,10 @@
         <div ref="paneScrollRef" class="settings-pane-scroll">
           <OverviewPane v-if="activeSection === 'overview'" />
           <WritingPane v-else-if="activeSection === 'writing'" />
+          <ListeningPane v-else-if="activeSection === 'listening'" />
           <MenuPane v-else-if="activeSection === 'menus'" />
           <AppearancePane v-else-if="activeSection === 'appearance'" />
+          <PetPane v-else-if="activeSection === 'pet'" />
           <SyncPane v-else-if="activeSection === 'sync'" />
           <SensitiveWordsPane v-else-if="activeSection === 'sensitive'" />
           <section v-else-if="activeSection === 'record'" class="settings-pane settings-pane--fill">
@@ -95,7 +97,9 @@ import { defaultUiPreferences, useUiPreferencesStore } from '@/stores/ui-prefere
 import MenuPane from './panes/MenuPane.vue'
 import OverviewPane from './panes/OverviewPane.vue'
 import WritingPane from './panes/WritingPane.vue'
+import ListeningPane from './panes/ListeningPane.vue'
 import AppearancePane from './panes/AppearancePane.vue'
+import PetPane from './panes/PetPane.vue'
 import SyncPane from './panes/SyncPane.vue'
 import SensitiveWordsPane from './panes/SensitiveWordsPane.vue'
 import WeixinBotPane from './panes/WeixinBotPane.vue'
@@ -104,6 +108,7 @@ import CachePane from './panes/CachePane.vue'
 const props = defineProps<{
   visible: boolean
   bookId?: string | number
+  initialSection?: SettingsSectionId
 }>()
 
 const emit = defineEmits<{
@@ -128,8 +133,10 @@ const navGroups: SettingsNavGroup[] = [
     items: [
       { id: 'overview', label: '总览', icon: 'fa-solid fa-table-cells-large' },
       { id: 'writing', label: '写作体验', icon: 'fa-regular fa-pen-to-square' },
+      { id: 'listening', label: '听书与朗读', icon: 'fa-solid fa-headphones' },
       { id: 'menus', label: '菜单管理', icon: 'fa-solid fa-bars' },
       { id: 'appearance', label: '外观主题', icon: 'fa-solid fa-palette' },
+      { id: 'pet', label: '桌宠', icon: 'fa-solid fa-paw' },
       { id: 'sync', label: '保存与备份', icon: 'fa-solid fa-cloud-arrow-up' },
       { id: 'sensitive', label: '敏感词库', icon: 'fa-solid fa-shield-halved' },
     ],
@@ -153,7 +160,9 @@ const sectionMeta: Record<SettingsSectionId, { title: string; description: strin
   overview: { title: '设置中心', description: '统一管理写作体验、AI 能力与数据保存' },
   menus: { title: '菜单管理', description: '选择侧边栏中显示的功能入口' },
   writing: { title: '写作体验', description: '管理打字反馈、自爆挑战与写作辅助' },
+  listening: { title: '听书与朗读', description: '选择朗读引擎、音色与播放偏好' },
   appearance: { title: '外观主题', description: '切换创作空间的主题、字体与排版' },
+  pet: { title: '桌宠', description: '选择桌面上的创作伙伴，陪伴码字与 AI 创作' },
   sync: { title: '保存与备份', description: '管理本地自动保存、备份与版本保留策略' },
   sensitive: { title: '敏感词库', description: '管理写作台敏感词检查的内置词库与自定义词' },
   record: { title: 'AI 调用记录', description: '查看模型调用、工作流生成与会话记录' },
@@ -161,7 +170,7 @@ const sectionMeta: Record<SettingsSectionId, { title: string; description: strin
   cache: { title: '存储空间', description: '查看本地缓存占用并清理临时数据' },
 }
 
-const activeSection = ref<SettingsSectionId>('overview')
+const activeSection = ref<SettingsSectionId>(props.initialSection || 'overview')
 const paneScrollRef = ref<HTMLElement | null>(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -210,18 +219,22 @@ watch(activeSection, async () => {
 
 // AI 调用记录（只读）、敏感词库与微信助手（改动即时生效）不适用底部「保存设置」草稿语义
 const isInstantSection = computed(() =>
-  activeSection.value === 'record' || activeSection.value === 'sensitive' || activeSection.value === 'weixin'
+  activeSection.value === 'record' || activeSection.value === 'sensitive' || activeSection.value === 'weixin' || activeSection.value === 'pet' || activeSection.value === 'listening'
 )
 const instantHint = computed(() => {
+  if (activeSection.value === 'listening') return '播放偏好即时生效；语音服务配置需点击「保存配置」'
+  if (activeSection.value === 'pet') return '桌宠设置即时生效；右键隐藏后可在这里重新显示'
   if (activeSection.value === 'sensitive') return '词库改动即时生效'
   if (activeSection.value === 'weixin') return '绑定与开关改动即时生效'
   return '本页为只读记录'
 })
 
 const loadSettings = async () => {
+  if (props.initialSection) activeSection.value = props.initialSection
   loading.value = true
   try {
     Object.assign(uiDraft, {
+      uiFontSize: uiPreferences.uiFontSize,
       hiddenMenus: [...uiPreferences.hiddenMenus],
       wordCountMode: uiPreferences.wordCountMode,
       restoreWritingPosition: uiPreferences.restoreWritingPosition,
@@ -351,7 +364,7 @@ const restoreDefaults = async () => {
     h2 {
       margin: 0;
       color: var(--ink-main);
-      font-size: 24px;
+      font-size: calc(24px * var(--ui-font-scale, 1));
       line-height: 1.25;
       font-family: "Noto Serif SC", serif;
     }
@@ -359,7 +372,7 @@ const restoreDefaults = async () => {
     p {
       margin: 0;
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       line-height: 1.5;
     }
   }
@@ -390,7 +403,7 @@ const restoreDefaults = async () => {
     display: block;
     margin: 0 12px 12px;
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
@@ -406,7 +419,7 @@ const restoreDefaults = async () => {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     text-align: left;
     transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
 
@@ -499,12 +512,12 @@ const restoreDefaults = async () => {
     span,
     small {
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
 
     strong {
       color: var(--ink-main);
-      font-size: 18px;
+      font-size: calc(18px * var(--ui-font-scale, 1));
       line-height: 1.3;
     }
 
@@ -525,10 +538,10 @@ const restoreDefaults = async () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
 
     > i {
-      font-size: 20px;
+      font-size: calc(20px * var(--ui-font-scale, 1));
       line-height: 1;
     }
 
@@ -584,7 +597,7 @@ const restoreDefaults = async () => {
       border-radius: 12px;
       background: color-mix(in srgb, var(--ink-accent) 10%, var(--surface-1));
       color: var(--ink-accent);
-      font-size: 22px;
+      font-size: calc(22px * var(--ui-font-scale, 1));
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -593,7 +606,7 @@ const restoreDefaults = async () => {
 
     strong {
       align-self: center;
-      font-size: 16px;
+      font-size: calc(16px * var(--ui-font-scale, 1));
       line-height: 1.4;
     }
 
@@ -601,7 +614,7 @@ const restoreDefaults = async () => {
       grid-column: 1 / -1;
       align-self: start;
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       line-height: 1.65;
     }
 
@@ -632,7 +645,7 @@ const restoreDefaults = async () => {
     }
 
     strong {
-      font-size: 16px;
+      font-size: calc(16px * var(--ui-font-scale, 1));
       line-height: 1.4;
     }
   }
@@ -648,7 +661,7 @@ const restoreDefaults = async () => {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 700;
     }
   }
@@ -692,7 +705,7 @@ const restoreDefaults = async () => {
 
     small {
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       line-height: 1.5;
     }
 
@@ -734,7 +747,7 @@ const restoreDefaults = async () => {
     display: block;
     margin-bottom: 9px;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
     line-height: 1.4;
   }
@@ -765,7 +778,7 @@ const restoreDefaults = async () => {
     background: var(--settings-control-bg, var(--input-bg));
     color: var(--ink-main);
     cursor: pointer;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
 
     &:hover {
@@ -782,7 +795,7 @@ const restoreDefaults = async () => {
 
   .settings-icon-btn {
     min-width: 48px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
   }
 
   .mini-outline-btn {
@@ -826,12 +839,12 @@ const restoreDefaults = async () => {
 
     strong {
       margin-top: 4px;
-      font-size: 15px;
+      font-size: calc(15px * var(--ui-font-scale, 1));
     }
 
     small {
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 
@@ -905,7 +918,7 @@ const restoreDefaults = async () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .appearance-form-grid {
@@ -941,11 +954,11 @@ const restoreDefaults = async () => {
     span,
     small {
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
 
     strong {
-      font-size: 20px;
+      font-size: calc(20px * var(--ui-font-scale, 1));
       line-height: 1.3;
     }
   }
@@ -969,7 +982,7 @@ const restoreDefaults = async () => {
 
     > span {
       color: var(--settings-muted-color, var(--ink-sec));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 600;
     }
   }
@@ -981,7 +994,7 @@ const restoreDefaults = async () => {
     border-radius: 7px;
     background: var(--settings-control-bg, var(--input-bg));
     color: var(--ink-main);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.5;
     word-break: break-all;
   }
@@ -997,13 +1010,13 @@ const restoreDefaults = async () => {
   .error-line {
     margin: 10px 0 0;
     color: var(--state-danger);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .hint-line {
     margin: 10px 0 0;
     color: var(--ink-text-secondary, var(--el-text-color-secondary));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .settings-inline-select {
@@ -1035,7 +1048,7 @@ const restoreDefaults = async () => {
     align-items: center;
     justify-content: center;
     text-align: center;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
   }
 
@@ -1049,7 +1062,7 @@ const restoreDefaults = async () => {
 
   .footer-hint {
     color: var(--settings-muted-color, var(--ink-sec));
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .footer-actions {
@@ -1075,7 +1088,7 @@ const restoreDefaults = async () => {
     --el-switch-on-color: var(--ink-accent);
     --el-switch-off-color: color-mix(in srgb, var(--ink-sec) 26%, var(--input-bg));
     height: 24px;
-    line-height: 24px;
+    line-height: calc(24px * var(--ui-font-scale, 1));
   }
 
   .el-switch__core {

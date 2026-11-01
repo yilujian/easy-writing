@@ -56,8 +56,11 @@ const loadStore = (): LocalAiModelStore => {
     if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.models)) throw new Error('模型配置结构或版本不受支持')
     return {
       version: 1,
-      models: parsed.models.filter((item: LocalAiModel) => item && typeof item.id === 'number'),
-      preferences: parsed.preferences && typeof parsed.preferences === 'object' ? parsed.preferences : {},
+      // 旧用途不再进入模型列表或请求层，尤其不能误当成文本模型；只读时不改写原配置。
+      models: parsed.models.filter((item: LocalAiModel) => item && typeof item.id === 'number' && (item.scene === 'text' || item.scene === 'image')),
+      preferences: parsed.preferences && typeof parsed.preferences === 'object'
+        ? Object.fromEntries(Object.entries(parsed.preferences).filter(([key]) => key !== 'embedding'))
+        : {},
     }
   } catch (error) {
     throw new Error(`读取模型配置失败，未覆盖原配置：${String(error)}`)
@@ -107,11 +110,12 @@ const sortModels = (models: LocalAiModel[]) =>
 export const listLocalAiModels = async (params?: { scene?: string }) => {
   const store = loadStore()
   const scene = String(params?.scene || '').trim()
-  const models = sortModels(store.models).filter(model => !scene || model.scene === scene)
+  const models = sortModels(store.models).filter(model => String(model.scene) !== 'audio' && (!scene || model.scene === scene))
   return { data: models.map(toOption) }
 }
 
 export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
+  if (payload.scene !== 'text' && payload.scene !== 'image') throw new Error('不支持的模型用途，请选择文字或图像生成')
   const store = loadStore()
   if (payload.id != null) {
     const model = store.models.find(item => item.id === payload.id)
@@ -209,7 +213,7 @@ export const getLocalAiModelDisplayName = (code: string): string => {
 }
 
 export const sceneOfGroup = (groupCode: AiModelGroupCode): UserAiModelScene =>
-  groupCode === 'image_generation' ? 'image' : groupCode === 'embedding' ? 'embedding' : 'text'
+  groupCode === 'image_generation' ? 'image' : 'text'
 
 /**
  * 某用途下第一个启用的模型 code：分组没选默认时的自动兜底（按列表顺序取）。

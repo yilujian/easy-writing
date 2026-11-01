@@ -1,4 +1,4 @@
-import type { JsonRecord } from '@/types/json'
+import type { JsonRecord } from './json.js'
 
 export interface NovelRankPlatform {
   code: string;

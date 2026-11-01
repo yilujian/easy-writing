@@ -785,7 +785,7 @@ onBeforeUnmount(() => {
 
 .outline-toolbar-hint {
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .outline-toolbar-refresh {
@@ -833,11 +833,11 @@ onBeforeUnmount(() => {
   min-height: 200px;
   padding: 24px 16px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   text-align: center;
 
   i {
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
     opacity: 0.75;
   }
 
@@ -885,7 +885,7 @@ onBeforeUnmount(() => {
   transition: transform 0.2s ease, color 0.2s ease;
 
   i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     transition: transform 0.2s ease;
   }
 
@@ -901,7 +901,7 @@ onBeforeUnmount(() => {
 .outline-volume-title {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -912,13 +912,13 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   color: var(--tag-color);
   background: var(--tag-bg);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
 }
 
 .outline-volume-summary {
   margin: 0 4px 6px 32px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.6;
   border-radius: 6px;
   padding: 2px 6px;
@@ -956,7 +956,7 @@ onBeforeUnmount(() => {
   transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
 
   i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 
   &:hover:not(:disabled),
@@ -1060,7 +1060,7 @@ onBeforeUnmount(() => {
   strong {
     min-width: 0;
     overflow: hidden;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1069,7 +1069,7 @@ onBeforeUnmount(() => {
 .outline-lock {
   flex-shrink: 0;
   color: var(--ink-accent);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   opacity: 0.85;
 }
 
@@ -1080,7 +1080,7 @@ onBeforeUnmount(() => {
   gap: 4px;
   padding: 1px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   color: var(--tag-color);
   background: var(--tag-bg);
 
@@ -1118,7 +1118,7 @@ onBeforeUnmount(() => {
   margin: 0;
   overflow: hidden;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.55;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1139,7 +1139,7 @@ onBeforeUnmount(() => {
 .outline-chapter-caret {
   margin-left: 2px;
   color: var(--ink-sec);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   transition: transform 0.2s ease;
 
   &.open {
@@ -1150,7 +1150,7 @@ onBeforeUnmount(() => {
 .outline-empty-volume {
   margin: 4px 8px 8px 32px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-style: italic;
 }
 
@@ -1171,7 +1171,7 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
 
   strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1181,7 +1181,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .outline-beats-frozen {
@@ -1191,7 +1191,7 @@ onBeforeUnmount(() => {
 .outline-beats-empty {
   margin: 2px 0 8px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-style: italic;
 }
 
@@ -1229,7 +1229,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   color: var(--tag-color);
   background: color-mix(in srgb, var(--ink-accent) 12%, transparent);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1240,7 +1240,7 @@ onBeforeUnmount(() => {
   min-height: 30px;
   padding-top: 4px;
   padding-bottom: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .outline-beat-remove {
@@ -1260,7 +1260,7 @@ onBeforeUnmount(() => {
   transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
 
   i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 
   &:hover:not(:disabled),
@@ -1286,7 +1286,7 @@ onBeforeUnmount(() => {
   border-radius: 7px;
   color: var(--ink-sec);
   background: transparent;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 
@@ -1317,11 +1317,11 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   color: var(--ink-accent);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-weight: 700;
 
   i {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1335,7 +1335,7 @@ onBeforeUnmount(() => {
 .outline-beats-note {
   margin: 8px 0 2px;
   color: var(--ink-sec);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   line-height: 1.5;
   opacity: 0.85;
 }

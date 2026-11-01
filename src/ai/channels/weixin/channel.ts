@@ -1,7 +1,8 @@
 import { reactive } from 'vue'
 import { isTauriRuntime } from '@/storage'
-import { agentCommand } from '@/agent/client'
-import { safeFileName, textToBase64 } from '@/agent/media'
+import { writingCommand } from '@/writing-service/client'
+import { piWeixinCommand as agentCommand } from '@/agent-pi/weixin-adapter'
+import { safeFileName, textToBase64 } from '@/writing-service/media'
 import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import { getWeixinSession, setWeixinCurrentBook } from '@/storage/local-weixin-bot'
 import { nowIso } from '@/storage/local-library-utils'
@@ -28,9 +29,9 @@ import { previewText, weixinLog } from './logfile'
 /**
  * 微信通道适配器：微信是 Agent 的一个通道，只做收发和渲染。
  *
- * 入站消息进 Agent 的微信会话（宿主里稳定键 weixin:main，与 Agent 板块看到的是同一段对话）；
- * 回复、引导卡、确认卡由宿主产生，这里渲染成纯文本与编号；作者回编号或"确认/取消"交回宿主作答。
- * 工具、提示词、写操作的确认全在宿主，这里没有业务判断。
+ * 入站消息经 Pi 适配器进入独立微信会话，桌面 Agent(Pi版本) 可查看同一段原生历史；
+ * 回复与引导卡由 Pi 产生，适配器投影为通道消息；这里渲染纯文本和编号，并把作者的选择交回 Pi。
+ * 工具和写入仍走 Pi 平台能力；通道只解析卡片回答，不识别业务意图。
  * 主动推送（自动生文完成等）由 notify.ts 负责，推不出去的通知借作者下一条消息补发。
  * 每条消息的来往仍记两份：对话账本（设置页回看）与技术日志文件（排障用）。
  */
@@ -82,6 +83,7 @@ interface AgentOption {
   id: string
   title: string
   description?: string
+  input?: { label?: string; placeholder?: string }
 }
 
 interface AgentStep {
@@ -93,8 +95,10 @@ interface AgentStep {
 }
 
 export interface AgentChoice {
+  afterAnswer?: 'continue' | 'pause'
   kind?: string
   question?: string
+  description?: string
   options?: AgentOption[]
   status: string
   allowFreeText?: boolean
@@ -104,7 +108,7 @@ export interface AgentChoice {
   artifactIds?: string[]
 }
 
-interface AgentMessage {
+export interface AgentMessage {
   id: string
   runId?: string
   role: string
@@ -122,7 +126,7 @@ interface AgentReferenceView {
   title?: string
 }
 
-interface AgentSessionView {
+export interface AgentSessionView {
   id: string
   status: string
   runId?: string
@@ -161,7 +165,7 @@ interface MessageTrace {
   note: string
 }
 
-let lastTrace: MessageTrace | null = null
+const traces = new Map<string, MessageTrace>()
 let logWarned = false
 
 const warnLogFailure = (error: unknown) => {
@@ -183,11 +187,12 @@ const logEntry = async (input: WeixinLogInput) => {
   }
 }
 
-const traceOf = (message: WeixinInboundMessage) => (lastTrace?.messageId === message.messageId ? lastTrace : null)
+const traceOf = (message: WeixinInboundMessage) => traces.get(message.messageId) || null
 
 const openTrace = async (message: WeixinInboundMessage): Promise<MessageTrace> => {
   const trace: MessageTrace = { messageId: message.messageId, entryId: 0, startedAt: Date.now(), route: 'system', steps: [], model: '', note: '' }
-  lastTrace = trace
+  traces.set(message.messageId, trace)
+  if (traces.size > 200) traces.delete(traces.keys().next().value!)
   weixinLog('info', 'inbound', { messageId: message.messageId, kind: message.kind, from: message.fromUserId, text: previewText(message.text) })
   try {
     const entry = await appendWeixinLog({ direction: 'in', kind: message.kind, text: message.text, route: 'system', ok: true })
@@ -230,11 +235,14 @@ const closeTrace = async (trace: MessageTrace, error = '') => {
 // 生命周期
 // ---------------------------------------------------------------------------
 
-/** 宿主每次保存会话都会发 agent-session；这里只用来叫醒等待中的轮询，不以它为准 */
+/** Pi 状态事件只用于叫醒等待中的轮询，不以事件代替持久化会话状态。 */
 let wake: (() => void) | null = null
 const listenAgentSessions = async () => {
   const { listen } = await import('@tauri-apps/api/event')
-  return listen<AgentSessionView>('agent-session', () => wake?.())
+  return listen<{record:{type:string}}>('pi-event', event => {
+    wake?.()
+    if (['agent_settled','tool_execution_start','extension_ui_request'].includes(event.payload.record.type)) scheduleFollowup()
+  })
 }
 
 export const startWeixinChannel = async () => {
@@ -275,6 +283,9 @@ const logStatusChange = (previous: WeixinBotStatus | null, next: WeixinBotStatus
 }
 
 export const stopWeixinChannel = () => {
+  if (followupTimer) clearTimeout(followupTimer)
+  followupTimer = null
+  followup = null
   weixinLog('info', 'channel-stop')
   stopWeixinNotifier()
   unlistenMessage?.()
@@ -311,6 +322,11 @@ const enqueue = (message: WeixinInboundMessage) => {
     void weixinBotAck(message.messageId).catch(() => undefined)
     return
   }
+  // 停止不能排在正在等待模型的那条消息后面，否则长任务无法从微信取消。
+  if (parseWeixinCommand(message.text)?.name === 'stop') {
+    void handleWeixinMessage(message).catch(error=>reply(message,describeError(error),'system').catch(()=>undefined))
+    return
+  }
   if (queue.length >= QUEUE_LIMIT) {
     weixinLog('warn', 'inbound-rejected', { messageId: message.messageId, queued: queue.length, text: previewText(message.text) })
     void logEntry({ direction: 'in', kind: message.kind, text: message.text, route: 'rejected', ok: false, error: '排队已满，未处理' })
@@ -342,7 +358,7 @@ const pump = async () => {
       }
       // 作者来了消息，宿主拿到了新令牌：让投递队列把之前推不出去的通知补发掉。不等它回来：
       // 补发是另一条线，它慢了或卡了都不能拖住下一条消息的处理（2026-10-14 曾因此整条队列停住）
-      void agentCommand('delivery_flush', { channel: 'weixin' }).catch(error => {
+      void writingCommand('delivery_flush', { channel: 'weixin' }).catch(error => {
         console.warn('[微信助手] 补发通知失败', error)
         weixinLog('warn', 'notice-flush-failed', { error: describeError(error) })
       })
@@ -432,7 +448,7 @@ const startTyping = (message: WeixinInboundMessage) => {
 // ---------------------------------------------------------------------------
 
 const sessionEpoch = () => Number(appSettings.getItem(SESSION_EPOCH_KEY) || 0) || 0
-const sessionKey = () => (sessionEpoch() ? `weixin:main:${sessionEpoch()}` : 'weixin:main')
+const sessionKey = () => `weixin:${weixinChannelState.status?.botId || 'main'}:${weixinChannelState.status?.userId || 'author'}:${sessionEpoch()}`
 
 const bookReferences = () => {
   const local = getWeixinSession()
@@ -441,14 +457,17 @@ const bookReferences = () => {
     : []
 }
 
-/** 宿主里的微信会话：按稳定键取或建，Agent 板块看到的也是它；标题由宿主按第一句话起，侧栏另有"微信"标记 */
-const ensureAgentSession = async (): Promise<AgentSessionView> =>
-  agentCommand<AgentSessionView>('create_session', {
+/** Pi 微信会话：按绑定身份与会话序号取或建，桌面可回看同一段历史 */
+const ensureAgentSession = async (): Promise<AgentSessionView> => {
+  if (!weixinChannelState.status) weixinChannelState.status = await weixinBotStatus()
+  return agentCommand<AgentSessionView>('create_session', {
     requestId: sessionKey(),
     title: '新对话',
     channel: 'weixin',
+    modelCode: await weixinModelCode(),
     references: bookReferences(),
   })
+}
 
 const readSession = (id: string) => agentCommand<AgentSessionView>('get_session', { id })
 
@@ -470,6 +489,13 @@ const cardView = (message: AgentMessage): AgentChoice => {
 const pendingCard = (session: AgentSessionView) => {
   const message = session.messages.find(m => m.choice?.status === 'pending')
   return message ? { id: message.id, choice: cardView(message) } : null
+}
+const presentedKey = (sessionId: string) => `ew-pi-weixin-presented:${sessionId}`
+const cardFingerprint = (card: NonNullable<ReturnType<typeof pendingCard>>) => JSON.stringify(card)
+async function markPresented(session: AgentSessionView) {
+  const card = pendingCard(session)
+  appSettings.setItem(presentedKey(session.id),card ? cardFingerprint(card) : '')
+  await flushAppSettings()
 }
 
 const bookRefs = (session: AgentSessionView) =>
@@ -537,6 +563,7 @@ const optionLine = (index: number, option: AgentOption) =>
 export const renderCard = (choice: AgentChoice): string => {
   const lines: string[] = []
   if (choice.question) lines.push(choice.question)
+  if (choice.description) lines.push(choice.description)
   const options = choice.options || []
   if (choice.kind === 'steps' && choice.steps?.length) {
     choice.steps.forEach((step, stepIndex) => {
@@ -547,6 +574,7 @@ export const renderCard = (choice: AgentChoice): string => {
     return lines.join('\n')
   }
   options.forEach((option, index) => lines.push(optionLine(index, option)))
+  if (options.some(option => option.input)) lines.push('需要补充内容的选项请回复「编号 内容」，例如「2 前十章」。')
   if (choice.kind === 'confirm') {
     lines.push(options.length >= 2 ? `回复 1 ${options[0].title}，回复 2 ${options[1].title}；也可以直接回复「确认」或「取消」。` : '回复「确认」执行，回复「取消」放弃。')
   } else if (options.length) {
@@ -564,8 +592,11 @@ const CANCEL_WORDS = new Set(['取消', '算了', '不', '不用', '丢弃', '�
 const NUMBERS = /^\s*\d+(\s*[,，、\s]\s*\d+)*\s*$/
 
 export interface CardAnswer {
+  nextAction?: 'continue' | 'pause'
   selectedIds: string[]
   text?: string
+  inputs?: Record<string, string>
+  cancelled?: boolean
   steps?: Record<string, { selectedIds: string[]; text?: string }>
 }
 
@@ -573,6 +604,13 @@ export interface CardAnswer {
 export const parseCardAnswer = (choice: AgentChoice, text: string): { answer: CardAnswer } | { hint: string } => {
   const options = choice.options || []
   const trimmed = text.trim()
+  if (trimmed === '/取消') return {answer:{selectedIds:[],cancelled:true}}
+  if (trimmed === '/跳过') return {answer:{selectedIds:[],text:trimmed}}
+  const withInput = trimmed.match(/^(\d+)\s+([\s\S]+)$/)
+  if (withInput && options[Number(withInput[1])-1]?.input) {
+    const option = options[Number(withInput[1])-1]
+    return {answer:{selectedIds:[option.id],inputs:{[option.id]:withInput[2].trim()}}}
+  }
   if (choice.kind === 'steps' && choice.steps?.length) {
     const parts = trimmed.split(/[\s,，、]+/).filter(Boolean)
     const steps: NonNullable<CardAnswer['steps']> = {}
@@ -586,16 +624,17 @@ export const parseCardAnswer = (choice: AgentChoice, text: string): { answer: Ca
     return { answer: { selectedIds: [], steps } }
   }
   if (choice.kind === 'confirm' && options.length >= 2) {
-    if (CONFIRM_WORDS.has(trimmed)) return { answer: { selectedIds: [options[0].id] } }
+    if (CONFIRM_WORDS.has(trimmed) && !options[0].input) return { answer: { selectedIds: [options[0].id] } }
     if (CANCEL_WORDS.has(trimmed)) return { answer: { selectedIds: [options[1].id] } }
   }
   const byTitle = options.filter(option => option.title.trim() === trimmed)
-  if (byTitle.length === 1) return { answer: { selectedIds: [byTitle[0].id] } }
+  if (byTitle.length === 1 && !byTitle[0].input) return { answer: { selectedIds: [byTitle[0].id] } }
   if (NUMBERS.test(trimmed) && options.length) {
     const numbers = trimmed.split(/[\s,，、]+/).filter(Boolean).map(Number)
     const picked = numbers.map(n => options[n - 1]).filter(Boolean)
     if (!picked.length || picked.length !== numbers.length) return { hint: `编号要在 1 到 ${options.length} 之间。` }
     if (!choice.multiple && picked.length > 1) return { hint: '这张卡只能选一项，回复一个编号。' }
+    if (picked.some(o=>o.input)) return {hint:'这个选项需要补充内容，请回复「编号 内容」。'}
     return { answer: { selectedIds: picked.map(option => option.id) } }
   }
   if (CONFIRM_WORDS.has(trimmed) && choice.defaultOptionId && options.some(option => option.id === choice.defaultOptionId)) {
@@ -646,6 +685,37 @@ const replyText = (before: AgentSessionView, after: AgentSessionView) => {
     .join('\n\n')
 }
 
+// 后台拆书等完成后 Pi 会继续同一会话；这里投递新增回复，不启动任何自动任务。
+let followup: {message:WeixinInboundMessage; snapshot:AgentSessionView} | null = null
+let followupTimer: ReturnType<typeof setTimeout> | null = null
+let deliveringFollowup = false
+let followupWork: Promise<void> | null = null
+function scheduleFollowup() {
+  if (!followup || followupTimer || !weixinChannelState.started) return
+  followupTimer = setTimeout(()=>{
+    followupTimer=null
+    followupWork = deliverFollowup().catch(error=>weixinLog('warn','pi-followup-failed',{error:describeError(error)})).finally(()=>{followupWork=null})
+  },250)
+}
+async function deliverFollowup() {
+  const target = followup
+  if (!target || deliveringFollowup || weixinChannelState.processing || activeConversation) return
+  if (weixinChannelState.status?.userId && target.message.fromUserId!==weixinChannelState.status.userId) {followup=null;return}
+  deliveringFollowup=true
+  try {
+    const after=await readSession(target.snapshot.id)
+    if (after.status==='running' || target!==followup) return
+    const answer=replyText(target.snapshot,after)
+    const nextCard=pendingCard(after), previousCard=pendingCard(target.snapshot)
+    const changed=nextCard && (!previousCard || cardFingerprint(nextCard)!==cardFingerprint(previousCard))
+    const content=[answer,changed?renderCard(nextCard.choice):'',after.status==='failed'&&target.snapshot.error!==after.error?`这轮没完成：${after.error}`:''].filter(Boolean).join('\n\n')
+    if (content) await reply(target.message,content,'assistant')
+    await deliverArtifacts(target.message,target.snapshot,after)
+    await markPresented(after)
+    if (target===followup) target.snapshot=after
+  } finally {deliveringFollowup=false}
+}
+
 // ---------------------------------------------------------------------------
 // 一条消息的处理
 // ---------------------------------------------------------------------------
@@ -674,7 +744,7 @@ const dispatchMessage = async (message: WeixinInboundMessage, trace: MessageTrac
     trace.note = message.kind === 'voice' ? '语音没有识别出文字' : '空消息'
     return reply(message, message.kind === 'voice' ? '这条语音没有识别出文字，换成文字再发一次吧。' : '消息是空的。')
   }
-  const command = parseWeixinCommand(text)
+  const command = text === '/跳过' ? null : parseWeixinCommand(text)
   // 斜杠命令不经宿主；「确认 / 取消」这类口语先看宿主有没有在等作者作答
   if (command && command.name !== 'confirm' && command.name !== 'cancel') {
     trace.route = 'command'
@@ -696,9 +766,14 @@ const runCommand = async (command: WeixinCommand): Promise<string> => {
     case 'status':
       return statusText()
     case 'clear':
+      await agentCommand('stop', {id:(await ensureAgentSession()).id})
+      followup=null
       appSettings.setItem(SESSION_EPOCH_KEY, String(sessionEpoch() + 1))
       await flushAppSettings()
-      return '已开始新的对话，当前作品保持不变；之前的对话在电脑端 Agent 板块里还能看。'
+      return '已开始新的对话，当前作品保持不变；之前的对话在电脑端 Agent 里还能看。'
+    case 'stop':
+      await agentCommand('stop', {id:(await ensureAgentSession()).id})
+      return '已停止这段微信对话的执行，已保存的内容保留。'
     default:
       return WEIXIN_HELP_TEXT
   }
@@ -727,14 +802,10 @@ const switchBook = async (arg: string) => {
     ? books[index - 1]
     : books.find(book => book.title === arg) || books.find(book => book.title.includes(arg))
   if (!found) return `没找到「${arg}」，先回复「/作品」看看序号。`
-  await setWeixinCurrentBook({ id: String(found.id), title: found.title })
   // 当前作品进会话引用：Agent 的读写授权按会话引用判断
-  try {
-    const session = await ensureAgentSession()
-    if (session.status !== 'running') await agentCommand('update_session', { id: session.id, references: bookReferences() })
-  } catch (error) {
-    weixinLog('warn', 'session-reference-failed', { error: describeError(error) })
-  }
+  const session = await ensureAgentSession()
+  await agentCommand('update_session', { id: session.id, references:[{kind:'book',bookId:String(found.id),title:found.title}] })
+  await setWeixinCurrentBook({ id: String(found.id), title: found.title })
   return `当前作品已切换为《${found.title}》。`
 }
 
@@ -763,6 +834,7 @@ const statusText = async () => {
 
 /** 作者的一句话 → 宿主的微信会话：有卡在等就当答案，否则当新消息；等本轮结束后渲染回复 */
 const runAgent = async (message: WeixinInboundMessage, text: string, trace: MessageTrace) => {
+  await followupWork
   const modelCode = await weixinModelCode()
   if (!modelCode) {
     trace.note = '没有可用模型'
@@ -777,6 +849,12 @@ const runAgent = async (message: WeixinInboundMessage, text: string, trace: Mess
   activeConversation = message
   try {
     if (card?.choice && session.status === 'choice') {
+      if (appSettings.getItem(presentedKey(session.id)) !== cardFingerprint(card)) {
+        await reply(message,`请先核对当前内容，再回复选择：\n\n${renderCard(card.choice)}`)
+        await deliverArtifacts(message,{...session,messages:[]},session)
+        await markPresented(session)
+        return
+      }
       const parsed = parseCardAnswer(card.choice, text)
       if ('hint' in parsed) {
         trace.note = '答案没解析出来'
@@ -800,7 +878,8 @@ const runAgent = async (message: WeixinInboundMessage, text: string, trace: Mess
     trace.steps.push({ tool: 'agent', label: 'Agent 对话', status: after ? 'done' : 'error', durationMs: Date.now() - startedAt, chars: 0 })
     if (!after) {
       trace.note = '等待超时'
-      return reply(message, '这件事还在处理，做完我会推送给你；也可以到桌面端的 Agent 创作里看进度。')
+      followup={message,snapshot:session}
+      return reply(message, '这件事还在处理，可以到桌面端 Agent 查看；回复 /状态 查询，或 /停止 取消。')
     }
     const answer = replyText(session, after)
     const nextCard = after.status === 'choice' ? pendingCard(after) : null
@@ -811,11 +890,14 @@ const runAgent = async (message: WeixinInboundMessage, text: string, trace: Mess
     trace.steps[trace.steps.length - 1].chars = content.length
     await reply(message, content)
     await deliverArtifacts(message, session, after)
+    await markPresented(after)
+    followup={message,snapshot:after}
     if (nextCard?.choice?.artifactIds?.length) await deliverCompare(message, nextCard.choice.artifactIds)
     await syncCurrentBook(session, after).catch(error => weixinLog('warn', 'current-book-sync-failed', { error: describeError(error) }))
   } finally {
     activeConversation = null
     typing.stop()
+    scheduleFollowup()
   }
 }
 

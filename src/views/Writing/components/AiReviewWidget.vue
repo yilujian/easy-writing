@@ -29,10 +29,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Editor } from '@tiptap/vue-3'
+import { restoreAiRewrite } from '../editor-utils/ai-rewrite'
 
 const props = defineProps<{
   editor: Editor
   originalText: string // 旧文本
+  originalSlice: unknown
   currentRange: { from: number, to: number } // 新文本的范围
 }>()
 
@@ -91,14 +93,8 @@ const handleAccept = () => {
 
 const handleDiscard = () => {
   // 废弃：回滚内容
-  const { from, to } = props.currentRange
-
-  props.editor.chain()
-    .focus()
-    .setTextSelection({ from, to })
-    .insertContent(props.originalText) // 恢复旧文本
-    .unsetAiReviewRange() // 清除高亮
-    .run()
+  restoreAiRewrite(props.editor, props.currentRange, props.originalSlice)
+  props.editor.commands.unsetAiReviewRange()
 
   emit('close', 'discard')
 }
@@ -127,14 +123,14 @@ const handleDiscard = () => {
     overflow-y: auto;
 
     .diff-header {
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       margin-bottom: 6px;
       font-weight: bold;
     }
 
     .diff-content {
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       color: var(--ink-main);
       line-height: 1.5;
       text-decoration: line-through;
@@ -151,7 +147,7 @@ const handleDiscard = () => {
     background-color: var(--panel-footer-bg);
 
     .review-label {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 600;
       color: var(--ink-accent);
       display: flex;
@@ -159,7 +155,7 @@ const handleDiscard = () => {
       gap: 4px;
 
       i {
-        font-size: 13px;
+        font-size: calc(13px * var(--ui-font-scale, 1));
       }
     }
 
@@ -172,7 +168,7 @@ const handleDiscard = () => {
         border-radius: 4px;
         border: 1px solid;
         cursor: pointer;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
         font-family: system-ui, sans-serif;
         transition: all 0.2s;
         display: flex;
@@ -180,7 +176,7 @@ const handleDiscard = () => {
         gap: 4px;
 
         i {
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
         }
       }
 

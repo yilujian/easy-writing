@@ -42,7 +42,7 @@ export function normalizeText(text: string): string {
   // 1. 统一换行符（避免 Windows \r\n 造成位置/匹配异常）
   s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // 2. 统一将全角空格、制表符转为普通空格（注意：不处理 \u00A0；它用于段首缩进）
+  // 2. 统一将全角空格、制表符转为普通空格；段内不换行空格保留。
   s = s.replace(/[\u3000\t]/g, ' ');
 
   // 3. 将连续的多个空格合并为一个（针对英文单词间）
@@ -121,10 +121,13 @@ export function formatEditorContent(editor: any): void {
     }
   }
 
+  // 首行缩进由显示设置控制，排版只清理段首空白，避免与 CSS 缩进叠加。
+  let atParagraphStart = false;
+
   // 使用 descendants 遍历所有节点（基于已转换后的 doc）
   // 返回 false 可以跳过该节点的子节点遍历
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PM Node
-  tr.doc.descendants((node: any, pos: number) => {
+  tr.doc.descendants((node: any, pos: number, parent: any) => {
     // --- 1. 处理空行 (段落节点) ---
     if (node.type.name === 'paragraph') {
       // 获取段落的纯文本内容并去除空白（包含 \u00A0 缩进空格）
@@ -143,23 +146,20 @@ export function formatEditorContent(editor: any): void {
         return false;
       }
 
-      // --- 1.5 段首缩进：如果段落开头没有空格，则补两个不换行空格 ---
-      // 说明：编辑器里 Tab 缩进也是插入 \u00A0\u00A0，这里保持一致。
-      const hasLeadingSpace = /^[\u00A0\u3000\t ]/.test(textContent);
-      if (!hasLeadingSpace) {
-        changes.push({
-          type: 'insert',
-          from: pos + 1,
-          to: pos + 1,
-          text: '\u00A0\u00A0',
-        });
-      }
+      atParagraphStart = true;
+    } else if (parent?.type.name === 'paragraph' && !node.isText) {
+      // 不跨过行内节点清理空白，保留其后的正文间隔。
+      atParagraphStart = false;
     }
 
     // --- 2. 处理文本内容 (文本节点) ---
     if (node.isText) {
       const before = node.text || '';
-      const after = normalizeText(before);
+      const source = parent?.type.name === 'paragraph' && atParagraphStart
+        ? before.replace(/^[\u00A0\u3000\t ]+/, '')
+        : before;
+      if (source.length) atParagraphStart = false;
+      const after = normalizeText(source);
 
       // 如果清洗后的文本与原文本不同，记录修改
       if (after !== before) {

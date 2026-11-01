@@ -1,11 +1,21 @@
 import type { MigrationProgress } from './storage/desktop-migration'
-import { initializeDesktopStorage } from './storage/storage-startup'
-import { createMigrationScreen } from './startup/migration-screen'
+import { isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import type { createMigrationScreen } from './startup/migration-screen'
 
 const root = document.getElementById('app')!
 let screen: ReturnType<typeof createMigrationScreen> | undefined
 let lastProgress: MigrationProgress | undefined
 void (async () => {
+  if (
+    (isTauri() && getCurrentWindow().label === 'desktop-pet') ||
+    (import.meta.env.DEV && new URLSearchParams(location.search).get('desktopPetPreview') === '1')
+  ) {
+    await import('./desktop-pet/bootstrap')
+    return
+  }
+  const { initializeDesktopStorage } = await import('./storage/storage-startup')
+  const { createMigrationScreen } = await import('./startup/migration-screen')
   try {
     await initializeDesktopStorage(progress => {
       lastProgress = progress

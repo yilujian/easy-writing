@@ -135,7 +135,7 @@ const handleCustomBgChange = async (event: Event) => {
   cursor: pointer;
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
   }
 }
 
@@ -159,14 +159,14 @@ const handleCustomBgChange = async (event: Event) => {
     /* opacity: 0.3; */
 
     .title {
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       font-weight: bold;
       color: var(--ink-main);
       letter-spacing: 1px;
     }
 
     .reset-btn {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       cursor: pointer;
       transition: color 0.2s;
@@ -207,7 +207,7 @@ const handleCustomBgChange = async (event: Event) => {
   }
 
 .group-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     margin-bottom: 8px;
     padding-left: 4px;
@@ -253,7 +253,7 @@ const handleCustomBgChange = async (event: Event) => {
       right: 0;
       background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
       color: white;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       padding: 16px 8px 4px;
       text-align: center;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -271,7 +271,7 @@ const handleCustomBgChange = async (event: Event) => {
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 10px;
+      font-size: calc(10px * var(--ui-font-scale, 1));
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
   }
@@ -288,7 +288,7 @@ const handleCustomBgChange = async (event: Event) => {
       border: 1px dashed color-mix(in srgb, var(--ink-accent) 72%, var(--ink-main));
       background: color-mix(in srgb, var(--ink-accent) 12%, var(--bg-main));
       color: color-mix(in srgb, var(--ink-accent) 68%, var(--ink-main));
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

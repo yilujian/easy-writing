@@ -153,7 +153,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
   border-radius: 8px;
   background: var(--input-bg, transparent);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   text-align: left;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -188,7 +188,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
 
 .trigger-caret {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   transition: transform 0.2s ease;
 
@@ -264,13 +264,13 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
 }
 
 .ai-pref-option .option-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
 
 .ai-pref-option .option-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.5;
 }
@@ -283,7 +283,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
 }
 
 .ai-pref-option .option-check {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
 }
 
@@ -302,7 +302,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
   border-radius: 50%;
   background: color-mix(in srgb, var(--ink-sec) 14%, transparent);
   color: var(--ink-sec);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
 }
 
 /* 标签 chips：触发器与下拉共用 */
@@ -313,12 +313,12 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', handleOutsidePoi
   flex-shrink: 0;
   padding: 1px 8px;
   border-radius: 99px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.6;
   font-weight: 500;
 
   i {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
   }
 
   &.tag-vip {

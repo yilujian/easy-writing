@@ -27,6 +27,7 @@ export interface LocalBreakdownChapterContent {
   projectId: number
   chapterId: number
   paragraphs: string[]
+  coverage?: { sourceRevision: string; complete: boolean; chars: number; taskId: string }
   analysis: BreakdownChapterDetail['analysis'] | null
   /** 段落 → 节点卡的高亮映射（与 analysis.outline 的 id 对应） */
   paragraphInsightIds: Array<number | null>
@@ -138,19 +139,20 @@ const toSummary = (project: LocalBreakdownProject): BreakdownProjectSummary => (
 
 /** 上传 TXT 建项目：本地解析章节（替代 /breakdown/project/upload） */
 export const createLocalBreakdownProject = async (file: File, options?: {
+  parseOptions?: import('@/writing-service/reference-book').ReferenceParseOptions
   signal?: AbortSignal
-  onProgress?: (progress: import('@/agent/reference-import').ReferenceImportProgress) => void
+  onProgress?: (progress: import('@/writing-service/reference-import').ReferenceImportProgress) => void
 }) => {
   if (isTauriRuntime()) {
-    const { importReferenceFile } = await import('@/agent/reference-import')
+    const { importReferenceFile } = await import('@/writing-service/reference-import')
     if (options?.signal?.aborted) throw new DOMException('已取消导入', 'AbortError')
-    const task = importReferenceFile({ file, intent: 'breakdown' }, p => options?.onProgress?.(p))
+    const task = importReferenceFile({ file, intent: 'breakdown', parseOptions: options?.parseOptions }, p => options?.onProgress?.(p))
     const cancel = () => { void task.cancel() }
     options?.signal?.addEventListener('abort', cancel, { once: true })
     try {
       const saved = await task.promise
       if (saved.material) throw new Error('参考书导入结果无效')
-      await desktopInvoke('agent_workspace', { action: 'reference_publish', args: { projectId: saved.result.projectId } })
+      await desktopInvoke('writing_workspace', { action: 'reference_publish', args: { projectId: saved.result.projectId } })
       const project = await readLocalBreakdownProject(saved.result.projectId)
       if (!project) throw new Error('导入的参考书不存在')
       return { data: toSummary(project) }
@@ -210,7 +212,7 @@ export const createLocalBreakdownProject = async (file: File, options?: {
 
 async function attachAgentCounts<T extends BreakdownProjectSummary>(projects: T[]): Promise<T[]> {
   if (!isTauriRuntime()) return projects
-  const counts = await desktopInvoke<Array<{ projectId: string; cards: number }>>('agent_workspace', { action: 'breakdown_library', args: {} })
+  const counts = await desktopInvoke<Array<{ projectId: string; cards: number }>>('writing_workspace', { action: 'breakdown_library', args: {} })
   const byId = new Map(counts.map(item => [item.projectId, item.cards]))
   return projects.map(project => ({ ...project, agentIndexedChapters: byId.get(String(project.id)) || 0 }))
 }

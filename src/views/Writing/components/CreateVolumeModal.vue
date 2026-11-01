@@ -186,7 +186,7 @@ const handleSave = () => {
 }
 
 .form-label {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 500;
   color: var(--ink-main);
 }
@@ -198,7 +198,7 @@ const handleSave = () => {
   padding: 4px 10px;
   border-radius: 4px;
   border: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
   background: rgba(180, 83, 9, 0.1);
   color: var(--ink-accent);
@@ -214,7 +214,7 @@ const handleSave = () => {
   }
 
   i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -225,7 +225,7 @@ const handleSave = () => {
     position: absolute;
     right: 12px;
     bottom: 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     opacity: 0.6;
     pointer-events: none;
@@ -245,7 +245,7 @@ const handleSave = () => {
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   outline: none;
   transition: all 0.3s;
 

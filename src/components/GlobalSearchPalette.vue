@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
 }
 
 .gsp-input-icon {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -314,7 +314,7 @@ onBeforeUnmount(() => {
   outline: none;
   background: transparent;
   color: var(--ink-main);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
 
   &::placeholder {
     color: var(--ink-sec);
@@ -328,7 +328,7 @@ onBeforeUnmount(() => {
   border: 1px solid color-mix(in srgb, var(--ink-main) 16%, transparent);
   border-radius: 5px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.4;
 }
 
@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
 .gsp-section-title {
   padding: 8px 10px 4px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   letter-spacing: 0.08em;
 }
 
@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: transparent;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: left;
   cursor: pointer;
 
@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
 
 .gsp-item-icon {
   flex: 0 0 18px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: center;
   color: var(--ink-sec);
 
@@ -389,19 +389,19 @@ onBeforeUnmount(() => {
 .gsp-item-hint {
   flex: 0 0 auto;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .gsp-item-enter {
   flex: 0 0 auto;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .gsp-empty {
   padding: 28px 0;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: center;
 }
 

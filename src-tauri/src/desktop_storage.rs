@@ -155,6 +155,7 @@ async fn ensure_core_schema(db: &mut SqliteConnection) -> Result<(), String> {
         "CREATE TABLE IF NOT EXISTS local_volumes(id INTEGER PRIMARY KEY,bookId TEXT NOT NULL,payload TEXT NOT NULL,deletedAt TEXT,sortNo INTEGER NOT NULL)",
         "CREATE TABLE IF NOT EXISTS local_chapters(id INTEGER PRIMARY KEY,bookId TEXT NOT NULL,volumeId TEXT NOT NULL,payload TEXT NOT NULL,deletedAt TEXT,sortNo INTEGER NOT NULL)",
         "CREATE TABLE IF NOT EXISTS chapter_contents(storageKey TEXT PRIMARY KEY,userId TEXT NOT NULL,bookId TEXT NOT NULL,chapterId INTEGER NOT NULL,payload TEXT NOT NULL,dirty INTEGER NOT NULL DEFAULT 0,conflict INTEGER NOT NULL DEFAULT 0,updatedAt INTEGER NOT NULL,lastBackedUpAt INTEGER NOT NULL DEFAULT 0,wordCount INTEGER NOT NULL DEFAULT 0,textWordCount INTEGER)",
+        "CREATE INDEX IF NOT EXISTS idx_chapter_contents_book_chapter_owner ON chapter_contents(bookId,chapterId,userId)",
         "CREATE TABLE IF NOT EXISTS chapter_versions(id TEXT PRIMARY KEY,payload TEXT NOT NULL,chapterId INTEGER NOT NULL,createdAt INTEGER NOT NULL)",
         "CREATE TABLE IF NOT EXISTS sync_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)",
     ] { sqlx::query(sql).execute(&mut *db).await.map_err(error)?; }
@@ -177,10 +178,8 @@ async fn ensure_core_schema(db: &mut SqliteConnection) -> Result<(), String> {
         }
     }
     // 作品状态层的变更事件、切块检索与实体索引；全部派生数据，旧库首次打开即建。
-    crate::agent_indexer::ensure_schema(db).await?;
+    crate::story_index::ensure_schema(db).await?;
     // 主干旧的事实与索引表：已确认事实迁进作品记忆后删表，只在表还在时做
-    crate::agent_story::retire_legacy_ai(db).await?;
-    crate::agent_story::migrate_preferences_to_author_scope(db).await?;
     Ok(())
 }
 pub(crate) fn key_prefix(prefix: &str) -> String {
@@ -893,12 +892,11 @@ pub struct LegacyRestoreBase {
 pub async fn desktop_restore_apply(
     app: crate::DesktopAppHandle,
     statements: Vec<SqlStatement>,
-    mut stores: Vec<StoreDump>,
+    stores: Vec<StoreDump>,
     replace: bool,
     session: String,
     mode: String,
     legacy_base: Option<LegacyRestoreBase>,
-    skill_ids: Option<std::collections::HashMap<String, String>>,
 ) -> Result<usize, String> {
     if app.webview_windows().len() > 1 {
         return Err("请先关闭独立的大纲、预览等窗口，再恢复数据".into());
@@ -913,9 +911,6 @@ pub async fn desktop_restore_apply(
     }
     let root = root(&app)?;
     let prompts = crate::prompt_dir_path()?;
-    // Agent 技能记录：重建本机路径、撤销跨机器的脚本授权；备份缺脚本资源时拒绝不完整恢复
-    let skill_ids = skill_ids.unwrap_or_default();
-    crate::full_backup::prepare_skill_records(&session, &prompts, &mut stores, &skill_ids)?;
     let result = restore_at(
         &root,
         &prompts,
@@ -923,7 +918,7 @@ pub async fn desktop_restore_apply(
         stores,
         replace,
         legacy_base,
-        || crate::full_backup::restore_prompts(&session, &mode, &prompts, &skill_ids),
+        || crate::full_backup::restore_prompts(&session, &mode, &prompts),
     )
     .await;
     if result.is_ok() {

@@ -83,7 +83,7 @@
   /* 连线文字标签：胶囊底 */
   .vue-flow__edge-text {
     fill: var(--ink-main);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .vue-flow__edge-textbg {

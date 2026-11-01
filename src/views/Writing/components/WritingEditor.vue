@@ -206,9 +206,10 @@
       ref="editorScrollRef"
       class="editor-content"
       :class="{ 'has-ruler': rulerStyle !== 'none', 'typewriter-mode': typewriterEnabled }"
-      @scroll="handleEditorScroll"
+      @scroll.passive="handleEditorScroll"
     >
       <div
+        ref="editorAreaRef"
         class="editor-area-wrapper"
         :class="{ 'focus-mode': focusMode }"
         :style="{ ...editorAreaStyle, ...editorVars, ...typewriterStyle }"
@@ -279,6 +280,7 @@
             v-if="bubbleMenuAllowed && isReviewing && editor"
             :editor="editor"
             :original-text="reviewData.original"
+            :original-slice="reviewData.originalSlice"
             :current-range="reviewData.range"
             @close="handleReviewClose"
           />
@@ -295,6 +297,13 @@
         </div>
       </div>
     </div>
+
+    <EditorScrollNavigation
+      :scroll-element="editorScrollRef"
+      :content-element="editorAreaRef"
+      :active="hasActiveChapter && chapterContentReady && !wordLibraryVisible"
+      :chapter-key="readyChapterId"
+    />
 
     <!-- AI 局部修改预览卡：脱离文档流的悬浮面板，固定定位贴在选中段下方并随滚动跟随 -->
     <Teleport v-if="polishSession" to="body">
@@ -433,7 +442,13 @@
       v-model="showFindReplace"
       :editor="editor"
       :initial-position="findModalPosition"
-      :read-only="workflowLocked"
+      :read-only="workflowLocked || isAiThinking || isAiStreaming || bookReplacementInProgress"
+      :ready="chapterContentReady"
+      :book-id="props.bookId"
+      :active-chapter-id="activeChapterId"
+      :prepare-book="prepareBookFind"
+      :open-chapter="openBookFindChapter"
+      :commit-book="commitBookReplacement"
     />
 
     <!-- 字体导入弹窗独立于下拉面板，关闭下拉面板不会卸载导入表单。 -->
@@ -465,6 +480,14 @@
       :book-id="props.bookId"
       :restore-disabled="workflowLocked"
       @restored="handleHistoryRestored"
+    />
+
+    <!-- 朗读设置沿用现有设置中心；首次打开时按需加载并定位到听书分区 -->
+    <SettingsCenterModal
+      v-if="listenSettingsMounted"
+      v-model:visible="listenSettingsVisible"
+      :book-id="bookId"
+      initial-section="listening"
     />
 
     <!-- 底部状态栏 -->
@@ -537,10 +560,6 @@
               <span class="label">自动补全</span>
               <el-switch v-model="aiConfig.enabled" size="small" />
             </div>
-            <div class="config-item">
-              <span class="label" title="快捷续写写完后，对照角色资料与故事状态核对一遍，有实质冲突时自动修订">续写后核对设定</span>
-              <el-switch v-model="aiConfig.verify" size="small" />
-            </div>
             <div class="panel-divider"></div>
             <div class="config-item column">
               <span class="label">选择模型</span>
@@ -551,6 +570,47 @@
             </div>
           </div>
         </el-popover>
+        <!-- 听书：喇叭 / 语速 / 朗读设置收在一个胶囊里，紧挨 AI 助手 -->
+        <div v-if="!workflowMode" class="listen-inline">
+          <button
+            type="button"
+            class="listen-btn"
+            :class="{ 'is-playing': listeningPlaying }"
+            :disabled="!hasActiveChapter"
+            :title="listenToggleTitle"
+            :aria-label="listenToggleLabel"
+            :aria-busy="listeningPreparing"
+            @click="handleListenButton"
+          >
+            <i :class="listenButtonIcon"></i>
+          </button>
+          <template v-if="listeningActive || listeningPreparing">
+            <button type="button" class="listen-btn listen-btn--ghost" title="结束朗读" aria-label="结束朗读" @click="listenStop">
+              <i class="fa-solid fa-stop"></i>
+            </button>
+          </template>
+          <button
+            type="button"
+            class="listen-btn listen-btn--ghost listen-btn--rate"
+            :title="`语速 ${listenRateLabel}，点击切换`"
+            :aria-label="`语速 ${listenRateLabel}，点击切换`"
+            @click="cycleListenRate"
+          >
+            {{ listenRateLabel }}
+          </button>
+          <button type="button" class="listen-btn listen-btn--ghost" title="朗读与模型设置" aria-label="朗读与模型设置" @click="openListenSettings">
+            <svg class="listen-sliders-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M3.5 8.5h5.7" />
+                <circle cx="12.2" cy="8.5" r="2.8" />
+                <path d="M15.2 8.5h5.3" />
+                <path d="M3.5 15.5h8.7" />
+                <circle cx="15.2" cy="15.5" r="2.8" />
+                <path d="M18.2 15.5h2.3" />
+              </g>
+            </svg>
+          </button>
+        </div>
         <button
           v-if="!workflowMode"
           class="plan-entry"
@@ -620,6 +680,10 @@ import { useWordLibrary } from '../composables/useWordLibrary'
 import { WORD_LIBRARY_INSERT } from '../editor-utils/word-library'
 import { getWordLibraryShortcutTitle, isWordLibraryShortcut } from '@/utils/platform'
 const WordLibraryPicker = defineAsyncComponent(() => import('./WordLibraryPicker.vue'))
+// 朗读设置弹窗体积不小，只有点齿轮才拉下来
+const SettingsCenterModal = defineAsyncComponent(
+  () => import('@/views/SettingsCenter/SettingsCenterModal.vue'),
+)
 import { workflowContentVersion } from '@/utils/workflow-local-draft'
 import { defineAsyncComponent, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { markWritingSnapshotProvider } from '@/storage/local-backup-service'
@@ -629,15 +693,20 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import type { EditorView } from 'prosemirror-view'
 import { ElMessage } from 'element-plus'
-import { readUiPreferences } from '@/stores/ui-preferences'
+import { readUiPreferences, useUiPreferencesStore } from '@/stores/ui-preferences'
+import { LISTEN_RATE_OPTIONS } from '@/config/listening'
 // 组件引入
 import EditorBubbleMenu from './EditorBubbleMenu.vue'
 import AiReviewWidget from './AiReviewWidget.vue'
+import type { AiRewriteResult } from '@/types/writing-ai'
 import SmartPopover from '@/components/SmartPopover.vue'
 import FontSettingPanel from './FontSettingPanel.vue'
 import FontImportModal from '@/components/FontImportModal.vue'
 import PreferenceSettingPanel from './PreferenceSettingPanel.vue'
 import FindReplaceModal from './FindReplaceModal.vue'
+import EditorScrollNavigation from './EditorScrollNavigation.vue'
+import { applyBookReplacement } from '@/storage/book-find'
+import type { ChapterReplacementBatch } from '@/storage/writing-storage'
 import NameGeneratorModal from './NameGeneratorModal.vue'
 import ArtistModal from './ArtistModal.vue'
 import WritingPlanPanel from './WritingPlanPanel.vue'
@@ -651,6 +720,8 @@ import {
 import { useThemeStore } from '@/stores/theme'
 import { useWritingPlanStore } from '@/stores/writing-plan'
 import { useAiChatStore } from '@/stores/ai-chat'
+import { useListeningStore } from '@/stores/listening'
+import { useInlineListening } from '../composables/useInlineListening'
 import ModelChip from '@/components/ModelChip.vue'
 import { storeToRefs } from 'pinia'
 
@@ -715,10 +786,14 @@ import { primeChapterWords, recordAiWordsAdded, recordChapterWords } from '@/sto
 import { isWritingPositionDrifted, readWritingPosition, saveWritingPosition } from '@/storage/local-writing-position'
 import { useWordCount } from '@/composables/use-word-count'
 import { countWords, countTextWords } from '@/utils/word-count'
-import { recordAiSpan } from '@/agent/ai-spans'
+import { examplePreference,typedByAuthor } from '@/agent-pi/prose-samples'
+import {writingCommand} from '@/writing-service/client'
+import {isTauriRuntime} from '@/storage/writing-storage'
+import { recordAiSpan } from '@/writing-service/ai-spans'
 
 // 编辑器样式 Store
 const editorStore = useWritingEditorStore()
+const uiPreferences = useUiPreferencesStore()
 const wordCounter = useWordCount()
 const displayedChapterWords = computed(() => wordCounter.mode.value === 'text' ? countTextWords(editorStore.activeChapterTextContent) : editorStore.chapterWordCount)
 const {
@@ -728,6 +803,7 @@ const {
   fontLineHeight,
   contentWidth,
   isParagraphGap,
+  isFirstLineIndent,
   rulerStyle,
   alignMode,
   fontColor,
@@ -768,6 +844,7 @@ const {
   fontLineHeight,
   contentWidth,
   isParagraphGap,
+  isFirstLineIndent,
   rulerStyle,
   alignMode,
   fontColor,
@@ -861,10 +938,14 @@ const statusBarRef = ref<HTMLElement | null>(null)
 const statusCenterRef = ref<HTMLElement | null>(null)
 const statusRightRef = ref<HTMLElement | null>(null)
 const editorScrollRef = ref<HTMLElement | null>(null)
+const editorAreaRef = ref<HTMLElement | null>(null)
 const isCompactMode = ref(false)
 const isStatusTightMode = ref(false)
 // 程序同步滚动时忽略自身 scroll 事件，避免双向同步回环。
 let isApplyingEditorScroll = false
+let editorScrollFrame = 0
+let editorSyncFrame = 0
+let editorSyncTimer = 0
 let resizeObserver: ResizeObserver | null = null
 
 const {
@@ -888,14 +969,16 @@ const getScrollRatio = (el: HTMLElement) => {
 }
 
 const handleEditorScroll = () => {
-  const el = editorScrollRef.value
-  if (!el || isApplyingEditorScroll) return
-  hideEntityHover()
-  scheduleWritingPositionPersist()
-  editorStore.setWritingScrollRatio(getScrollRatio(el), 'editor')
-  if (isBubbleMenuVisible.value) {
-    updateBubbleMenuPosition()
-  }
+  if (!editorScrollRef.value || isApplyingEditorScroll || editorScrollFrame) return
+  editorScrollFrame = requestAnimationFrame(() => {
+    editorScrollFrame = 0
+    const el = editorScrollRef.value
+    if (!el || isApplyingEditorScroll) return
+    hideEntityHover()
+    scheduleWritingPositionPersist()
+    editorStore.setWritingScrollRatio(getScrollRatio(el), 'editor')
+    if (isBubbleMenuVisible.value) updateBubbleMenuPosition()
+  })
 }
 
 const syncEditorScroll = () => {
@@ -904,13 +987,15 @@ const syncEditorScroll = () => {
   const maxScrollTop = el.scrollHeight - el.clientHeight
   isApplyingEditorScroll = true
   el.scrollTop = maxScrollTop > 0 ? maxScrollTop * writingScrollRatio.value : 0
-  window.setTimeout(() => {
+  window.clearTimeout(editorSyncTimer)
+  editorSyncTimer = window.setTimeout(() => {
     isApplyingEditorScroll = false
   }, 80)
 }
 
 watch([writingScrollRatio, writingScrollSource], () => {
-  requestAnimationFrame(syncEditorScroll)
+  if (writingScrollSource.value === 'editor' || editorSyncFrame) return
+  editorSyncFrame = requestAnimationFrame(() => { editorSyncFrame = 0; syncEditorScroll() })
 })
 
 onMounted(() => {
@@ -950,10 +1035,15 @@ onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
+  if (editorScrollFrame) cancelAnimationFrame(editorScrollFrame)
+  if (editorSyncFrame) cancelAnimationFrame(editorSyncFrame)
+  window.clearTimeout(editorSyncTimer)
 })
 
 // 主题 Store
 const themeStore = useThemeStore()
+// 听书 Store（状态栏里的就地朗读）
+const listeningStore = useListeningStore()
 
 // 主题切换处理
 const handleThemeChange = (theme: string) => {
@@ -1055,6 +1145,7 @@ const suppressAutoSave = ref(false)
 // 输入法组词进行中。此时文档里是拼音而不是最终汉字，任何落盘都会存下半成品。
 const isComposingInput = ref(false)
 const chapterContentReady = ref(false)
+const bookReplacementInProgress = ref(false)
 const chapterLoadError = ref('')
 
 // ---- 写作位置记忆：光标与滚动位置随保存/切章/离开写入本机，进入章节时恢复 ----
@@ -1389,7 +1480,6 @@ const {
   onDraftDirty: () => markDraftDirty(),
   onSelectionMenu: () => updateBubbleMenuPosition(),
   onAiTextInserted: text => recordAiInsert(countWords(text), countTextWords(text)),
-  onAiSpanInserted: text => recordAiSpan(props.bookId, activeChapterId.value, text),
 })
 
 const canInsertLibraryWord = computed(() => chapterContentReady.value && workflowManualEditUnlocked.value && !isAiStreaming.value)
@@ -1444,8 +1534,8 @@ watch(
 )
 
 watch(
-  () => isFullscreen.value,
-  () => nextTick(updateToolbarMode),
+  () => [isFullscreen.value, uiPreferences.uiFontSize],
+  () => nextTick(() => { updateToolbarMode(); updateStatusBarMode() }),
 )
 
 watch(wordCounter.mode, async () => {
@@ -1464,6 +1554,33 @@ let lastEditorKeydownAt = 0
 // 语音输入、手写板、触摸键盘；AI 程序化 insertContent 不触发 trusted beforeinput，
 // 不会被误计为手动码字。
 let lastEditorTrustedInputAt = 0
+// 只记紧随真实键入的修改。一次保存里混有粘贴、撤销或程序化操作时不作为作者范例。
+let allowEditExamples = false
+let pendingAuthorInput = false
+let inputSerial = 0
+let exampleBatch: 'none' | 'typed' | 'mixed' = 'none'
+watch(
+  () => props.bookId,
+  async id => {
+    allowEditExamples = false
+    exampleBatch = 'none'
+    if (!id || !isTauriRuntime()) return
+    try {
+      const setting = await examplePreference(String(id))
+      if (String(props.bookId) === String(id)) allowEditExamples = setting.enabled
+    } catch {
+      // 设置读取失败时继续正常写作，停用改例记录。
+    }
+  },
+  { immediate: true },
+)
+const exampleSettingChanged = (event: Event) => {
+  const { bookId, enabled } = (event as CustomEvent<{ bookId: string; enabled: boolean }>).detail
+  if (bookId === String(props.bookId)) allowEditExamples = enabled
+}
+onMounted(() => window.addEventListener('ew-prose-example-setting', exampleSettingChanged))
+onBeforeUnmount(() => window.removeEventListener('ew-prose-example-setting', exampleSettingChanged))
+
 watch(
   () => props.issueHighlights,
   () => {
@@ -1517,6 +1634,7 @@ const findBtnRef = ref<HTMLElement | null>(null)
 const findModalPosition = ref<{ x: number; y: number } | undefined>(undefined)
 
 const toggleFindReplace = () => {
+  if (bookReplacementInProgress.value) return
   if (showFindReplace.value) {
     showFindReplace.value = false
     return
@@ -1524,9 +1642,8 @@ const toggleFindReplace = () => {
 
   if (findBtnRef.value) {
     const rect = findBtnRef.value.getBoundingClientRect()
-    // Calculate position: centered below the button
-    // Assuming modal width is ~340px (from CSS)
-    const modalWidth = 340
+    // 与查找替换面板的实际宽度一致，避免靠近右边缘时超出窗口。
+    const modalWidth = 480
     // rect.left + rect.width / 2 is the center of the button
     // we want that to be the center of the modal
     let x = rect.left + rect.width / 2 - modalWidth / 2
@@ -1555,6 +1672,7 @@ const aiConfigPopperOptions = {
 const isReviewing = ref(false)
 const reviewData = ref({
   original: '',
+  originalSlice: null as unknown,
   range: { from: 0, to: 0 },
   // 本次改写已记入 AI 账的净增字数，点「废弃」时按它回冲
   aiDelta: 0,
@@ -1710,6 +1828,7 @@ const updateLocalChapterMeta = async (draft: LocalChapterDraft) => {
     chapterId,
     title: draft.title,
     wordCount,
+    expectedLocalVersion: draft.localVersion,
   })
   // 以前这里发的是 ew-local-book-updated，接收方会「重新加载作品详情 + 重建整棵目录树」。
   // 而它挂在每次落盘上——本地模式下打字每 160ms 就重建一次目录，卡顿的主因。
@@ -1825,6 +1944,9 @@ const saveChapterContent = async (
       const snapshot = buildCurrentDraftSnapshot()
       if (!snapshot) return false
       editorStore.setChapterSaveState('local_only', '仅本地保存')
+      const exampleBefore = lastSavedContent.value
+      const manualSave = allowEditExamples && exampleBatch === 'typed'
+      exampleBatch = 'none'
       const localDraft = await writingStorage
         .saveChapterLocal(snapshot, { expectedLocalVersion: snapshot.localVersion })
         .catch(async (error) => {
@@ -1850,6 +1972,18 @@ const saveChapterContent = async (
           return null
         })
       if (!localDraft) return false
+      if (manualSave && exampleBefore !== snapshot.textContent) {
+        try {
+          await writingCommand('prose_editor_saved', {
+            bookId: String(snapshot.bookId),
+            chapterId: Number(snapshot.chapterId),
+            version: localDraft.localVersion,
+            before: exampleBefore,
+          })
+        } catch (error) {
+          console.warn('本次手改示例未记录', error)
+        }
+      }
       if (!isStaleChapterRequest(requestId)) {
         currentChapterLocalVersion.value = workflowContentVersion(localDraft)
         currentChapterWriteVersion.value = Number(localDraft.localVersion || 0)
@@ -1858,7 +1992,7 @@ const saveChapterContent = async (
 
       const wordLen = countWords(text)
       editorStore.setChapterWordCount(wordLen)
-      await updateLocalChapterMeta(snapshot)
+      await updateLocalChapterMeta(localDraft)
       if (isStaleChapterRequest(requestId)) return true
       lastSavedContent.value = text
       lastSavedTitle.value = title
@@ -1882,9 +2016,53 @@ const saveChapterContent = async (
 }
 
 const ensurePersisted = async (options?: EnsurePersistedOptions) => {
+  if (bookReplacementInProgress.value) return false
   if (workflowLocked.value) return true
   if (!hasUnsavedChanges()) return true
   return await saveChapterContent(options?.silent !== false)
+}
+
+async function prepareBookFind() {
+  if (bookReplacementInProgress.value) return false
+  return await ensurePersisted({ silent: true })
+}
+
+async function openBookFindChapter(chapterId: number) {
+  const bookId = String(props.bookId)
+  if (!await prepareBookFind()) throw new Error('当前章节尚未保存，无法切换匹配章节')
+  if (Number(activeChapterId.value) !== chapterId) {
+    window.dispatchEvent(new CustomEvent('ew-writing-open-chapter', { detail: { chapterId } }))
+  }
+  const deadline = Date.now() + 10000
+  while (Date.now() < deadline) {
+    if (String(props.bookId) !== bookId) throw new Error('作品已切换，请重新搜索')
+    if (Number(readyChapterId.value) === chapterId && chapterContentReady.value) { await nextTick(); return }
+    if (chapterLoadError.value) throw new Error(chapterLoadError.value)
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  throw new Error('章节未能打开，请先在目录中打开后重试')
+}
+
+async function commitBookReplacement(batch: ChapterReplacementBatch) {
+  if (batch.bookId !== String(props.bookId) || workflowLocked.value || isAiThinking.value || isAiStreaming.value || !chapterContentReady.value) {
+    throw new Error('正文状态已变化，暂不能执行全书替换')
+  }
+  if (!await prepareBookFind()) throw new Error('当前章节尚未保存，已停止全书替换')
+  const chapterId = Number(activeChapterId.value)
+  bookReplacementInProgress.value = true
+  editor.value?.setEditable(false)
+  clearLocalDraftTimer()
+  try {
+    const result = await applyBookReplacement(batch)
+    if (result.chapterIds.includes(chapterId) && String(props.bookId) === batch.bookId && Number(activeChapterId.value) === chapterId) {
+      await loadChapterContent(chapterId)
+      await nextTick()
+    }
+    return result
+  } finally {
+    bookReplacementInProgress.value = false
+    editor.value?.setEditable(!workflowLocked.value && chapterContentReady.value)
+  }
 }
 
 let latestChapterRequestId = 0
@@ -2082,9 +2260,9 @@ watch(workflowManualEditUnlocked, unlocked => {
   isBubbleMenuAnimating.value = false
 })
 
-watch([workflowLocked, chapterContentReady], ([locked, ready]) => {
-  editor.value?.setEditable(!locked && ready)
-  if (locked || !ready) {
+watch([workflowLocked, chapterContentReady, bookReplacementInProgress], ([locked, ready, replacing]) => {
+  editor.value?.setEditable(!locked && ready && !replacing)
+  if (locked || !ready || replacing) {
     // 工作流识别或生成锁定期间，终止所有可能回写正文的普通编辑器异步入口。
     cancelAiSuggestion()
     clearLocalDraftTimer()
@@ -2121,6 +2299,7 @@ const createEditorInstance = (content: unknown) => {
     editorKeydownTarget.removeEventListener(
       'beforeinput',
       editorBeforeInputHandler as unknown as EventListener,
+      true,
     )
   }
   if (editorKeydownTarget && editorCompositionStartHandler) {
@@ -2150,6 +2329,8 @@ const createEditorInstance = (content: unknown) => {
   isComposingInput.value = false
   lastEditorKeydownAt = 0
   lastEditorTrustedInputAt = 0
+  pendingAuthorInput = false
+  exampleBatch = 'none'
 
   const sanitizedContent = normalizeEditorContentPayload(content)
 
@@ -2190,7 +2371,7 @@ const createEditorInstance = (content: unknown) => {
         SensitiveExtension,
       ],
       content: sanitizedContent,
-      editable: !workflowLocked.value && chapterContentReady.value,
+      editable: !workflowLocked.value && chapterContentReady.value && !bookReplacementInProgress.value,
       editorProps: {
         attributes: { class: 'prosemirror-content' },
         handlePaste: handleEditorPaste,
@@ -2222,6 +2403,10 @@ const createEditorInstance = (content: unknown) => {
       scheduleHideEntityHover()
     })
     ed.on('update', ({ transaction }) => {
+      if (allowEditExamples && transaction.docChanged && !suppressAutoSave.value) {
+        exampleBatch = pendingAuthorInput && exampleBatch !== 'mixed' ? 'typed' : 'mixed'
+        pendingAuthorInput = false
+      }
       // 全文读取+字数统计是 O(全章) 的开销，万字章每击键跑两遍会拖输入手感。
       // 这里只做 O(本次改动) 的事，全文级同步（字数/预览文本/敏感词）节流到 300ms。
       scheduleEditorStateSync()
@@ -2318,6 +2503,11 @@ const createEditorInstance = (content: unknown) => {
       // 粘贴/拖放有独立的 uiEvent 判定与计数策略，这里不给它们续窗口，
       // 撤销/重做与程序化插入不产生 trusted beforeinput，天然排除。
       if (!evt.isTrusted) return
+      if (allowEditExamples) {
+        pendingAuthorInput = typedByAuthor(evt)
+        const serial = ++inputSerial
+        setTimeout(() => { if (serial === inputSerial) pendingAuthorInput = false }, 0)
+      }
       const inputType = String(evt.inputType || '')
       if (inputType.startsWith('insertFrom') || inputType.startsWith('history')) return
       lastEditorTrustedInputAt = Date.now()
@@ -2325,6 +2515,7 @@ const createEditorInstance = (content: unknown) => {
     editorKeydownTarget.addEventListener(
       'beforeinput',
       editorBeforeInputHandler as unknown as EventListener,
+      true,
     )
     // 中文输入法组词期间，拼音会先以真实文本进入文档（"这是" 打到一半是 "zhe'shi"）。
     // 落盘只要撞进这个窗口，存下去的就是拼音——正文本身随组词结束会被替换掉，
@@ -2374,11 +2565,7 @@ const handleHistoryRestored = async (chapterId: number) => {
   window.dispatchEvent(new CustomEvent('ew-writing-catalog-refresh'))
 }
 
-const handleAiDone = (payload: {
-  original: string
-  from: number
-  to: number
-}) => {
+const handleAiDone = (payload: AiRewriteResult) => {
   // 改写文本已进正文：净增部分记 AI（替换比原文短则不记也不扣）
   const insertedText = editor.value?.state.doc.textBetween(payload.from, payload.to, '\n') || ''
   const aiDelta = Math.max(0, countWords(insertedText) - countWords(payload.original))
@@ -2389,6 +2576,7 @@ const handleAiDone = (payload: {
   isBubbleMenuVisible.value = false
   reviewData.value = {
     original: payload.original,
+    originalSlice: payload.originalSlice,
     range: { from: payload.from, to: payload.to },
     aiDelta,
     textAiDelta,
@@ -2399,7 +2587,7 @@ const handleAiDone = (payload: {
 const handleReviewClose = async (action: 'accept' | 'discard') => {
   const { aiDelta, textAiDelta } = reviewData.value
   isReviewing.value = false
-  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
+  reviewData.value = { original: '', originalSlice: null, range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
   if (action === 'discard' && (aiDelta > 0 || textAiDelta > 0)) {
     // 正文已被浮窗恢复原样，把当时记的 AI 字数冲掉
     recordAiInsert(-aiDelta, -textAiDelta)
@@ -2415,7 +2603,7 @@ const handleReviewClose = async (action: 'accept' | 'discard') => {
 function resetAiReviewState() {
   if (!isReviewing.value && !reviewData.value.original) return
   isReviewing.value = false
-  reviewData.value = { original: '', range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
+  reviewData.value = { original: '', originalSlice: null, range: { from: 0, to: 0 }, aiDelta: 0, textAiDelta: 0 }
   try {
     editor.value?.commands.unsetAiReviewRange()
   } catch {
@@ -2884,6 +3072,78 @@ onMounted(() => {
   window.addEventListener('keydown', keydownHandler)
 })
 
+// ---- 状态栏听书：就地朗读当前章，不跳独立听书页 ----
+const listeningActive = computed(
+  () =>
+    listeningStore.hasSession &&
+    String(listeningStore.book?.id || '') === String(props.bookId || '') &&
+    // 空章/读完不留控制：按下去没声音的按钮像坏了
+    listeningStore.status !== 'empty' &&
+    listeningStore.status !== 'ended',
+)
+const listeningPlaying = computed(() => listeningActive.value && listeningStore.isPlaying)
+const listenSettingsVisible = ref(false)
+const listenSettingsMounted = ref(false)
+
+const inlineListening = useInlineListening({
+  target: () => {
+    const chapterId = Number(activeChapterId.value || 0)
+    return props.bookId && chapterId ? { bookId: props.bookId, chapterId } : null
+  },
+  save: snapshotLocalDraft,
+  onError: message => ElMessage.error(message),
+  onEmpty: () => ElMessage.info('当前章节还没有可朗读的正文'),
+})
+const { pending: listeningPreparing, toggle: handleListenButton, stop: listenStop } = inlineListening
+
+const listenButtonIcon = computed(() => {
+  if (listeningPreparing.value) return 'fa-solid fa-spinner fa-spin'
+  if (!listeningActive.value) return 'fa-solid fa-volume-high'
+  return listeningPlaying.value ? 'fa-solid fa-pause' : 'fa-solid fa-play'
+})
+
+const listenToggleTitle = computed(() => {
+  if (!hasActiveChapter.value) return '先选择或新建一章'
+  if (listeningPreparing.value) return '取消准备朗读'
+  if (listeningActive.value) return listeningPlaying.value ? '暂停朗读' : '继续朗读'
+  return '朗读这一章，读完本章停止'
+})
+
+const listenToggleLabel = computed(() => {
+  if (listeningPreparing.value) return '取消准备朗读'
+  if (listeningActive.value) return listeningPlaying.value ? '暂停朗读' : '继续朗读'
+  return '朗读这一章'
+})
+
+// 状态栏只留语速这一个最常调的项；音源/引擎/云端模型统一进设置弹窗，避免两处重复。
+// 不用下拉，点一下直接换下一档：
+const listenRateLabel = computed(() => `${listeningStore.settings.rate}x`)
+
+const cycleListenRate = () => {
+  const current = Number(listeningStore.settings.rate) || 1
+  // 设置页滑杆可以停在 1.1x 这类非档位值，这里按“下一个更大的档位”循环
+  const next = LISTEN_RATE_OPTIONS.find(rate => rate > current + 0.001) ?? LISTEN_RATE_OPTIONS[0]
+  listeningStore.updateSettings({ rate: next })
+}
+
+const openListenSettings = async () => {
+  await snapshotLocalDraft()
+  listenSettingsMounted.value = true
+  listenSettingsVisible.value = true
+}
+
+// 换章就不再念上一章，免得耳朵里的内容和屏幕上的稿子对不上
+watch([activeChapterId, () => props.bookId], () => inlineListening.suspend())
+
+// 读完（本章最后一句或全书最后一章）就结束会话，状态栏立刻回到喇叭按钮；
+// 位置已由 finishChapter 按 finished 存好，这里不再重复落盘
+watch(
+  () => listeningStore.status,
+  status => {
+    if (status === 'ended' && listeningStore.scope === 'chapter') listeningStore.endSession(false)
+  },
+)
+
 defineExpose<WritingEditorExpose>({
   hasUnsavedChanges,
   ensurePersisted,
@@ -2898,6 +3158,7 @@ defineExpose<WritingEditorExpose>({
 })
 
 onBeforeUnmount(() => {
+  inlineListening.dispose()
   abortAiRequests()
   clearEntityHoverTimer()
   disposeChromeMeasure()

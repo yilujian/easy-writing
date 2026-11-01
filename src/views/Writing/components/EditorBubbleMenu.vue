@@ -147,11 +147,13 @@ import type { Character } from '@/types'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { isTauriRuntime } from '@/storage/writing-storage'
-import { useAgentWorkspace } from '@/views/AgentCreation/use-agent-workspace'
+import { usePiWorkspace } from '@/views/AgentPi/use-pi-workspace'
+import { applyAiRewrite } from '../editor-utils/ai-rewrite'
+import type { AiRewriteResult } from '@/types/writing-ai'
 
 // 定义 Emits，把结果抛给父组件处理
 const emit = defineEmits<{
-  (e: 'done', payload: { original: string, from: number, to: number }): void
+  (e: 'done', payload: AiRewriteResult): void
   (e: 'add-to-chat', payload: { content: string, range: string }): void
   (e: 'loading', value: boolean): void
   (e: 'bind-storyline'): void
@@ -363,22 +365,14 @@ const executeAiTask = async (
     }
 
     // 1. 替换文本
-    props.editor.chain()
-      .focus()
-      .setTextSelection({ from, to })
-      .insertContent(generatedText)
-      .run()
+    const result = applyAiRewrite(props.editor, from, to, generatedText)
 
     // 2. 给新文本加上持久化高亮 (AiReviewExtension)
-    const newTo = from + generatedText.length
+    const newTo = result.to
     props.editor.commands.setAiReviewRange({ from, to: newTo })
 
     // 3. 任务完成，通知父组件生成 ReviewWidget
-    emit('done', {
-      original: selectedText,
-      from: from,
-      to: newTo
-    })
+    emit('done', result)
 
     // 清空选区，让 BubbleMenu 自动隐藏
     props.editor.commands.setTextSelection(newTo)
@@ -470,19 +464,19 @@ const askAgent = async () => {
     ElMessage.warning('选中的文字过长，请分段引用')
     return
   }
-  const agent = useAgentWorkspace()
-  agent.newConversation()
-  agent.addReference({
-    id: `selection-${crypto.randomUUID()}`,
-    kind: 'selection',
-    bookId: String(props.bookId),
-    chapterId: props.chapterId ? String(props.chapterId) : undefined,
-    title: `${props.chapterTitle ? `《${props.chapterTitle}》` : ''}选段`,
-    description: selectedText.length > 24 ? `${selectedText.slice(0, 24)}…` : selectedText,
-    content: selectedText
-  })
+  const agent = usePiWorkspace()
+  if (agent.inputLocked) return
+  await agent.initialize()
+  await agent.newChat()
+  await agent.changeContext({ bookId: String(props.bookId) })
+  const chapterId = Number(props.chapterId)
+  const title = props.chapterTitle || '当前章节'
+  if (Number.isSafeInteger(chapterId) && chapterId !== 0) {
+    agent.addReference({ kind: 'chapter', id: chapterId, title })
+  }
+  agent.draft = `${chapterId ? `@${title}\n\n` : ''}以下是我选中的正文片段：\n\n${selectedText}`
   activePanel.value = null
-  await router.push('/agent-creation')
+  await router.push('/agent-pi')
 }
 
 const addSelectionToInspiration = async () => {
@@ -581,7 +575,7 @@ onBeforeUnmount(() => {
     border-radius: 8px;
     background: color-mix(in srgb, var(--ui-glass-bg) 48%, transparent);
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
     white-space: nowrap;
 
@@ -600,7 +594,7 @@ onBeforeUnmount(() => {
     i {
       width: 14px;
       text-align: center;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
     }
   }
 }
@@ -636,7 +630,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   margin-bottom: 6px;
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 700;
 
   span,
@@ -683,7 +677,7 @@ onBeforeUnmount(() => {
     border-radius: 7px;
     background: color-mix(in srgb, var(--bg-main) 72%, var(--ui-glass-bg));
     color: var(--ink-main);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
     white-space: nowrap;
 
@@ -691,7 +685,7 @@ onBeforeUnmount(() => {
       width: 13px;
       color: var(--ink-sec);
       text-align: center;
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
     }
 
     &:first-child {
@@ -719,7 +713,7 @@ onBeforeUnmount(() => {
 }
 .voice-picker .voice-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-text-secondary, #777);
 }
 .voice-picker .voice-option {
@@ -727,7 +721,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   border: 1px solid var(--ink-border, #e5e2dc);
   background: transparent;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 }
 .voice-picker .voice-option:hover {
@@ -756,7 +750,7 @@ onBeforeUnmount(() => {
     outline: none;
     background: transparent;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     &::placeholder {
       color: var(--ink-sec);
@@ -799,7 +793,7 @@ onBeforeUnmount(() => {
     border-radius: 8px;
     background: transparent;
     color: var(--ink-main);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover {
@@ -849,7 +843,7 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: color-mix(in srgb, var(--bg-main) 70%, transparent);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.8;
   white-space: pre-wrap;
   text-align: left;
@@ -866,7 +860,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: transparent;
   color: var(--ink-sec, var(--ink-main));
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
@@ -878,14 +872,14 @@ onBeforeUnmount(() => {
 }
 
 .loading .stop-btn i {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
 }
 
 @media (max-width: 920px) {
   .toolbar-pill {
     button {
       padding: 0 8px;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
     }
   }
 

@@ -1,17 +1,21 @@
+import { generateWorkflowUnits } from '@/utils/workflow-generation'
+import type { WorkflowGeneration } from '@/types/workflow-generation'
 import type { JsonRecord } from '@/types/json'
 import type { WorkflowStepTask } from '@/types/workflow'
 import { useAiModelStore } from '@/stores/ai-model'
-import { parseAiJson } from '@/utils/ai-json'
+import { parseWorkflowJson, requestWorkflowAi, WorkflowAiError } from '@/utils/workflow-ai'
 import { buildStructuredJsonMessages } from '@/config/ai-prompts'
 import {
   buildOutlineAdjustMessages,
   buildSettingAdjustMessages,
 } from '@/config/workflow-prompts'
-import { LONG_COMPLETION_TIMEOUT_MS, NO_MODEL_MESSAGE, requestLocalChatCompletion } from '@/utils/local-ai-client'
+import { NO_MODEL_MESSAGE } from '@/utils/local-ai-client'
 import { promptText } from '@/storage/local-prompts'
 import { createLocalEntityId, nowIso } from '@/storage/local-library-utils'
 import {
   applyArtifactToLocalRun,
+  completeWorkflowAiDraft,
+  updateWorkflowGeneration,
   readLocalWorkflowRun,
   writeLocalWorkflowRun,
   writeLocalWorkflowTask,
@@ -20,6 +24,7 @@ import {
 } from '@/storage/local-workflow'
 import {
   registerLiveLocalTask,
+  findLiveLocalTaskForRun,
   unregisterLiveLocalTask,
 } from '@/utils/local-workflow-runtime'
 
@@ -36,14 +41,6 @@ type LocalGenerateStep = 'inspiration' | 'outline' | 'setting'
 type LocalAdjustStep = 'outline_adjust' | 'setting_adjust'
 
 const asText = (value: unknown) => String(value ?? '').trim()
-
-/** 结构化结果解析失败的统一文案：带上模型返回的开头，用户一眼能看出是空、是截断还是答非所问 */
-const describeUnparsableResult = (what: string, raw: string) => {
-  const head = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 80)
-  return head
-    ? `${what}生成结果无法解析（输出被截断或格式不对），请重新生成或换个模型。模型返回开头：「${head}…」`
-    : `${what}生成结果为空，请重新生成或换个模型`
-}
 
 const resolveWorkflowModel = async (run: { modelCode?: string; config?: JsonRecord | null }) => {
   const aiModelStore = useAiModelStore()
@@ -79,9 +76,11 @@ const describeBaseConfig = (config: JsonRecord | null | undefined) => {
 
 const generateStepContent = async (
   step: LocalGenerateStep,
-  run: { modelCode?: string; config?: JsonRecord | null; summary?: JsonRecord | null },
+  run: { id: number; modelCode?: string; config?: JsonRecord | null; summary?: JsonRecord | null },
   input: JsonRecord,
-  signal: AbortSignal
+  signal: AbortSignal,
+  taskId: number,
+  onGeneration: (value: WorkflowGeneration) => Promise<void>
 ): Promise<JsonRecord> => {
   const modelCode = await resolveWorkflowModel(run)
   if (!modelCode) throw new Error(NO_MODEL_MESSAGE)
@@ -94,9 +93,13 @@ const generateStepContent = async (
     const task = action === 'expand' && ideaText
       ? promptText('workflow-wizard', 'inspirationExpand')
       : promptText('workflow-wizard', 'inspirationRandom')
-    const data = await requestLocalChatCompletion({
+    const data = await requestWorkflowAi({
+      runId: Number(run.id),
+      taskId,
+      key: `step:${step}`,
       scene: 'workflow_inspiration',
       sceneLabel: '建书·灵感',
+      requiredKeys: ['ideaText'],
       modelCode,
       signal,
       messages: buildStructuredJsonMessages({
@@ -111,7 +114,7 @@ const generateStepContent = async (
     })
     let parsed: { ideaText?: unknown } | null = null
     try {
-      parsed = parseAiJson(data, ['ideaText'])
+      parsed = parseWorkflowJson(data, ['ideaText'])
     } catch {
       throw new Error('灵感生成结果无法解析（多半是输出被截断），请重新生成或换个模型')
     }
@@ -122,12 +125,8 @@ const generateStepContent = async (
 
   if (step === 'outline') {
     const ideaText = String(run.summary?.ideaText || '').trim()
-    const data = await requestLocalChatCompletion({
-      scene: 'workflow_outline',
-      sceneLabel: '建书·大纲',
-      modelCode,
-      signal,
-      timeoutMs: LONG_COMPLETION_TIMEOUT_MS,
+    const generation = await generateWorkflowUnits({
+      step, run: run as LocalWorkflowRun, input, signal, taskId, modelCode, onProgress: onGeneration,
       messages: buildStructuredJsonMessages({
         task: promptText('workflow-wizard', 'outlineTask'),
         materials: {
@@ -137,16 +136,7 @@ const generateStepContent = async (
         shape: promptText('workflow-wizard', 'outlineShape'),
       }),
     })
-    let parsed: JsonRecord | null = null
-    try {
-      parsed = parseAiJson(data, ['titleOptions', 'volumes', 'chapters'])
-    } catch {
-      throw new Error(describeUnparsableResult('大纲', data))
-    }
-    if (!parsed || (!Array.isArray(parsed.chapters) && !Array.isArray(parsed.volumes))) {
-      throw new Error(describeUnparsableResult('大纲', data))
-    }
-    return parsed
+    return generation.document
   }
 
   // setting：以大纲为底稿生成世界观与人物设定
@@ -159,12 +149,8 @@ const generateStepContent = async (
       ? outline.volumes.map((volume: JsonRecord) => `卷「${volume?.title || ''}」：${volume?.summary || ''}`).join('\n')
       : '',
   ].filter(Boolean).join('\n')
-  const data = await requestLocalChatCompletion({
-    scene: 'workflow_setting',
-    sceneLabel: '建书·设定',
-    modelCode,
-    signal,
-    timeoutMs: LONG_COMPLETION_TIMEOUT_MS,
+  const generation = await generateWorkflowUnits({
+    step, run: run as LocalWorkflowRun, input, signal, taskId, modelCode, onProgress: onGeneration,
     messages: buildStructuredJsonMessages({
       task: promptText('workflow-wizard', 'settingTask'),
       materials: {
@@ -174,16 +160,7 @@ const generateStepContent = async (
       shape: promptText('workflow-wizard', 'settingShape'),
     }),
   })
-  let parsed: JsonRecord | null = null
-  try {
-    parsed = parseAiJson(data, ['worldCards', 'characters'])
-  } catch {
-    throw new Error(describeUnparsableResult('设定', data))
-  }
-  if (!parsed || (!Array.isArray(parsed.characters) && !Array.isArray(parsed.worldCards))) {
-    throw new Error(describeUnparsableResult('设定', data))
-  }
-  return parsed
+  return generation.document
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +258,9 @@ const runAdjustStep = async (
   run: LocalWorkflowRun,
   input: JsonRecord,
   signal: AbortSignal,
-  reportStage: (stage: 'read' | 'preserve' | 'generate' | 'verify', percent: number) => Promise<void>
+  reportStage: (stage: 'read' | 'preserve' | 'generate' | 'verify', percent: number) => Promise<void>,
+  taskId: number,
+  onGeneration: (value: WorkflowGeneration) => Promise<void>
 ) => {
   const request = (input.request || {}) as JsonRecord
   const scope = asText(request.scope) || 'all'
@@ -310,36 +289,30 @@ const runAdjustStep = async (
     [isOutline ? '当前大纲' : '当前设定']: JSON.stringify(current),
   }
   const builder = isOutline ? buildOutlineAdjustMessages : buildSettingAdjustMessages
-  const raw = await requestLocalChatCompletion({
-    scene: 'workflow_adjust',
-    sceneLabel: '建书·按要求调整',
-    modelCode,
-    signal,
-    messages: builder({
-      materials,
-      scopeLabel,
-      instruction,
-      preserveLabels: preserve.map(key => preserveLabels[key] || key).filter(Boolean),
-    }),
+  const generation = await generateWorkflowUnits({
+    step, run, input, signal, taskId, modelCode, onProgress: onGeneration,
+    messages: builder({ materials, scopeLabel, instruction,
+      preserveLabels: preserve.map(key => preserveLabels[key] || key).filter(Boolean) }),
   })
-
   await reportStage('verify', 85)
-  const parsed = isOutline
-    ? parseAiJson(raw, ['titleOptions', 'volumes'])
-    : parseAiJson(raw, ['worldCards', 'characters'])
-  if (!parsed) throw new Error('调整候选无法解析，请重试')
+  const parsed = generation.document
   const changes = isOutline
-    ? diffOutlineChanges(current, parsed)
-    : diffSettingChanges(current, parsed)
+    ? diffOutlineChanges(generation.base, parsed)
+    : diffSettingChanges(generation.base, parsed)
 
-  const candidateId = createLocalEntityId()
+  if (signal.aborted) throw new DOMException('已取消', 'AbortError')
+  const fresh = await readLocalWorkflowRun(Number(run.id))
+  if (!fresh || fresh.draftRevision !== run.draftRevision) throw new Error('工作流内容已变化，本次草稿已保留，请按最新内容重试')
+  const candidateId = Object.values(run.adjustCandidates || {}).find(candidate => candidate.generationId === generation.id)?.candidateId || createLocalEntityId()
   const candidate: LocalAdjustCandidate = {
     candidateId,
+    generationId: generation.id,
     step,
     content: parsed,
     createTime: nowIso(),
   }
   run.adjustCandidates = { ...(run.adjustCandidates || {}), [String(candidateId)]: candidate }
+  if (signal.aborted) throw new DOMException('已取消', 'AbortError')
   await writeLocalWorkflowRun(run)
 
   const consistency = isOutline
@@ -364,7 +337,7 @@ const runAdjustStep = async (
 // 提交入口：立即返回 running 任务，后台执行，页面轮询拿终态
 // ---------------------------------------------------------------------------
 
-export const submitLocalWorkflowStepTask = async (payload: {
+const submitStepTask = async (payload: {
   runId: number
   step: string
   expectedDraftRevision?: number
@@ -378,6 +351,7 @@ export const submitLocalWorkflowStepTask = async (payload: {
     throw new Error(`未知的生成步骤：${payload.step}`)
   }
 
+  if (payload.expectedDraftRevision != null && payload.expectedDraftRevision !== run.draftRevision) throw new Error('工作流内容已变化，请刷新后重试')
   const taskId = createLocalEntityId()
   const input = payload.input || {}
   const running = {
@@ -407,6 +381,13 @@ export const submitLocalWorkflowStepTask = async (payload: {
     },
   })
 
+  const onGeneration = async (value: WorkflowGeneration) => {
+    input.generationId = value.id
+    running.payload = { ...running.payload, step, input, generationId: value.id,
+      unitProgress: { completed: value.units.filter(unit => unit.status === 'complete').length,
+        total: value.units.length, current: value.units.find(unit => unit.id === value.failedUnit)?.label || '准备中' } }
+    await writeLocalWorkflowTask(running)
+  }
   void (async () => {
     try {
       let result: JsonRecord
@@ -415,15 +396,18 @@ export const submitLocalWorkflowStepTask = async (payload: {
           const snapshot = {
             ...running,
             updateTime: nowIso(),
-            payload: { step, input, adjustProgress: { stage, percent } },
+            payload: { ...running.payload, step, input, adjustProgress: { stage, percent } },
           } as unknown as WorkflowStepTask
           await writeLocalWorkflowTask(snapshot)
         }
-        result = await runAdjustStep(step, run, input, abort.signal, reportStage)
+        result = await runAdjustStep(step, run, input, abort.signal, reportStage, taskId, onGeneration)
       } else {
-        const content = await generateStepContent(step, run, input, abort.signal)
+        const content = await generateStepContent(step, run, input, abort.signal, taskId, onGeneration)
         // 产物落 run：artifact 记录 + 版本推进（大纲产物推进 outlineRevision）
-        const fresh = (await readLocalWorkflowRun(payload.runId)) || run
+        if (abort.signal.aborted) throw new DOMException('已取消', 'AbortError')
+        const fresh = await readLocalWorkflowRun(payload.runId)
+        if (!fresh || fresh.draftRevision !== run.draftRevision) throw new Error('工作流内容已变化，本次草稿已保留，请按最新内容重试')
+        if (abort.signal.aborted) throw new DOMException('已取消', 'AbortError')
         const artifact = applyArtifactToLocalRun(fresh, step, content)
         await writeLocalWorkflowRun(fresh)
         result = {
@@ -439,9 +423,11 @@ export const submitLocalWorkflowStepTask = async (payload: {
         progress: 100,
         canCancel: false,
         updateTime: nowIso(),
-        payload: { step, input, result },
+        payload: { ...running.payload, step, input, result },
       } as unknown as WorkflowStepTask
       await writeLocalWorkflowTask(done)
+      await completeWorkflowAiDraft(Number(run.id), `step:${step}`)
+      if (input.generationId) await updateWorkflowGeneration(Number(input.generationId), g => { g.status = step.endsWith('_adjust') ? 'candidate' : 'applied' }).catch(error => console.warn('生成状态归档失败，结果仍已保存', error))
     } catch (error) {
       const aborted =
         cancelRequested ||
@@ -453,8 +439,8 @@ export const submitLocalWorkflowStepTask = async (payload: {
         updateTime: nowIso(),
         ...(aborted
           ? {}
-          : { errorMessage: error instanceof Error ? error.message : '生成失败，请重试' }),
-        payload: { step, input },
+          : { errorMessage: error instanceof Error ? error.message : '生成失败，请重试', errorCode: error instanceof WorkflowAiError ? error.code : 'UNKNOWN' }),
+        payload: { ...running.payload, step, input },
       } as unknown as WorkflowStepTask
       await writeLocalWorkflowTask(settled).catch(() => undefined)
     } finally {
@@ -463,4 +449,14 @@ export const submitLocalWorkflowStepTask = async (payload: {
   })()
 
   return { data: running }
+}
+
+// 提交与登记活任务之间也互斥，防止连续点击产生两个收费请求。
+const pendingSubmissions = new Set<number>()
+export const submitLocalWorkflowStepTask = async (payload: Parameters<typeof submitStepTask>[0]) => {
+  if (pendingSubmissions.has(payload.runId) || findLiveLocalTaskForRun(payload.runId)) {
+    throw new WorkflowAiError('TASK_RUNNING', '这个工作流仍在生成，请等待或先停止生成')
+  }
+  pendingSubmissions.add(payload.runId)
+  try { return await submitStepTask(payload) } finally { pendingSubmissions.delete(payload.runId) }
 }

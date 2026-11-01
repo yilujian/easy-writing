@@ -1,13 +1,13 @@
 import { RANK_AUTO_CRAWLED_EVENT } from '@/storage/writing-storage'
 import type { WorkflowRealtimeEvent } from '@/types/workflow'
 import { subscribeAllLocalWorkflowEvents } from '@/utils/local-workflow-runtime'
-import { agentCommand } from '@/agent/client'
+import { writingCommand } from '@/writing-service/client'
 import { previewText, weixinLog } from './logfile'
 
 /**
  * 微信助手·主动推送（前端这一半）。
  *
- * 推送本身现在由宿主的投递队列负责（agent_delivery_queue）：推得出去就发，推不出去留在队列里，
+ * 推送本身现在由宿主的投递队列负责（weixin_delivery）：推得出去就发，推不出去留在队列里，
  * 作者下次发消息、宿主拿到新会话令牌时补发；同一事件键十分钟内只送一次；推送也记进微信对话记录。
  * 这里只把网页层才知道的事件翻成一句话交给宿主：自动生文的完成 / 待质检 / 中断，榜单自动抓取完成。
  *
@@ -26,7 +26,7 @@ export const notifyWeixin = async (text: string, key = ''): Promise<WeixinNotify
   const content = String(text || '').trim()
   if (!content) return 'skipped'
   try {
-    const result = await agentCommand<{ outcome: WeixinNotifyOutcome }>('automation_notify', { text: content, key, channel: 'weixin' })
+    const result = await writingCommand<{ outcome: WeixinNotifyOutcome }>('automation_notify', { text: content, key, channel: 'weixin' })
     weixinLog('info', `push-${result.outcome}`, { key, chars: content.length, text: previewText(content) })
     return result.outcome
   } catch (error) {

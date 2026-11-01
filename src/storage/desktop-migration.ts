@@ -43,8 +43,6 @@ export async function migrateDesktopStorage(onProgress?: (progress: MigrationPro
   ) => onProgress?.({ mode, phase, completed: completed + partial, total, message, detail, log })
   const ready = async () => {
     await initAppSettings()
-    // 告诉宿主"本地存储已就绪"：后台索引、参考书拆书、蒸馏、自动任务的定时器都等这个开关
-    await desktopInvoke('desktop_storage_ready')
     completed = total
     report(
       'ready',

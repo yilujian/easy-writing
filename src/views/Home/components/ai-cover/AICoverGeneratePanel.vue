@@ -120,14 +120,14 @@ const imageModel = defineModel<string>('imageModel', { required: true })
 
 .field-label {
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
 .optional-mark,
 .field-help {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .field-help {
@@ -196,7 +196,7 @@ const imageModel = defineModel<string>('imageModel', { required: true })
 .auto-tone {
   min-height: 30px;
   padding: 0 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .tone-button {
@@ -207,7 +207,7 @@ const imageModel = defineModel<string>('imageModel', { required: true })
   border: none;
   background: transparent;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   &.active {

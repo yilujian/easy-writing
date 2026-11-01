@@ -513,7 +513,7 @@ onBeforeUnmount(() => {
 
     small {
       color: var(--ink-sec);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 
@@ -526,7 +526,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--ui-border);
     background: var(--ui-glass-bg);
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 600;
 
     &::before {
@@ -574,7 +574,7 @@ onBeforeUnmount(() => {
   .qr-status {
     margin: 0;
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   .verify-row {
@@ -600,14 +600,14 @@ onBeforeUnmount(() => {
 
     > span {
       color: var(--ink-sec);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 600;
     }
 
     > strong {
       flex: 1;
       min-width: 0;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
 
     .log-count {
       color: var(--ink-sec);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
 
     .log-actions {
@@ -631,11 +631,11 @@ onBeforeUnmount(() => {
       .mini-outline-btn {
         height: 30px;
         padding: 0 10px;
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-font-scale, 1));
 
         i {
           margin-right: 2px;
-          font-size: 11px;
+          font-size: calc(11px * var(--ui-font-scale, 1));
         }
 
         &.is-danger {
@@ -695,7 +695,7 @@ onBeforeUnmount(() => {
     background: transparent;
     color: var(--ink-main);
     font: inherit;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ui-font-scale, 1));
     text-align: left;
     cursor: pointer;
     transition: background 0.15s ease;
@@ -707,7 +707,7 @@ onBeforeUnmount(() => {
 
   .log-time {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     white-space: nowrap;
   }
 
@@ -725,7 +725,7 @@ onBeforeUnmount(() => {
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--ui-border) 80%, transparent);
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     white-space: nowrap;
     justify-self: start;
   }
@@ -742,11 +742,11 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     white-space: nowrap;
 
     .log-chevron {
-      font-size: 10px;
+      font-size: calc(10px * var(--ui-font-scale, 1));
       transition: transform 0.18s ease;
     }
   }
@@ -775,7 +775,7 @@ onBeforeUnmount(() => {
     background: var(--ui-glass-bg);
     color: var(--ink-main);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;
@@ -785,7 +785,7 @@ onBeforeUnmount(() => {
   .log-note {
     margin: 8px 0 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   .log-steps {
@@ -794,7 +794,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ui-font-scale, 1));
 
     li {
       display: flex;
@@ -804,7 +804,7 @@ onBeforeUnmount(() => {
 
       small {
         color: var(--ink-sec);
-        font-size: 11px;
+        font-size: calc(11px * var(--ui-font-scale, 1));
       }
 
       &.is-error > span {
@@ -860,7 +860,7 @@ onBeforeUnmount(() => {
     border: 1px solid color-mix(in srgb, var(--ui-border) 70%, transparent);
     color: var(--ink-main);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;

@@ -589,6 +589,7 @@ v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
 </template>
 
 <script setup lang="ts">
+import { uiChartFontSize } from '@/utils/ui-typography'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
@@ -1693,13 +1694,13 @@ const buildCategoryOption = () => {
     grid: { left: 12, right: 12, top: 10, bottom: 10, containLabel: true },
     xAxis: {
       type: 'value',
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       splitLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.1)', type: 'dashed' } }
     },
     yAxis: {
       type: 'category',
       data: names,
-      axisLabel: { color: main, fontSize: 11 }
+      axisLabel: { color: main, fontSize: uiChartFontSize(11) }
     },
     series: [
       {
@@ -1729,19 +1730,19 @@ const buildTagOption = () => {
     tooltip: { trigger: 'axis' },
     legend: {
       data: list.map(item => item.tag),
-      textStyle: { color: sec, fontSize: 10 }
+      textStyle: { color: sec, fontSize: uiChartFontSize(10) }
     },
     grid: { left: 12, right: 12, top: 40, bottom: 12, containLabel: true },
     xAxis: {
       type: 'category',
       data: dates,
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       axisLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.12)' } },
       axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       splitLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.1)', type: 'dashed' } }
     },
     series: list.map((item, idx) => ({
@@ -1767,20 +1768,20 @@ const buildCompetitorOption = () => {
     tooltip: { trigger: 'axis' },
     legend: {
       data: list.map(item => item.bookTitle),
-      textStyle: { color: sec, fontSize: 10 }
+      textStyle: { color: sec, fontSize: uiChartFontSize(10) }
     },
     grid: { left: 12, right: 12, top: 40, bottom: 12, containLabel: true },
     xAxis: {
       type: 'category',
       data: dates,
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       axisLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.12)' } }
     },
     yAxis: {
       type: 'value',
       inverse: true,
       minInterval: 1,
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       splitLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.1)', type: 'dashed' } }
     },
     series: list.map((item, idx) => ({
@@ -1808,13 +1809,13 @@ const buildAuthorOption = () => {
     xAxis: {
       type: 'category',
       data: x,
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       axisLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.12)' } },
       axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: sec, fontSize: 10 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(10) },
       splitLine: { lineStyle: { color: 'rgba(28, 25, 23, 0.1)', type: 'dashed' } }
     },
     series: [
@@ -2284,7 +2285,7 @@ onBeforeUnmount(() => {
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   &.active {
     color: var(--ink-main);
@@ -2305,7 +2306,7 @@ onBeforeUnmount(() => {
 
 .crawl-status {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 // 骨架占位的呼吸动画（平台/榜单来源加载中）
@@ -2329,7 +2330,7 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
 
   .page-title {
-    font-size: 24px;
+    font-size: calc(24px * var(--ui-font-scale, 1));
     font-weight: bold;
     color: var(--ink-main);
     letter-spacing: 1px;
@@ -2352,7 +2353,7 @@ onBeforeUnmount(() => {
     white-space: nowrap;
     padding: 6px 16px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     transition: all 0.3s;
     cursor: pointer;
     position: relative;
@@ -2363,7 +2364,7 @@ onBeforeUnmount(() => {
     user-select: none;
 
     .platform-icon {
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       line-height: 1;
       display: flex;
       align-items: center;
@@ -2416,7 +2417,7 @@ onBeforeUnmount(() => {
   // 平台加载失败的重试入口
   .platform-tab-retry {
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -2425,7 +2426,7 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
 
   .rank-cutoff {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     margin-top: -8px;
     margin-bottom: 12px;
@@ -2442,7 +2443,7 @@ onBeforeUnmount(() => {
     }
 
     :deep(.el-tabs__item) {
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       font-weight: bold;
       color: var(--ink-sec);
       padding: 0 0 16px 0;
@@ -2472,14 +2473,14 @@ onBeforeUnmount(() => {
     .filter-row {
       display: flex;
       align-items: center;
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       position: relative;
 
       .filter-label {
-        width: 80px;
+        width: max(80px, 5.5em);
         color: var(--ink-sec);
         flex-shrink: 0;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
       }
 
       .filter-content {
@@ -2492,7 +2493,7 @@ onBeforeUnmount(() => {
           flex-wrap: wrap;
 
           .expand-link {
-            font-size: 12px;
+            font-size: calc(12px * var(--ui-font-scale, 1));
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -2505,7 +2506,7 @@ onBeforeUnmount(() => {
             }
 
             i {
-              font-size: 10px;
+              font-size: calc(10px * var(--ui-font-scale, 1));
             }
           }
         }
@@ -2515,7 +2516,7 @@ onBeforeUnmount(() => {
           gap: 8px;
 
           .range-btn {
-            font-size: 12px;
+            font-size: calc(12px * var(--ui-font-scale, 1));
             padding: 4px 12px;
             border-radius: 4px;
             border: 1px solid transparent;
@@ -2544,7 +2545,7 @@ onBeforeUnmount(() => {
         }
 
         .filter-tag {
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
           padding: 4px 10px;
           border-radius: 4px;
           cursor: pointer;
@@ -2554,7 +2555,7 @@ onBeforeUnmount(() => {
 
           .tag-count {
             opacity: 0.5;
-            font-size: 10px;
+            font-size: calc(10px * var(--ui-font-scale, 1));
             margin-left: 4px;
             transform: scale(0.75);
             display: inline-block;
@@ -2655,7 +2656,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: var(--overlay-hover);
   color: var(--ink-sec);
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale, 1));
   font-weight: 600;
   user-select: none;
 }
@@ -2696,7 +2697,7 @@ onBeforeUnmount(() => {
 }
 
 .rank-delta-inline {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-sec);
 
@@ -2732,7 +2733,7 @@ onBeforeUnmount(() => {
 }
 
 .book-intro {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2755,8 +2756,8 @@ onBeforeUnmount(() => {
   max-width: 110px;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: calc(18px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--overlay-hover);
   border: 1px solid var(--divider);
@@ -2779,7 +2780,7 @@ onBeforeUnmount(() => {
     max-width: 420px;
 
     .search-label {
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       font-weight: bold;
       color: var(--ink-main);
       white-space: nowrap;
@@ -2798,8 +2799,8 @@ onBeforeUnmount(() => {
 
       :deep(.el-input__inner) {
         height: 32px;
-        line-height: 32px;
-        font-size: 13px;
+        line-height: calc(32px * var(--ui-font-scale, 1));
+        font-size: calc(13px * var(--ui-font-scale, 1));
       }
 
       :deep(.el-input-group__append) {
@@ -2829,11 +2830,11 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
     .feedback-link {
       color: var(--ink-accent);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       white-space: nowrap;
 
       &:hover {
@@ -2887,7 +2888,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 12px;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   span {
@@ -2940,7 +2941,7 @@ onBeforeUnmount(() => {
 .track-button,
 .compare-button {
   border-radius: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding: 4px 8px;
   border: 1px solid transparent;
 }
@@ -2972,7 +2973,7 @@ onBeforeUnmount(() => {
 }
 
 .analysis-title-main {
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-main);
 }
@@ -2994,19 +2995,19 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     line-height: 1.7;
     color: var(--ink-sec);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
 .analysis-title-sub {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .analysis-status-tip {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
 }
 
@@ -3042,14 +3043,14 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
   margin-bottom: 12px;
 }
 
 .analysis-hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   font-weight: 400;
 }
@@ -3059,7 +3060,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   font-weight: 400;
 }
@@ -3082,7 +3083,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--surface-1);
   border-radius: 12px;
@@ -3098,7 +3099,7 @@ onBeforeUnmount(() => {
 }
 
 .analysis-empty-inline {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -3115,7 +3116,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
@@ -3139,7 +3140,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding-bottom: 6px;
   border-bottom: 1px dashed var(--divider);
 }
@@ -3192,13 +3193,13 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
 
   i {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
     cursor: pointer;
     color: var(--ink-sec);
   }
@@ -3347,20 +3348,20 @@ onBeforeUnmount(() => {
   padding: 40px 20px;
 
   i {
-    font-size: 40px;
+    font-size: calc(40px * var(--ui-font-scale, 1));
     color: var(--ink-muted, var(--ink-sec));
   }
 
   h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     font-family: var(--font-serif);
   }
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.8;
     max-width: 420px;
   }

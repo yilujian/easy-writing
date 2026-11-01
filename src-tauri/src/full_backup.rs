@@ -249,7 +249,6 @@ fn seal_manifest(dir: &Path, include_prompts: bool) -> Result<(), String> {
     }
     manifest["checksums"] = serde_json::to_value(hashes).map_err(|e| e.to_string())?;
     manifest["includesPrompts"] = include_prompts.into();
-    manifest["includesSkillPackages"] = include_prompts.into();
     fs::write(
         manifest_path,
         serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?,
@@ -444,39 +443,23 @@ pub fn full_restore_read_entry(session: String, path: String) -> Result<Response
 /// 普通文档按模式合并；技能始终按整包恢复，编号由数据库合并计划给定。
 #[tauri::command(async)]
 pub fn full_restore_apply_prompts(session: String, mode: String) -> Result<usize, String> {
-    restore_prompts(&session, &mode, &crate::ensure_prompt_dir()?, &HashMap::new())
+    restore_prompts(&session, &mode, &crate::ensure_prompt_dir()?)
 }
 
-pub fn restore_prompts(session: &str, mode: &str, prompt_dir: &Path, skill_ids: &HashMap<String, String>) -> Result<usize, String> {
+pub fn restore_prompts(session: &str, mode: &str, prompt_dir: &Path) -> Result<usize, String> {
     let source = session_dir(session)?.join("prompts");
     if !source.is_dir() { return Ok(0); }
-    let manifest: serde_json::Value = serde_json::from_slice(&fs::read(session_dir(session)?.join(MANIFEST_NAME)).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    let complete_skills = manifest["includesSkillPackages"] == true;
     let incoming = crate::prompt_files::files(&source)?;
     let current = crate::prompt_files::files(prompt_dir)?;
     let mut copies = Vec::new();
     for path in incoming {
         let relative = path.strip_prefix(&source).map_err(|e| e.to_string())?;
-        let parts: Vec<_> = relative.iter().collect();
-        let target_relative = if parts.len() >= 3 && parts[0] == "skills" {
-            if !complete_skills { return Err("旧备份不包含完整技能包，请用新版重新备份后恢复技能".into()); }
-            let old_id = parts[1].to_string_lossy();
-            let next = skill_ids.get(old_id.as_ref()).map(String::as_str).unwrap_or(&old_id);
-            if !crate::agent_skill_files::valid_id(next) { return Err("恢复的技能编号无效".into()); }
-            // 无索引的技能也保持整包边界，不能只补其中缺失的文件。
-            if mode == "merge" && prompt_dir.join("skills").join(next).exists() {
-                if skill_ids.contains_key(old_id.as_ref()) { return Err("恢复的技能目录已存在，请重新打开备份重试".into()); }
-                continue;
-            }
-            PathBuf::from("skills").join(next).join(parts[2..].iter().collect::<PathBuf>())
-        } else { relative.to_path_buf() };
-        let target = crate::prompt_files::checked_target(prompt_dir, &target_relative)?;
+        let target = crate::prompt_files::checked_target(prompt_dir, relative)?;
         if mode != "overwrite" && target.exists() { continue; }
         copies.push((path, target));
     }
     if mode == "overwrite" {
         for path in current {
-            if !complete_skills && path.strip_prefix(prompt_dir).is_ok_and(|p| p.starts_with("skills")) { continue; }
             fs::remove_file(path).map_err(|e| e.to_string())?;
         }
     }
@@ -486,49 +469,6 @@ pub fn restore_prompts(session: &str, mode: &str, prompt_dir: &Path, skill_ids: 
         fs::OpenOptions::new().write(true).open(target).map_err(|e| e.to_string())?.sync_all().map_err(|e| e.to_string())?;
     }
     Ok(copies.len())
-}
-
-/// 重建本机路径并撤销跨机器的脚本授权。旧包若缺脚本资源，拒绝不完整恢复。
-pub fn prepare_skill_records(session: &str, prompts: &Path, stores: &mut [crate::desktop_storage::StoreDump], skill_ids: &HashMap<String, String>) -> Result<(), String> {
-    let dir = session_dir(session)?;
-    let manifest: serde_json::Value = serde_json::from_slice(&fs::read(dir.join(MANIFEST_NAME)).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    for store in stores.iter_mut().filter(|s| s.namespace == crate::agent_store::OP_NS) {
-        store.records.retain(|r| !r.key.as_str().is_some_and(|key| key.starts_with("skill-consent:") || key.starts_with("skill-consent-token:")));
-    }
-    for store in stores.iter_mut().filter(|s| s.namespace == crate::agent_store::NS) {
-        for record in &mut store.records {
-            if !record.key.as_str().is_some_and(|k| k.starts_with("skill:")) { continue; }
-            let mut value: serde_json::Value = serde_json::from_str(&record.value).map_err(|e| e.to_string())?;
-            let id = value["id"].as_str().ok_or("技能编号缺失")?.to_owned();
-            if !crate::agent_skill_files::valid_id(&id) { return Err("技能编号无效".into()); }
-            value["approvedHash"] = serde_json::Value::Null;
-            value["approvedAt"] = serde_json::Value::Null;
-            value["lastRun"] = serde_json::Value::Null;
-            value["recoveryPath"] = serde_json::Value::Null;
-            if value["deletedAt"].is_number() {
-                value["filePath"] = serde_json::Value::Null;
-                record.value = serde_json::to_string(&value).map_err(|e| e.to_string())?;
-                continue;
-            }
-            if value["source"] == "builtin" && value["fileSource"] != "user" {
-                value["filePath"] = serde_json::Value::Null; // 启动时由本机内置包同步
-            } else {
-                let original = skill_ids.iter().find_map(|(old, new)| (new == &id).then_some(old.as_str())).unwrap_or(&id);
-                let package = dir.join("prompts/skills").join(original);
-                if package.join("SKILL.md").is_file() {
-                    if value["python"] == true && manifest["includesSkillPackages"] != true {
-                        return Err(format!("备份里的技能 {original} 未包含完整脚本，请使用新版重新备份后恢复"));
-                    }
-                    crate::agent_skill_files::inspect(&package)?;
-                    value["filePath"] = prompts.join("skills").join(&id).join("SKILL.md").to_string_lossy().into_owned().into();
-                } else if value["filePath"].as_str().is_some() || value["python"] == true {
-                    return Err(format!("备份缺少技能 {original} 的文件，请使用包含提示词和技能的完整备份"));
-                }
-            }
-            record.value = serde_json::to_string(&value).map_err(|e| e.to_string())?;
-        }
-    }
-    Ok(())
 }
 
 /// 结束恢复会话，清理暂存目录
@@ -627,7 +567,3 @@ mod tests {
         fs::remove_file(path).unwrap();
     }
 }
-
-#[cfg(all(test, feature = "local-tests"))]
-#[path = "full_backup_skill_tests.rs"]
-mod release_tests;

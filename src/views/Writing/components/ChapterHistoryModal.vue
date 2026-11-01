@@ -685,7 +685,7 @@ watch(
 .history-preview,
 .history-words {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .history-version-meta,
@@ -695,7 +695,7 @@ watch(
   gap: 4px 10px;
   margin-top: 4px;
   color: var(--ink-tertiary, var(--ink-sec));
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .history-preview {
@@ -734,7 +734,7 @@ watch(
   border-bottom: 1px solid var(--ui-border);
   background: var(--btn-ghost-bg);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 
@@ -758,7 +758,7 @@ watch(
     background: transparent;
     color: var(--ink-sec);
     cursor: pointer;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     padding: 5px 10px;
   }
 
@@ -797,7 +797,7 @@ watch(
   border-radius: 8px;
   color: var(--ink-sec);
   background: color-mix(in srgb, var(--ink-accent) 7%, transparent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 
   strong {
@@ -823,7 +823,7 @@ watch(
   align-items: center;
   gap: 14px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .diff-legend span {
@@ -869,7 +869,7 @@ watch(
   padding: 6px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--ink-main) 6%, transparent);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 
   &:last-child {
@@ -894,7 +894,7 @@ watch(
 .diff-no {
   color: var(--ink-sec);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   user-select: none;
 }
 
@@ -928,7 +928,7 @@ watch(
 
 .history-empty {
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   padding: 16px;
   text-align: center;
 }

@@ -11,9 +11,17 @@
  */
 export const LEGACY_PROMPT_TEXT_HASHES = new Set<string>([
   'lxx9v6', '9vqtvy', '1x78phq', '1s3c6eh', 'dkkcfu', 'rj7t7', '1lauauv', 'qra2qa',
-  '18cdp5s', '7wmynw', 'zsid5', '2f132j', '18susr5', '521rsf', '1eurlzn', '3qhfsc',
+  '18cdp5s', '521rsf', '1eurlzn', '3qhfsc',
   'wz7ctp', 'jg35hw', 'c37lg9', '1v3zaq7', '1vv7umc', 'ts9cyw', 'woul96', '1kvwkm8',
   'x6cmu',
+  '39usig', 'q3pc5g', '1k65k1y', '156xp6h', '1tgmjhi',
+  'guy0c', '7gyh2a', '1tbf2lw',
+  'ju5e2k', '1dkwklb', 'zzxvyw', 'xm8lat', '1136fi0', '76sl14', '1n76ufq', '1lrim6n', 'x748ra', '23exfd', '3j7yfm',
+  'il0e6v',
+  // 2026-10-26 蒸馏第三版：system、章卡三段、书级归纳形状（去 voice）
+  'sg1de2', '1gwo144', '1h0loyt', '77xlj9', '6rufd7',
+  // 2026-10-31 逐章生文按目标字数定拍数和篇幅上限：细纲补充、正文系统设定、从头生成任务
+  'nr3rrn', '1md348m', '1k0xfvp',
 ])
 
 /** djb2 字符串哈希（与指纹生成脚本一致） */

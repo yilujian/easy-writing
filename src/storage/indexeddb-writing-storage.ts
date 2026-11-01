@@ -20,6 +20,8 @@ import {
   type StoredLocalChapterDraft,
   type WritingStorage,
   type WritingStorageDump,
+  type ChapterReplacementBatch,
+  type ChapterReplacementResult,
 } from './writing-storage'
 
 const DB_NAME = 'ew-writing-local'
@@ -135,6 +137,60 @@ export class IndexedDbWritingStorage implements WritingStorage {
     await done
     await this.verifyWriteBack(record)
     return record
+  }
+
+  async listBookChapters(userId: string, bookId: string | number) {
+    const { objectStore } = await this.store(STORE_CHAPTERS, 'readonly')
+    const range = IDBKeyRange.bound([userId, String(bookId), -Number.MAX_SAFE_INTEGER], [userId, String(bookId), Number.MAX_SAFE_INTEGER])
+    const rows = await requestToPromise<StoredLocalChapterDraft[]>(objectStore.index('userBookChapter').getAll(range))
+    return rows.map(row => validateStoredChapter(row, row.storageKey))
+  }
+
+  async replaceChapters(batch: ChapterReplacementBatch): Promise<ChapterReplacementResult> {
+    if (!batch.operationId || !batch.query || batch.query === batch.replacement || !batch.edits.length) throw new Error('替换请求无效')
+    if (new Set(batch.edits.map(edit => edit.chapterId)).size !== batch.edits.length) throw new Error('替换章节重复')
+    const { getLocalLibraryStorage } = await import('./local-library')
+    const library = getLocalLibraryStorage(), book = await library.getLocalBookDetail(batch.bookId)
+    if (!book || book.deletedAt) throw new Error('作品已删除，不能替换')
+    if (batch.edits.some(edit => !Number.isSafeInteger(edit.count) || edit.count <= 0 || !edit.contentJson || typeof edit.contentJson !== 'object' || (edit.contentJson as { type?: string }).type !== 'doc')) throw new Error('替换正文结构无效')
+    const tree = await library.getLocalBookTree(batch.bookId)
+    const catalog = new Map(tree.flatMap(volume => volume.children).map(chapter => [chapter.id, chapter]))
+    if (batch.edits.some(edit => !catalog.has(edit.chapterId) || catalog.get(edit.chapterId)?.workflowStatus)) throw new Error('章节已删除或处于生成/待确认状态，请重新搜索')
+    const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(batch))))).map(byte => byte.toString(16).padStart(2, '0')).join('')
+    const db = await this.getDb()
+    const transaction = trackIndexedDbTransaction(db.transaction([STORE_CHAPTERS, STORE_VERSIONS, STORE_SETTINGS], 'readwrite'))
+    const done = transactionDone(transaction)
+    void done.catch(() => undefined)
+    const chapters = transaction.objectStore(STORE_CHAPTERS), versions = transaction.objectStore(STORE_VERSIONS), settings = transaction.objectStore(STORE_SETTINGS)
+    const receiptKey = `book-replace:${batch.operationId}`
+    try {
+      const previous = await requestToPromise<{ value: { fingerprint: string; result: ChapterReplacementResult } } | undefined>(settings.get(receiptKey))
+      if (previous) {
+        if (previous.value.fingerprint !== fingerprint) throw new Error('替换确认已变化，请重新搜索')
+        await done
+        return previous.value.result
+      }
+      const stamp = Date.now(), result = { chapterIds: [] as number[], count: 0 }
+      for (const edit of batch.edits) {
+        const key = buildChapterStorageKey('guest', batch.bookId, edit.chapterId)
+        const current = await requestToPromise<StoredLocalChapterDraft | undefined>(chapters.get(key))
+        assertChapterVersion(key, current, edit.expectedVersion)
+        if (!current || current.textContent !== edit.expectedText || current.title !== edit.expectedTitle || JSON.stringify(current.contentJson) !== JSON.stringify(edit.expectedJson)) throw new Error('章节已变化，请重新搜索后再替换；本次未写入')
+        if (current.conflict || current.workflowPreview) throw new Error('章节处于冲突或生成状态，不能替换')
+        versions.put({ id: `${key}:local:replace:${batch.operationId}`, userId: current.userId, bookId: current.bookId, chapterId: current.chapterId,
+          source: 'local', title: current.title, textContent: current.textContent, contentJson: current.contentJson, remoteVersion: current.remoteVersion,
+          remark: '全书替换前', createdAt: stamp })
+        chapters.put({ ...current, textContent: edit.textContent, contentJson: cloneStorageJson(edit.contentJson), localVersion: current.localVersion + 1, updatedAt: stamp, dirty: true })
+        result.chapterIds.push(edit.chapterId); result.count += edit.count
+      }
+      settings.put({ key: receiptKey, value: { fingerprint, result } })
+      await done
+      return result
+    } catch (error) {
+      try { transaction.abort() } catch { /* 事务已结束 */ }
+      await done.catch(() => undefined)
+      throw error
+    }
   }
 
   async listChapterVersions(userId: string, bookId: string | number, chapterId: number) {

@@ -26,6 +26,8 @@ import {
   type StoredChapterVersion,
   type StoredLocalChapterDraft,
   type WritingStorage,
+  type ChapterReplacementBatch,
+  type ChapterReplacementResult,
 } from './writing-storage'
 
 /** SQL 行：字段按需取用，取出即归一类型 */
@@ -233,6 +235,18 @@ export class SqliteWritingStorage implements WritingStorage {
     await this.verifyWriteBack(record)
     // 正文落盘后的检索索引与章节卡由宿主索引器按变更事件维护，这里不再触发
     return record
+  }
+
+  async listBookChapters(userId: string, bookId: string | number) {
+    const db = await this.getDb()
+    const rows = await db.select<SqlRow>('SELECT storageKey, payload FROM chapter_contents WHERE userId=$1 AND bookId=$2', [userId, String(bookId)])
+    return rows.map(row => parseStoredChapter(row.payload, String(row.storageKey)))
+      .filter((row): row is StoredLocalChapterDraft => Boolean(row))
+  }
+
+  async replaceChapters(batch: ChapterReplacementBatch) {
+    await this.getDb()
+    return trackStorageWrite(() => desktopInvoke<ChapterReplacementResult>('replace_book_chapters', { batch }))
   }
 
   /**

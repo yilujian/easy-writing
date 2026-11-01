@@ -17,7 +17,7 @@
   background: var(--migration-bg);
   color: var(--migration-ink);
   font:
-    14px/1.6 -apple-system,
+    calc(14px * var(--ui-font-scale, 1))/1.6 -apple-system,
     BlinkMacSystemFont,
     'PingFang SC',
     'Microsoft YaHei',
@@ -49,7 +49,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 28px;
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 .migration-brand img {
@@ -57,7 +57,7 @@
   border-radius: 7px;
 }
 .migration-heading h1 {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale, 1));
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.02em;
@@ -78,7 +78,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 500;
 }
 .migration-status-dot {
@@ -89,7 +89,7 @@
   border-radius: 50%;
 }
 .migration-percent {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -116,7 +116,7 @@
 }
 .migration-detail {
   margin-top: 4px !important;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--migration-secondary);
 }
 .migration-history {
@@ -131,11 +131,11 @@
   gap: 12px;
 }
 .migration-history-heading h2 {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 .migration-history-heading > span {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--migration-secondary);
 }
 .migration-log {
@@ -151,7 +151,7 @@
   gap: 10px;
   padding: 4px 0;
   color: var(--migration-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   overflow-wrap: anywhere;
 }
 .migration-log-check {
@@ -167,7 +167,7 @@
 }
 .migration-safety {
   color: var(--migration-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 .migration-error {
   margin-top: 20px;
@@ -178,12 +178,12 @@
   overflow-wrap: anywhere;
 }
 .migration-error-title {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 .migration-error-message {
   margin-top: 6px !important;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.7;
   white-space: pre-wrap;
   max-height: 156px;
@@ -196,7 +196,7 @@
   border: 1px solid transparent;
   border-radius: 6px;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: #fffdf8;
   background: var(--migration-accent);
   cursor: pointer;
@@ -226,13 +226,13 @@
     padding: 26px 22px 22px;
   }
   .migration-heading h1 {
-    font-size: 21px;
+    font-size: calc(21px * var(--ui-font-scale, 1));
   }
   .migration-brand {
     margin-bottom: 24px;
   }
   .migration-history-heading > span {
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
   }
   .migration-footer {
     align-items: flex-start;

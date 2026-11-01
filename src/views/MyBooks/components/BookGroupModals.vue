@@ -204,7 +204,7 @@ defineExpose({ openManage, openCreate, openMove })
 }
 
 .move-group-label {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-sec);
 }
@@ -257,7 +257,7 @@ defineExpose({ openManage, openCreate, openMove })
 
   em {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
     flex-shrink: 0;
   }
@@ -279,7 +279,7 @@ defineExpose({ openManage, openCreate, openMove })
     color: var(--ink-sec);
     cursor: pointer;
     padding: 6px 9px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
 
     &:hover {
       color: var(--ink-main);
@@ -306,13 +306,13 @@ defineExpose({ openManage, openCreate, openMove })
   color: var(--ink-sec);
 
   i {
-    font-size: 28px;
+    font-size: calc(28px * var(--ui-font-scale, 1));
     opacity: 0.72;
   }
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 

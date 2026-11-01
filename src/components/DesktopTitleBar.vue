@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
   transition: background 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 
   i {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1;
   }
 
@@ -475,7 +475,7 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 400;
   line-height: 44px;
 }
@@ -498,7 +498,7 @@ onBeforeUnmount(() => {
 
   > i {
     flex: 0 0 auto;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   &:hover {
@@ -514,7 +514,7 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale, 1));
 }
 
 .titlebar-search-kbd {
@@ -522,7 +522,7 @@ onBeforeUnmount(() => {
   padding: 1px 6px;
   border: 1px solid color-mix(in srgb, var(--ink-main) 16%, transparent);
   border-radius: 5px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ui-font-scale, 1));
   line-height: 1.5;
   color: var(--ink-sec);
 }
@@ -547,7 +547,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: transparent;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: background 0.16s ease;
 
@@ -556,7 +556,7 @@ onBeforeUnmount(() => {
   }
 
   i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-accent);
   }
 }
@@ -579,13 +579,13 @@ onBeforeUnmount(() => {
   height: 30px;
   padding: 0 14px;
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-font-scale, 1));
   line-height: 1;
   cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease, filter 0.16s ease;
 
   i {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -642,7 +642,7 @@ onBeforeUnmount(() => {
 
   i {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1;
   }
 
@@ -669,7 +669,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
 
   i {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 }
 
@@ -692,7 +692,7 @@ onBeforeUnmount(() => {
 .desktop-titlebar-menu-group-title {
   padding: 6px 9px 3px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   letter-spacing: 0.06em;
 }
 
@@ -708,7 +708,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   text-align: left;
   cursor: pointer;
 
@@ -725,7 +725,7 @@ onBeforeUnmount(() => {
 
 .desktop-titlebar-menu-shortcut {
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .desktop-titlebar-menu-separator {

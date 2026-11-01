@@ -54,8 +54,8 @@
       />
       <WorkflowOutlineStep
         v-else-if="draft.currentStep === 'OUTLINE_GENERATE'"
-        :draft="draft"
-        :readonly="outlineAdjustPhase === 'generating'"
+        :draft="generationFormDraft"
+        :readonly="busy"
         :busy="busy || outlineAdjustVisible"
         :updated-keys="outlineUpdatedKeys"
         @patch="patchDraft"
@@ -64,7 +64,8 @@
       />
       <WorkflowSettingStep
         v-else-if="draft.currentStep === 'SETTING_GENERATE'"
-        :draft="draft"
+        :draft="generationFormDraft"
+        :inert="busy || undefined"
         :stale="settingStale"
         @patch="patchDraft"
         @regenerate="regenerateSetting"
@@ -75,6 +76,7 @@
 
     <WorkflowSettingAdjustDrawer
       ref="settingAdjustDrawerRef"
+      :run-id="Number(draft.id)"
       :visible="settingAdjustVisible"
       :phase="settingAdjustPhase"
       :characters="settingAdjustCharacters"
@@ -94,6 +96,7 @@
 
     <WorkflowOutlineAdjustDrawer
       ref="outlineAdjustDrawerRef"
+      :run-id="Number(draft.id)"
       :visible="outlineAdjustVisible"
       :phase="outlineAdjustPhase"
       :model-name="workflowModelDisplayName"
@@ -110,6 +113,20 @@
     />
 
     <footer class="workflow-book-footer">
+      <div v-if="footerStatus" class="workflow-footer-status" :class="{ 'is-error': footerStatus.error }" aria-live="polite">
+        <i :class="footerStatus.busy ? 'fa-solid fa-spinner fa-spin' : footerStatus.error ? 'fa-solid fa-circle-exclamation' : 'fa-regular fa-circle-pause'"></i>
+        <span>{{ footerStatus.text }}</span>
+        <small v-if="footerStatus.detail">{{ footerStatus.detail }}</small>
+      </div>
+      <button
+        v-if="unitGeneration && !busy"
+        class="ghost-action ghost-action--danger"
+        type="button"
+        @click="discardUnitGeneration"
+      >
+        <i class="fa-solid fa-trash-can"></i>
+        放弃草稿
+      </button>
       <button class="ghost-action" type="button" :disabled="busy" @click="saveDraft">
         <i :class="saving ? 'fa-solid fa-spinner fa-spin' : 'fa-regular fa-floppy-disk'"></i>
         {{ saving ? '保存中…' : '保存当前进度' }}
@@ -143,8 +160,11 @@
 </template>
 
 <script setup lang="ts">
+import type { WorkflowGeneration, GenerationEdit } from '@/types/workflow-generation'
+import { discardWorkflowGeneration, listRecoverableGenerations, saveWorkflowGenerationEdits } from '@/utils/workflow-generation'
+import { applyGenerationEdits, diffGenerationEdits } from '@/utils/workflow-generation-document'
 import type { JsonRecord } from '@/types/json'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { inkConfirm } from '@/utils/ink-confirm'
@@ -192,7 +212,7 @@ import {
   createLocalWorkflow as createWorkflowApi,
   saveLocalWorkflow as saveWorkflowApi,
   getLocalWorkflowInfo as getWorkflowInfoApi,
-  getLocalActiveStepTask as getWorkflowActiveStepTaskApi,
+  getLocalLatestStepTask as getWorkflowLatestStepTaskApi,
   getLocalWorkflowTaskStatus as getWorkflowTaskStatusApi,
   getLocalWorkflowResources as getWorkflowResourcesApi,
   applyLocalWorkflowOutlineAdjust as applyWorkflowOutlineAdjustApi,
@@ -218,6 +238,7 @@ const draft = reactive<WorkflowDraft>(createInitialWorkflowDraft())
 // 无感恢复上次未完成流程时给出的提示（从历史「继续编辑」进入不提示：用户已明确知情）
 const restoredRun = ref<{ title: string } | null>(null)
 const loading = ref(false)
+const restoringStepTask = ref(true)
 const saving = ref(false)
 const submitting = ref(false)
 // —— 步骤生成后台任务（灵感/大纲/设定）——
@@ -385,6 +406,126 @@ const hasGeneratedContent = computed(() =>
   draft.outlineResult.chapters.length > 0 ||
   draft.settingResult.characters.length > 0
 )
+const unitGeneration = ref<WorkflowGeneration | null>(null)
+const savingUnitEdits = ref(false)
+const unitSaveError = ref('')
+const unitEdits: GenerationEdit[] = []
+let unitSavePromise: Promise<void> | null = null
+let generationRefreshTimer: ReturnType<typeof setInterval> | undefined
+let refreshingGeneration = false
+let generationViewDisposed = false
+const generationFormDraft = computed<WorkflowDraft>(() => {
+  const g = unitGeneration.value
+  if (!g) return draft
+  if (g.step.startsWith('outline')) {
+    const outlineResult = normalizeOutlineResult(g.document)
+    // 空数组意味着尚未生成第一卷，不显示系统默认的空壳卷。
+    if (!g.document.volumes?.length) outlineResult.volumes = []
+    return { ...draft, outlineResult }
+  }
+  return { ...draft, settingResult: normalizeSettingResult(g.document) }
+})
+const refreshUnitGeneration = async () => {
+  if (!draft.id || refreshingGeneration || savingUnitEdits.value || unitEdits.length) return
+  const runId = Number(draft.id)
+  refreshingGeneration = true
+  try {
+    const records = await listRecoverableGenerations(runId)
+    if (generationViewDisposed || Number(draft.id) !== runId) return
+    const pending = records.find(g => ['running', 'incomplete', 'complete'].includes(g.status)) || null
+    if (!pending && busy.value && unitGeneration.value) {
+      unitGeneration.value = records.find(g => g.id === unitGeneration.value?.id) || unitGeneration.value
+      return
+    }
+    unitGeneration.value = pending
+    if (pending && pending.units.some(unit => unit.status === 'complete')) {
+      draft.currentStep = pending.step.startsWith('outline') ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+    }
+  } finally { refreshingGeneration = false }
+}
+const flushUnitEdits = (): Promise<void> => {
+  if (unitSavePromise) return unitSavePromise
+  const id = unitGeneration.value?.id
+  if (!id || !unitEdits.length) return Promise.resolve()
+  savingUnitEdits.value = true
+  unitSavePromise = (async () => {
+    while (unitEdits.length) {
+      const edits = unitEdits.splice(0)
+      try {
+        await saveWorkflowGenerationEdits(id, edits)
+        unitSaveError.value = ''
+      } catch (error) {
+        unitEdits.unshift(...edits)
+        unitSaveError.value = '手动修改尚未保存，请勿关闭页面'
+        throw error
+      }
+    }
+  })().finally(() => { savingUnitEdits.value = false; unitSavePromise = null })
+  return unitSavePromise
+}
+const patchGenerationForm = (payload: Partial<WorkflowDraft>) => {
+  const g = unitGeneration.value
+  if (!g || busy.value) return
+  const before = g.step.startsWith('outline') ? generationFormDraft.value.outlineResult : generationFormDraft.value.settingResult
+  const after = payload.outlineResult || payload.settingResult
+  if (!after) return
+  const edits = diffGenerationEdits(before, after)
+  if (!edits.length) return
+  unitEdits.push(...edits)
+  unitGeneration.value = { ...g, document: applyGenerationEdits(g.document, edits) }
+  void flushUnitEdits().catch(() => { /* 错误留在表单上，保存按钮可重试；保留内存中的修改。 */ })
+}
+const continueUnitGeneration = async () => {
+  if (busy.value || !unitGeneration.value) return
+  const g = unitGeneration.value
+  try {
+    await flushUnitEdits()
+    stepError.value = null
+    submitting.value = true
+    cancelableGenerating.value = true
+    const saved = await persistDraft({ status: 'waiting_user' })
+    const { data: task } = await submitWorkflowStepTaskApi({ runId: saved.id, step: g.step,
+      expectedDraftRevision: saved.draftRevision, input: { ...g.input, generationId: g.id } })
+    activeStepTaskId.value = Number(task.id)
+    const done = await waitStepTask(Number(task.id), g.step, () => { void refreshUnitGeneration() })
+    const result = done.payload?.result
+    if (!result?.content) throw new Error('完整结果尚未保存')
+    if (g.step === 'outline_adjust') finishOutlineAdjust(result)
+    else if (g.step === 'setting_adjust') finishSettingAdjust(result)
+    else {
+      draft.draftRevision = Number(result.draftRevision)
+      draft.outlineRevision = Number(result.outlineRevision)
+      if (g.step === 'outline') draft.outlineResult = normalizeOutlineResult(result.content)
+      else draft.settingResult = normalizeSettingResult(result.content)
+      unitGeneration.value = null
+      draft.currentStep = g.step === 'outline' ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+      await persistDraft({ currentStep: draft.currentStep, status: 'waiting_user' })
+    }
+    unitGeneration.value = null
+  } catch (error) {
+    if (!isStepCancelledError(error) && !isCanceledRequest(error))
+      recordStepFailure(error as WorkflowFlowError, g.step.startsWith('outline') ? 'outline' : 'setting', draft.currentStep)
+  } finally {
+    activeStepTaskId.value = 0
+    cancelableGenerating.value = false
+    submitting.value = false
+    stopStepPolling()
+    await refreshUnitGeneration()
+  }
+}
+const discardUnitGeneration = async () => {
+  if (busy.value || !unitGeneration.value) return
+  try {
+    await inkConfirm('放弃这份待完成草稿？已采用的原稿不会改变。', '放弃恢复草稿', { confirmButtonText: '放弃草稿', cancelButtonText: '继续保留' })
+  } catch { return }
+  await flushUnitEdits()
+  const g = unitGeneration.value
+  await discardWorkflowGeneration(g.id)
+  unitGeneration.value = null
+  draft.currentStep = g.step === 'outline' ? 'BASE_CONFIG' : g.step === 'setting' ? 'OUTLINE_GENERATE' : g.step === 'outline_adjust' ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+}
+watch(() => draft.id, () => { unitGeneration.value = null; void refreshUnitGeneration() })
+
 const currentPlatformRankCategories = computed(() => {
   const platformCode = workflowResources.value?.platforms.find(
     item => item.name === draft.baseConfig.platform
@@ -415,22 +556,43 @@ const currentIndex = computed(() => {
 const currentStepMeta = computed(() => stepMetas[currentIndex.value])
 const isFirstStep = computed(() => currentIndex.value === 0)
 const prevStepTitle = computed(() => stepMetas[currentIndex.value - 1]?.title || '创作方向与灵感')
-const nextButtonText = computed(() => currentStepMeta.value.button)
+const nextButtonText = computed(() => unitGeneration.value ? `继续补全${unitGeneration.value.step.startsWith('outline') ? '大纲' : '设定'}` : currentStepMeta.value.button)
 const isLastStep = computed(() => currentIndex.value === stepMetas.length - 1)
 const busy = computed(() =>
+  restoringStepTask.value ||
   loading.value ||
   saving.value ||
   submitting.value ||
   inspirationGenerating.value ||
-  previewApplying.value
+  previewApplying.value ||
+  outlineAdjustPhase.value === 'generating' ||
+  settingAdjustPhase.value === 'generating'
 )
 
 // 主按钮在请求进行中显示对应阶段的加载文案，避免用户无法感知是否在生成。
 const primaryLoadingText = computed(() => {
+  if (unitGeneration.value) return `正在补全${unitGeneration.value.step.startsWith('outline') ? '大纲' : '设定'}…`
   if (isLastStep.value) return '正在进入自动生文…'
   if (draft.currentStep === 'BASE_CONFIG') return '正在生成大纲…'
   if (draft.currentStep === 'OUTLINE_GENERATE') return '正在生成设定…'
   return '处理中…'
+})
+/** 页脚一行状态：生成到哪一块、停在哪一块、手动修改有没有存上。表单顶部不再放进度条和恢复卡。 */
+const footerStatus = computed<{ text: string; detail?: string; busy?: boolean; error?: boolean } | null>(() => {
+  if (unitSaveError.value) return { text: unitSaveError.value, error: true }
+  const g = unitGeneration.value
+  if (g) {
+    const label = g.step.startsWith('outline') ? '大纲' : '设定'
+    const done = g.units.filter(unit => unit.status === 'complete').length
+    const current = g.units.find(unit => unit.id === g.failedUnit)?.label || g.units.find(unit => unit.status !== 'complete')?.label || ''
+    if (busy.value) return { text: `正在生成${label}：${current || '整理结果'}（${done}/${g.units.length}）`, busy: true }
+    return {
+      text: `${label}生成到一半，已完成 ${done}/${g.units.length}${current ? `，停在${current}` : ''}`,
+      detail: g.error && !currentStepError.value ? g.error : undefined
+    }
+  }
+  if (inspirationGenerating.value) return { text: '正在生成灵感…', busy: true }
+  return null
 })
 
 const markCreationDefaultFieldsTouched = (payload: Partial<WorkflowDraft>) => {
@@ -449,6 +611,10 @@ const markCreationDefaultFieldsTouched = (payload: Partial<WorkflowDraft>) => {
 }
 
 const patchDraft = (payload: Partial<WorkflowDraft>) => {
+  if (unitGeneration.value && (payload.outlineResult || payload.settingResult)) {
+    patchGenerationForm(payload)
+    return
+  }
   if (stepError.value?.visibleStepCode === draft.currentStep) stepError.value = null
   if (payload.ideaText !== undefined) {
     syncAutoSellingPoint(payload.ideaText)
@@ -523,6 +689,7 @@ const validateCreativeDirection = () => {
 }
 
 const goStep = (stepCode: WorkflowStepCode) => {
+  if (unitGeneration.value) { ElMessage.info('请先补全或放弃恢复草稿'); return }
   // 生成期间不允许跳回前面步骤：那里改动的配置不会进入本次生成，
   // 却会在生成结束后随草稿一起落库，造成"参数与产物对不上"。
   if (busy.value) {
@@ -598,7 +765,6 @@ const recordStepFailure = (
     errorReference: String(task?.errorReference || `WF-${String(task?.id || draft.id).replace(/^-/, '')}`),
     request,
   }
-  showWorkflowError(message)
 }
 
 const showWorkflowWarning = (message: string) => {
@@ -612,7 +778,7 @@ const isWorkflowBookConflict = (value: unknown): value is WorkflowGenerateBookCo
 // 进入历史前先保存当前草稿，确保返回时数据不丢失，且路由带上 runId。
 // 生成中（submitting）也放行：长耗时生成不该把用户锁死在本页，跳转不影响服务端生成。
 const openWorkflowHistory = async () => {
-  if (!submitting.value && hasPersistableDraft()) {
+  if (!busy.value && hasPersistableDraft()) {
     saving.value = true
     try {
       await persistDraft()
@@ -801,6 +967,7 @@ const ensureWorkflowRun = async () => {
 const hasPersistableDraft = () => Boolean(draft.id || draft.ideaText.trim())
 
 const persistDraft = async (override: Partial<WorkflowDraft> = {}) => {
+  await flushUnitEdits()
   const runId = await ensureWorkflowRun()
   const saveWithRevision = async (expectedDraftRevision: number): Promise<WorkflowRun> => {
     const payload = buildWorkflowSavePayload(draft, {
@@ -916,7 +1083,9 @@ const generateInspiration = async (payload: {
   }
 }
 
+
 const retryStepError = () => {
+  if (unitGeneration.value) { void continueUnitGeneration(); return }
   const failed = stepError.value
   if (!failed) return
   stepError.value = null
@@ -1030,6 +1199,7 @@ const regenerateOutline = async () => {
   try {
     const result = await runStepTask('outline', {})
     draft.outlineResult = normalizeOutlineResult(result.content)
+      unitGeneration.value = null
     stepError.value = null
     await persistDraft({ currentStep: 'OUTLINE_GENERATE', status: 'waiting_user' })
     ElMessage.success('大纲已重新生成')
@@ -1091,6 +1261,7 @@ const flashOutlineUpdated = (keys: string[]) => {
 }
 
 const openOutlineAdjust = () => {
+  if (unitGeneration.value) { ElMessage.info('请先补全或放弃当前恢复草稿'); return }
   if (busy.value) return
   outlineAdjustError.value = ''
   outlineAdjustPhase.value = outlineAdjustCandidate.value ? 'candidate' : 'input'
@@ -1104,6 +1275,7 @@ const closeOutlineAdjust = () => {
 
 const startOutlineAdjust = (request: WorkflowOutlineAdjustRequest) => {
   outlineAdjustRequest = request
+  outlineAdjustDrawerRef.value?.restoreRequest(request)
   void runOutlineAdjust()
 }
 
@@ -1113,6 +1285,7 @@ const regenerateOutlineCandidate = () => {
 }
 
 const confirmDirectRegenerate = async () => {
+  if (unitGeneration.value) { ElMessage.info('请先补全或放弃当前恢复草稿'); return }
   if (busy.value) return
   try {
     await inkConfirm(
@@ -1224,43 +1397,51 @@ const runOutlineAdjust = async () => {
     }
     if (isDraftConflictHandled(error)) return
     outlineAdjustError.value = extractApiErrorMessage(error, '调整候选生成失败，请重试')
+    await refreshUnitGeneration()
+    if (unitGeneration.value) outlineAdjustVisible.value = false
   } finally {
     outlineAdjustTaskId.value = 0
     stopStepPolling()
+    await refreshUnitGeneration()
+    if (unitGeneration.value) outlineAdjustVisible.value = false
   }
 }
 
 // 切走页面或关窗时任务仍在服务端跑，回来接管进度或直接拿到已生成的候选。
-const restoreOutlineAdjustTask = async (task: WorkflowStepTask) => {
+const restoreAdjustTask = async (task: WorkflowStepTask, step: 'outline_adjust' | 'setting_adjust') => {
+  const outline = step === 'outline_adjust'
+  const phase = outline ? outlineAdjustPhase : settingAdjustPhase
+  const visible = outline ? outlineAdjustVisible : settingAdjustVisible
+  const taskId = outline ? outlineAdjustTaskId : settingAdjustTaskId
+  const errorText = outline ? outlineAdjustError : settingAdjustError
+  const progress = outline ? applyOutlineAdjustProgress : applySettingAdjustProgress
+  const finish = outline ? finishOutlineAdjust : finishSettingAdjust
   const request = task.payload?.input?.request
-  if (request) outlineAdjustRequest = request as WorkflowOutlineAdjustRequest
-  draft.currentStep = 'OUTLINE_GENERATE'
-  outlineAdjustTaskId.value = Number(task.id)
-  outlineAdjustPhase.value = 'generating'
-  outlineAdjustVisible.value = true
-  applyOutlineAdjustProgress(task)
+  if (outline) outlineAdjustRequest = request as WorkflowOutlineAdjustRequest
+  else settingAdjustRequest = request as WorkflowSettingAdjustRequest
+  draft.currentStep = outline ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+  taskId.value = Number(task.id)
+  phase.value = 'generating'
+  visible.value = true
+  progress(task)
   try {
-    const done = await waitStepTask(Number(task.id), 'outline_adjust', applyOutlineAdjustProgress)
+    const done = await waitStepTask(Number(task.id), step, progress)
     const result = done.payload?.result
     if (!result?.candidateId) throw new Error('候选生成结果为空，请重试')
-    finishOutlineAdjust(result)
+    finish(result)
   } catch (error) {
     if (isCanceledRequest(error)) return
-    outlineAdjustPhase.value = 'input'
-    outlineAdjustPercent.value = 0
-    outlineAdjustStages.value = []
-    if (isStepCancelledError(error)) {
-      outlineAdjustVisible.value = false
-      return
-    }
-    outlineAdjustError.value = extractApiErrorMessage(error, '调整候选生成失败，请重试')
+    phase.value = 'input'
+    if (isStepCancelledError(error)) return
+    errorText.value = extractApiErrorMessage(error, '调整未完成，已接收的草稿已保留')
   } finally {
-    outlineAdjustTaskId.value = 0
+    taskId.value = 0
     stopStepPolling()
   }
 }
 
 const finishOutlineAdjust = (result: JsonRecord) => {
+  unitGeneration.value = null
   outlineAdjustCandidate.value = toOutlineAdjustCandidate(result)
   outlineAdjustPhase.value = 'candidate'
   outlineAdjustPercent.value = 100
@@ -1363,6 +1544,7 @@ const settingAdjustStorylines = computed(() =>
 )
 
 const openSettingAdjust = () => {
+  if (unitGeneration.value) { ElMessage.info('请先补全或放弃当前恢复草稿'); return }
   if (busy.value) return
   settingAdjustError.value = ''
   settingAdjustPhase.value = settingAdjustCandidate.value ? 'candidate' : 'input'
@@ -1398,6 +1580,7 @@ const toSettingAdjustCandidate = (
 })
 
 const finishSettingAdjust = (result: JsonRecord) => {
+  unitGeneration.value = null
   settingAdjustCandidate.value = toSettingAdjustCandidate(result)
   settingAdjustPhase.value = 'candidate'
   settingAdjustPercent.value = 100
@@ -1451,14 +1634,19 @@ const runSettingAdjust = async () => {
     }
     if (isDraftConflictHandled(error)) return
     settingAdjustError.value = extractApiErrorMessage(error, '调整候选生成失败，请重试')
+    await refreshUnitGeneration()
+    if (unitGeneration.value) settingAdjustVisible.value = false
   } finally {
     settingAdjustTaskId.value = 0
     stopStepPolling()
+    await refreshUnitGeneration()
+    if (unitGeneration.value) settingAdjustVisible.value = false
   }
 }
 
 const startSettingAdjust = (request: WorkflowSettingAdjustRequest) => {
   settingAdjustRequest = request
+  settingAdjustDrawerRef.value?.restoreRequest(request)
   void runSettingAdjust()
 }
 
@@ -1523,6 +1711,7 @@ const applySettingCandidate = async () => {
 }
 
 const regenerateSetting = async () => {
+  if (unitGeneration.value) { ElMessage.info('请先补全或放弃当前恢复草稿'); return }
   if (busy.value) return
   if (draft.settingResult.characters.length && !(await confirmRegenerate('设定'))) return
   submitting.value = true
@@ -1530,6 +1719,7 @@ const regenerateSetting = async () => {
   try {
     const result = await runStepTask('setting', {})
     draft.settingResult = normalizeSettingResult(result.content)
+      unitGeneration.value = null
     settingStaleFlag.value = false
     stepError.value = null
     await persistDraft({ currentStep: 'SETTING_GENERATE', status: 'waiting_user' })
@@ -1546,6 +1736,7 @@ const regenerateSetting = async () => {
 
 const handlePrimary = async () => {
   if (busy.value) return
+  if (unitGeneration.value) { await continueUnitGeneration(); return }
   if (isLastStep.value) {
     // 先清空行再判断：只剩一个空白新增行时，角色数会被清成 0，
     // 放在清理之前判断会把这种情况当成"有设定"放行，带着空列表进生文。
@@ -1602,6 +1793,7 @@ const handlePrimary = async () => {
         status: 'waiting_user',
       })
       draft.outlineResult = normalizeOutlineResult(result.content)
+      unitGeneration.value = null
       stepError.value = null
       draft.currentStep = 'OUTLINE_GENERATE'
       draft.status = 'waiting_user'
@@ -1616,6 +1808,7 @@ const handlePrimary = async () => {
         status: 'waiting_user',
       })
       draft.settingResult = normalizeSettingResult(result.content)
+      unitGeneration.value = null
       stepError.value = null
       draft.currentStep = 'SETTING_GENERATE'
       draft.status = 'waiting_user'
@@ -1660,7 +1853,8 @@ const cancelGeneration = async () => {
 }
 
 // 页面离开不改变后台任务，历史记录会同步展示成功或失败终态。
-onBeforeRouteLeave(() => {
+onBeforeRouteLeave(async () => {
+  try { await flushUnitEdits() } catch { ElMessage.error(unitSaveError.value); return false }
   if (cancelableGenerating.value || inspirationGenerating.value) {
     ElMessage.info('生成已转到后台，可在历史记录查看结果或失败原因')
   }
@@ -1696,16 +1890,40 @@ const saveDraft = async () => {
 // 完成后按步骤应用结果（与提交路径一致），实现"切走再回来无缝续上"。
 const restoreActiveStepTask = async () => {
   if (!draft.id) return
-  const task = await getWorkflowActiveStepTaskApi(draft.id)
+  const task = await getWorkflowLatestStepTaskApi(draft.id)
     .then(res => res.data)
     .catch(() => null)
   if (!task?.id) return
+  const completed = task.payload?.result
+  if (task.status === 'succeeded' && completed) {
+    const { data: run } = await getWorkflowInfoApi(draft.id)
+    const step = task.payload?.step
+    if (step === 'outline_adjust' || step === 'setting_adjust') {
+      if ((run as JsonRecord).adjustCandidates?.[String(completed.candidateId)]) {
+        draft.currentStep = step === 'outline_adjust' ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+        if (step === 'outline_adjust') finishOutlineAdjust(completed)
+        else finishSettingAdjust(completed)
+      }
+    } else if (!run.bookId && Number(run.draftRevision) === Number(completed.draftRevision)) {
+      // 结果已落库、页面还未来得及接管就关闭：不重复请求模型，也不盖掉之后的手动编辑。
+      if (step === 'inspiration') {
+        pendingIdeaPreview.value = { text: String(completed.content.ideaText || ''), action: String(task.payload?.input?.action || 'random') }
+        draft.currentStep = 'MODE_SELECT'
+      } else if (step === 'outline' || step === 'setting') {
+        if (step === 'outline') draft.outlineResult = normalizeOutlineResult(completed.content)
+        else draft.settingResult = normalizeSettingResult(completed.content)
+        draft.currentStep = step === 'outline' ? 'OUTLINE_GENERATE' : 'SETTING_GENERATE'
+        await persistDraft({ currentStep: draft.currentStep, status: 'waiting_user' })
+      }
+    }
+    return
+  }
   // 重进页面只接管执行态，历史失败不在入口重复弹错。
   if (!['queued', 'running'].includes(String(task.status || ''))) return
   const step = task.payload?.step
   // 大纲调整候选走自己的抽屉状态机，不参与四步流程的步骤恢复。
-  if (step === 'outline_adjust') {
-    await restoreOutlineAdjustTask(task)
+  if (step === 'outline_adjust' || step === 'setting_adjust') {
+    await restoreAdjustTask(task, step)
     return
   }
   if (!['inspiration', 'outline', 'setting'].includes(String(step || ''))) {
@@ -1739,6 +1957,7 @@ const restoreActiveStepTask = async () => {
       }
     } else if (step === 'outline') {
       draft.outlineResult = normalizeOutlineResult(result.content)
+      unitGeneration.value = null
       stepError.value = null
       draft.currentStep = 'OUTLINE_GENERATE'
       draft.status = 'waiting_user'
@@ -1746,6 +1965,7 @@ const restoreActiveStepTask = async () => {
       ElMessage.success('大纲已生成')
     } else if (step === 'setting') {
       draft.settingResult = normalizeSettingResult(result.content)
+      unitGeneration.value = null
       stepError.value = null
       draft.currentStep = 'SETTING_GENERATE'
       draft.status = 'waiting_user'
@@ -1778,15 +1998,23 @@ const restoreActiveStepTask = async () => {
 
 onMounted(() => {
   void (async () => {
-    await loadWorkflow()
-    // 恢复检查紧跟 run 加载：进入页面立即接管"生成中"状态，不等次要资源
-    void restoreActiveStepTask()
+    try {
+      await loadWorkflow()
+      await refreshUnitGeneration()
+      // 接管完成前禁止发起重试，避免两个轮询相互取消。
+      await restoreActiveStepTask()
+    } catch (error) {
+      ElMessage.error(extractApiErrorMessage(error, '恢复生成状态失败，已保存内容仍保留'))
+    } finally { restoringStepTask.value = false }
   })()
+  generationRefreshTimer = setInterval(() => { void refreshUnitGeneration().catch(() => undefined) }, 1000)
   void loadWorkflowResources()
   void loadWorkflowModels()
 })
 
 onBeforeUnmount(() => {
+  generationViewDisposed = true
+  clearInterval(generationRefreshTimer)
   stopStepPolling()
 })
 

@@ -483,7 +483,7 @@ watch(
 .inspiration-input {
   --inspiration-input-padding: 12px;
   --inspiration-input-radius: 12px;
-  --inspiration-input-font-size: 12px;
+  --inspiration-input-font-size: calc(12px * var(--ui-font-scale, 1));
   --inspiration-input-min-height: 120px;
   position: relative;
   width: 100%;
@@ -491,7 +491,7 @@ watch(
   &.variant-compact {
     --inspiration-input-padding: 8px 10px;
     --inspiration-input-radius: 8px;
-    --inspiration-input-font-size: 12px;
+    --inspiration-input-font-size: calc(12px * var(--ui-font-scale, 1));
     --inspiration-input-min-height: 96px;
   }
 
@@ -567,7 +567,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -583,7 +583,7 @@ watch(
   border: none;
   background: transparent;
   color: var(--ink-main);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding: 6px 8px;
   border-radius: 8px;
   cursor: pointer;
@@ -607,12 +607,12 @@ watch(
 
 .mention-meta {
   margin-left: auto;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .mention-empty {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   padding: 4px 6px;
 }

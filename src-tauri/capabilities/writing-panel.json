@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "writing-panel",
-  "description": "写作面板窗口最小权限：仅自身窗口控制与事件（无 SQL/对话框/更新器/开窗能力）",
+  "description": "写作面板窗口权限：窗口控制、事件、本地 SQLite 读写及 AI 模型 HTTP 请求（无数据库关闭/对话框/更新器/开窗能力）",
   "windows": ["writing-panel-*"],
   "permissions": [
     "core:default",
@@ -13,6 +13,32 @@
     "core:window:allow-set-fullscreen",
     "core:window:allow-start-dragging",
     "core:window:allow-start-resize-dragging",
-    "core:window:allow-toggle-maximize"
+    "core:window:allow-toggle-maximize",
+    "sql:allow-load",
+    "sql:allow-select",
+    "sql:allow-execute",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://**"
+        },
+        {
+          "url": "http://**"
+        },
+        {
+          "url": "http://localhost:*"
+        },
+        {
+          "url": "http://127.0.0.1:*"
+        },
+        {
+          "url": "http://**:*"
+        },
+        {
+          "url": "https://**:*"
+        }
+      ]
+    }
   ]
 }

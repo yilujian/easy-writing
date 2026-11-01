@@ -92,9 +92,16 @@
       </div>
     </div>
 
-    <!-- 段间空行 -->
-    <div class="setting-row checkbox-row">
-      <el-checkbox v-model="isParagraphGap">段间自动空1行</el-checkbox>
+    <!-- 段落设置 -->
+    <div class="paragraph-settings" role="group" aria-label="段落设置">
+      <div class="paragraph-setting">
+        <span>段间自动空1行</span>
+        <el-switch v-model="isParagraphGap" aria-label="段间自动空1行" />
+      </div>
+      <div class="paragraph-setting">
+        <span>首行缩进2字符</span>
+        <el-switch v-model="isFirstLineIndent" aria-label="首行缩进2字符" />
+      </div>
     </div>
 
     <!-- 网格线设置 -->
@@ -159,7 +166,7 @@ const fontSelect = ref<SelectInstance>()
 const defaultFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, PingFang SC, Microsoft YaHei'
 
 // 使用 storeToRefs 获取响应式引用
-const { fontBold, fontSize, fontLineHeight, contentWidth, isParagraphGap, rulerStyle } = storeToRefs(editorStore)
+const { fontBold, fontSize, fontLineHeight, contentWidth, isParagraphGap, isFirstLineIndent, rulerStyle } = storeToRefs(editorStore)
 
 // 字体族需要特殊处理
 const fontFamily = computed({
@@ -198,9 +205,9 @@ const handleReset = () => {
 }
 
 .setting-label {
-  width: 36px;
+  width: max(36px, 2.5em);
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -243,9 +250,9 @@ const handleReset = () => {
 }
 
 .value-text {
-  width: 40px;
+  width: max(40px, 3.3em);
   text-align: right;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   flex-shrink: 0;
 }
@@ -282,7 +289,7 @@ const handleReset = () => {
 
   .bold-icon {
     font-weight: 700;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
@@ -312,25 +319,32 @@ const handleReset = () => {
   }
 }
 
-/* 复选框行 */
-.checkbox-row {
-  :deep(.el-checkbox) {
-    .el-checkbox__label {
-      color: var(--ink-main);
-      font-size: 13px;
-    }
+/* 段落设置：文字与开关分列对齐 */
+.paragraph-settings {
+  padding: 8px 0;
+  border-top: 1px solid var(--ui-border);
+}
 
-    .el-checkbox__inner {
-      background: var(--input-bg);
-      border-color: var(--input-border);
-    }
+.paragraph-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: calc(36px * var(--ui-control-scale, 1));
+  gap: 16px;
+  color: var(--ink-sec);
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
-    &.is-checked {
-      .el-checkbox__inner {
-        background: var(--ink-accent);
-        border-color: var(--ink-accent);
-      }
-    }
+  :deep(.el-switch) {
+    flex-shrink: 0;
+    --el-switch-on-color: var(--ink-accent);
+    --el-switch-off-color: var(--input-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paragraph-setting :deep(.el-switch__core),
+  .paragraph-setting :deep(.el-switch__action) {
+    transition: none;
   }
 }
 
@@ -342,7 +356,7 @@ const handleReset = () => {
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-bottom: 12px;
 }
@@ -409,7 +423,7 @@ const handleReset = () => {
 }
 
 .ruler-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-top: 6px;
 }
@@ -425,7 +439,7 @@ const handleReset = () => {
 
 .reset-btn {
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
@@ -448,7 +462,7 @@ const handleReset = () => {
 .font-select-popper {
   .el-select-dropdown__item {
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     &.hover,
     &:hover {

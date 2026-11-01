@@ -78,13 +78,13 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 7px 10px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   cursor: pointer;
 
   i {
     width: 14px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 

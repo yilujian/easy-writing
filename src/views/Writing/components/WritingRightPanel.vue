@@ -446,18 +446,18 @@ onBeforeUnmount(() => {
       align-items: center;
       gap: 4px;
       color: var(--ink-sec);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       cursor: pointer;
       transition: all 0.3s ease;
       padding: 4px 0;
       width: 100%;
 
       i {
-        font-size: 16px;
+        font-size: calc(16px * var(--ui-font-scale, 1));
       }
 
       span {
-        font-size: 10px;
+        font-size: calc(10px * var(--ui-font-scale, 1));
         transform: scale(0.9);
       }
 
@@ -531,7 +531,7 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-main);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 

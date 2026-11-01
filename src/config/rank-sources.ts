@@ -1,8 +1,8 @@
-import type { JsonRecord } from '@/types/json'
+import type { JsonRecord } from '../types/json.js'
 import type {
   NovelRankCategoryOption,
   NovelRankPlatform,
-} from '@/types/novel-rank'
+} from '../types/novel-rank.js'
 
 /**
  * 榜单抓取源清单（移植自老服务端 defaultSeed：站点 / 分类 / 84 个榜单源）。

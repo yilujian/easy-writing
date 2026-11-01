@@ -24,6 +24,10 @@ export interface LiveLocalTaskHandle {
 }
 
 const liveTasks = new Map<number, LiveLocalTaskHandle>()
+const liveAiDrafts = new Set<number>()
+export const registerLiveWorkflowAiDraft = (id: number) => liveAiDrafts.add(id)
+export const unregisterLiveWorkflowAiDraft = (id: number) => liveAiDrafts.delete(id)
+export const isLiveWorkflowAiDraft = (id: number) => liveAiDrafts.has(id)
 export const hasLiveLocalTasks = () => liveTasks.size > 0
 
 export const registerLiveLocalTask = (handle: LiveLocalTaskHandle) => {

@@ -667,7 +667,7 @@ onBeforeUnmount(stopPolling)
   padding: 8px 10px;
   border-radius: 7px;
   background: color-mix(in srgb, var(--ink-accent) 7%, transparent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 
   i {
@@ -681,7 +681,7 @@ onBeforeUnmount(stopPolling)
   border-radius: 7px;
   color: var(--state-warning-on);
   background: var(--state-warning-surface);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.65;
 }
 
@@ -691,7 +691,7 @@ onBeforeUnmount(stopPolling)
   border-radius: 7px;
   color: var(--state-danger-on);
   background: var(--state-danger-surface);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.65;
 }
 
@@ -699,7 +699,7 @@ onBeforeUnmount(stopPolling)
   display: block;
   margin-bottom: 6px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
@@ -732,7 +732,7 @@ onBeforeUnmount(stopPolling)
 
     span {
       color: var(--ink-sec);
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       line-height: 1.45;
     }
   }
@@ -758,7 +758,7 @@ onBeforeUnmount(stopPolling)
   margin-top: 10px;
   color: var(--ink-main);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   &.is-disabled {
     color: var(--ink-sec);
@@ -776,7 +776,7 @@ onBeforeUnmount(stopPolling)
 
   i {
     color: var(--ink-accent);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -791,7 +791,7 @@ onBeforeUnmount(stopPolling)
   border-radius: 999px;
   color: var(--state-warning-on);
   background: var(--state-warning-surface);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-style: normal;
   font-weight: 600;
   vertical-align: 1px;
@@ -804,7 +804,7 @@ onBeforeUnmount(stopPolling)
   gap: 10px;
   margin-bottom: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   span {
     min-width: 0;
@@ -840,7 +840,7 @@ onBeforeUnmount(stopPolling)
   padding: 8px 10px;
   border: 1px solid var(--divider);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   summary {
     color: var(--ink-sec);
@@ -861,7 +861,7 @@ onBeforeUnmount(stopPolling)
   align-items: center;
   gap: 6px;
   color: var(--ink-accent) !important;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .rewrite-view-switch {
@@ -882,7 +882,7 @@ onBeforeUnmount(stopPolling)
     background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
 
     &.active {
       color: var(--ink-main);
@@ -917,11 +917,11 @@ onBeforeUnmount(stopPolling)
     justify-content: space-between;
     gap: 6px;
     margin-bottom: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
 
     span {
       color: var(--ink-tertiary, var(--ink-sec));
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       font-variant-numeric: tabular-nums;
     }
   }
@@ -929,7 +929,7 @@ onBeforeUnmount(stopPolling)
   p {
     margin: 0;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.7;
     word-break: break-all;
   }
@@ -946,7 +946,7 @@ onBeforeUnmount(stopPolling)
   p {
     margin: 0 0 10px;
     color: var(--ink-main);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.8;
 
     &:last-child {

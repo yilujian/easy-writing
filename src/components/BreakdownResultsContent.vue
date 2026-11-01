@@ -2,7 +2,7 @@
   <div class="breakdown-results">
     <div class="result-toolbar">
       <BreakdownSaveButton
-        v-if="data && (data.indexed || data.report)"
+        v-if="data && (data.indexed || data.projectReport)"
         :project-id="projectId"
         :initial-saved="data.savedToWorkbench"
         @saved="data.savedToWorkbench = true"
@@ -43,19 +43,13 @@
           取消
         </button>
       </div>
-      <details v-if="data.report?.content" open class="report">
-        <summary>{{ data.report.title || '拆书报告' }}</summary>
-        <p v-if="data.reportStale">这是修复分章前的报告，已保留供参考；请按新目录重新生成汇总报告。</p>
-        <!-- eslint-disable-next-line vue/no-v-html -- 共用 Markdown 解析器禁用原始 HTML。 -->
-        <div class="ac-document-markdown" v-html="renderMarkdown(data.report.content)"></div>
-      </details>
-      <details v-else-if="data.legacyReport" open class="report">
+      <details v-if="data.projectReport" open class="report">
         <summary>已保存的全书报告</summary>
-        <p v-for="line in legacyReportLines" :key="line">{{ line }}</p>
+        <p v-for="line in projectReportLines" :key="line">{{ line }}</p>
       </details>
       <p v-else>尚未生成汇总报告，下面的章节卡可直接阅读。</p>
       <button v-if="data.indexed" class="ink-btn ink-btn-primary" :disabled="repairing" @click="analyse">
-        去对话{{ data.report ? '继续分析' : '生成拆书报告' }}
+        去对话{{ data.projectReport ? '继续分析' : '生成拆书报告' }}
       </button>
       <p v-if="!data.indexed">尚无有效章节卡。可回到对话选择拆解范围。</p>
       <article v-for="card in data.cards" :key="card.no" class="chapter-result">
@@ -109,11 +103,9 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreakdownSaveButton from './BreakdownSaveButton.vue'
-import { agentCommand } from '@/agent/client'
-import { renderMarkdown } from '@/utils/markdown'
-import { importReferenceFile, type ReferenceImportProgress } from '@/agent/reference-import'
-import { useAgentWorkspace } from '@/views/AgentCreation/use-agent-workspace'
-import type { AgentBreakdownJob } from '@/types/agent-creation'
+import { writingCommand } from '@/writing-service/client'
+import { importReferenceFile, type ReferenceImportProgress } from '@/writing-service/reference-import'
+import { usePiWorkspace } from '@/views/AgentPi/use-pi-workspace'
 interface Card {
   no: number
   title: string
@@ -133,14 +125,11 @@ interface Results {
   rangeTotal: number
   indexed: number
   cards: Card[]
-  reportStale?: boolean
   savedToWorkbench: boolean
   needsRepair: boolean
   repairNote?: string
   searchReady: boolean
-  report?: { title: string; content: string }
-  legacyReport?: Record<string, unknown>
-  job?: AgentBreakdownJob
+  projectReport?: Record<string, unknown>
 }
 const props = defineProps<{
   projectId: string
@@ -151,7 +140,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 const router = useRouter()
-const store = useAgentWorkspace()
+const store = usePiWorkspace()
 const data = ref<Results | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -166,16 +155,15 @@ const reportLines = (value: unknown): string[] =>
     : value && typeof value === 'object'
       ? Object.values(value).flatMap(reportLines)
       : []
-const legacyReportLines = computed(() => reportLines(data.value?.legacyReport))
+const projectReportLines = computed(() => reportLines(data.value?.projectReport))
 async function load(start = 0) {
   if (!props.projectId) return
   const current = ++request
   loading.value = true
   error.value = ''
   try {
-    const result = await agentCommand<Results>('breakdown_results', {
+    const result = await writingCommand<Results>('breakdown_results', {
       projectId: props.projectId,
-      sessionId: props.sessionId,
       offset: start,
       from: props.from,
       to: props.to
@@ -212,7 +200,6 @@ async function repair() {
       repairProgress.value = p
     })
     await repairTask.promise
-    await store.reload()
     await load()
   } catch (cause) {
     if (!(cause instanceof DOMException && cause.name === 'AbortError')) error.value = String(cause)
@@ -223,22 +210,22 @@ async function repair() {
 }
 async function analyse() {
   if (!data.value) return
+  if (store.inputLocked) return
   await store.initialize()
-  const job = data.value.job
-  const sessionId = props.sessionId || job?.sessionId
-  if (sessionId && store.conversations.some(s => s.id === sessionId)) store.selectConversation(sessionId)
-  else store.newConversation()
-  const bid = `breakdown:${data.value.projectId}`
+  const session = props.sessionId ? store.sessions.find(s => s.id === props.sessionId) : undefined
+  if (session) await store.selectSession(session)
+  else {
+    await store.newChat()
+    await store.changeContext({ bookId: '' })
+  }
   store.addReference({
-    id: bid,
-    bookId: bid,
+    id: Number(data.value.projectId),
     kind: 'breakdown',
-    title: data.value.title,
-    description: `参考书 · 已拆 ${data.value.indexed} 章`
+    title: data.value.title
   })
-  store.draft = `请读取《${data.value.title}》已完成的章节卡，分析写法并保存为拆书报告；尚未拆出的章节请注明，不要重复拆解。`
+  store.draft = `@${data.value.title}\n\n请读取这本参考书已有的拆书结果，继续分析写法；尚未拆出的章节请注明，不要重复拆解。`
   emit('close')
-  await router.push('/agent-creation')
+  await router.push('/agent-pi')
 }
 onBeforeUnmount(() => {
   request++
@@ -290,7 +277,7 @@ onBeforeUnmount(() => {
   margin: 8px 0;
 }
 .chapter-result h3 {
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-font-scale, 1));
   margin: 0 0 8px;
 }
 dt {

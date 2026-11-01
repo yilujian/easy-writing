@@ -188,12 +188,12 @@ const handleToggleBuiltin = (word: string) => {
     border: 1px solid var(--btn-outline-border);
     background: var(--surface-2);
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
   .chip-type {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 
@@ -230,7 +230,7 @@ const handleToggleBuiltin = (word: string) => {
   }
 
   .builtin-group-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-sec);
   }

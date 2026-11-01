@@ -82,7 +82,7 @@ const filterId = computed(() => `ink-goo-${Math.random().toString(36).substr(2, 
   position: absolute;
   top: 100%;
   margin-top: 10px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: v-bind(color);
   opacity: 0.8;
   white-space: nowrap;

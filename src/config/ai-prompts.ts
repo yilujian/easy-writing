@@ -167,16 +167,11 @@ export const buildAutocompleteMessages = (params: {
   sceneAnchor?: string
   chapterTitle?: string
   chapterSummary?: string
-  /** Agent 上下文引擎装配的作品资料（作者规则、人物状态等）；只作参考数据 */
-  contextBlocks?: string
   mode: 'inline' | 'next_beat'
   characterContext?: string
 }): LocalChatMessageInput[] => {
   const modeLine = promptText('editor-autocomplete', params.mode === 'next_beat' ? 'nextBeat' : 'inline')
   const parts = [
-    params.contextBlocks
-      ? `【作品资料（仅作参考，须遵守其中的作者规则与否决约束，不要复述）】\n${params.contextBlocks}`
-      : '',
     params.characterContext || '',
     params.chapterTitle ? `【本章】${params.chapterTitle}` : '',
     params.chapterSummary ? `【本章目标】${params.chapterSummary}` : '',
@@ -236,6 +231,33 @@ export const buildSelectionActionMessages = (params: {
 /** 划词各动作的采样温度（迁自老服务端逐场景调优） */
 export const selectionActionTemperature = (action: SelectionActionType): number | undefined =>
   promptTemperature('editor-selection', action)
+
+/** 妙笔一轮最多携带最近 20 条历史消息。 */
+const CHAT_HISTORY_WINDOW = 20
+
+export const buildMiaobiMessages = (params: {
+  query: string
+  context?: string
+  modeInstruction?: string
+  history?: Array<{ role: 'user' | 'ai'; content: string }>
+}): LocalChatMessageInput[] => {
+  const messages: LocalChatMessageInput[] = []
+  const system = [promptText('miaobi', 'system'), String(params.modeInstruction || '').trim()]
+    .filter(Boolean)
+    .join('\n\n')
+  messages.push({ role: 'system', content: system })
+
+  for (const item of (params.history || []).slice(-CHAT_HISTORY_WINDOW)) {
+    const content = String(item.content || '').trim()
+    if (!content) continue
+    messages.push({ role: item.role === 'ai' ? 'assistant' : 'user', content })
+  }
+
+  const context = String(params.context || '').trim()
+  const query = String(params.query || '').trim()
+  messages.push({ role: 'user', content: context ? `${context}\n\n${query}` : query })
+  return messages
+}
 
 // ---------------------------------------------------------------------------
 // 故事状态整理：一章正文 → 事实列表（JSON）

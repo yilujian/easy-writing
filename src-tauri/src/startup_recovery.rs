@@ -1,5 +1,5 @@
 //! 启动失败时的恢复入口。只接受应用自己生成的迁移快照，恢复前保留当前数据库及 WAL。
-use crate::{agent_host::AgentHost, desktop_storage, storage_migration, DesktopAppHandle};
+use crate::{writing_host::WritingHost, desktop_storage, storage_migration, DesktopAppHandle};
 use serde_json::{json, Value};
 use sqlx::{sqlite::SqliteConnectOptions, Connection, SqliteConnection};
 use std::{fs, io::Write, path::Path, sync::atomic::Ordering};
@@ -142,15 +142,18 @@ pub async fn restore_at(root: &Path, name: &str) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn desktop_storage_ready(app: DesktopAppHandle) -> Result<(), String> {
+    if storage_migration::desktop_storage_session()? != Some(storage_migration::RuntimeStorage::Unified) {
+        return Err("本地存储尚未正式启用，不能启动后台索引或清理".into());
+    }
     let root = desktop_storage::root(&app)?;
     let state = serde_json::to_value(storage_migration::inspect_at(&root).await?).map_err(err)?;
     if state["state"] != "ready" {
         return Err("本地存储尚未完成准备".into());
     }
-    app.state::<AgentHost>()
-        .storage_ready
-        .store(true, Ordering::SeqCst);
-    crate::agent_host::schedule_index(app, std::time::Duration::from_secs(30));
+    if app.state::<WritingHost>().storage_ready.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+    crate::writing_host::schedule_index(app, std::time::Duration::from_secs(30));
     // 迁移留下的暂存副本（可达几十 MB）在后台清一次，不拖慢启动
     std::thread::spawn(move || {
         match tauri::async_runtime::block_on(storage_migration::prune_stage_at(&root)) {
@@ -168,7 +171,7 @@ pub async fn desktop_startup_recovery(
     action: String,
     name: Option<String>,
 ) -> Result<Value, String> {
-    let host = app.state::<AgentHost>();
+    let host = app.state::<WritingHost>();
     let _gate = host.gate.lock().await;
     if host.storage_ready.load(Ordering::SeqCst) || host.active() {
         return Err("请在启动失败页面使用此恢复入口；工作台内请使用完整备份恢复".into());

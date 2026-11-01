@@ -17,6 +17,7 @@
       </header>
 
       <div class="adjust-drawer__body">
+        <WorkflowRecoveryPanel v-if="runId" :run-id="runId" :draft-key="recoveryKey" />
         <!-- 1. 输入调整要求：各步骤的表单差异都收在这个插槽里 -->
         <template v-if="phase === 'input'">
           <slot name="form"></slot>
@@ -184,6 +185,7 @@
  * 所以那部分交给 form 插槽，由各步骤自己提供并自行组装请求。
  */
 import { computed, ref, watch } from 'vue'
+import WorkflowRecoveryPanel from '@/components/WorkflowRecoveryPanel.vue'
 import type {
   WorkflowAdjustCandidateView,
   WorkflowAdjustPhase,
@@ -192,6 +194,8 @@ import type {
 } from '../types'
 
 const props = withDefaults(defineProps<{
+  runId?: number
+  recoveryKey?: string
   visible: boolean
   phase: WorkflowAdjustPhase
   /** 输入阶段的标题，同时用作抽屉的无障碍名称 */
@@ -212,6 +216,8 @@ const props = withDefaults(defineProps<{
   errorMessage?: string
 }>(), {
   submitDisabledTip: '请先填写调整要求',
+  runId: 0,
+  recoveryKey: '',
   modelName: '',
   percent: 0,
   stages: () => [],

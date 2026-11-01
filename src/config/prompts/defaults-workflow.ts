@@ -149,7 +149,8 @@ export const WORKFLOW_PROMPT_FILES: PromptFileDef[] = [
       {
         key: 'beatsNote',
         label: '细纲展开补充',
-        defaultText: 'beats 数量 5-8 拍，按叙事顺序排列，每拍是一个具体场景动作，不是抽象概括。',
+        variables: ['拍数', '每拍字数'],
+        defaultText: 'beats 共 {{拍数}} 拍，按叙事顺序排列，每拍是一个具体场景动作，不是抽象概括；每拍对应正文约 {{每拍字数}} 字，拍数不多也不少。',
       },
       {
         key: 'beatsTask',
@@ -159,7 +160,7 @@ export const WORKFLOW_PROMPT_FILES: PromptFileDef[] = [
       {
         key: 'contentSystem',
         label: '正文系统设定',
-        variables: ['目标字数'],
+        variables: ['目标字数', '上限字数'],
         defaultTemperature: 0.82,
         defaultText: [
           '你是中文网文长篇作家兼总编，正在按章纲写一章正文。',
@@ -174,7 +175,7 @@ export const WORKFLOW_PROMPT_FILES: PromptFileDef[] = [
           '7. 每个自然段单独一行；多用短段落与对话推进节奏。',
           '',
           '【写作原则】展示而非讲述，用动作与细节刻画人物，减少模板化措辞，避免重复上一段的句意。',
-          '本章目标字数约 {{目标字数}} 字（允许上下浮动两成），写满剧情自然收在章末钩子上。',
+          '【篇幅】本章 {{目标字数}} 字左右，最多不超过 {{上限字数}} 字。按细纲的拍子分配篇幅，写到目标字数附近就收在章末钩子上；没写到的剧情留给下一章，宁可短一点，不要超。',
         ].join('\n'),
       },
       {
@@ -191,7 +192,8 @@ export const WORKFLOW_PROMPT_FILES: PromptFileDef[] = [
       {
         key: 'freshTask',
         label: '从头生成任务',
-        defaultText: '按细纲从头写完本章正文。',
+        variables: ['目标字数'],
+        defaultText: '按细纲从头写完本章正文，全章约 {{目标字数}} 字。',
       },
       {
         key: 'plotRewriteTask',

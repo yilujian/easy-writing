@@ -169,7 +169,7 @@ const sourceQueues = new Map<number, Promise<RankCrawlOutcome>>()
 /** 抓取一个源并落快照；同日快照存在时手动重抓受 30 分钟频控保护 */
 export const crawlLocalRankSource = async (
   sourceId: number,
-  options: { manual?: boolean; signal?: AbortSignal; onFetchStart?: () => void } = {}
+  options: { manual?: boolean; signal?: AbortSignal; onFetchStart?: () => void; waitForCancellation?: boolean } = {}
 ): Promise<RankCrawlOutcome> => {
   const previous = sourceQueues.get(sourceId)
   const task = Promise.resolve(previous).catch(() => undefined).then(() => crawlAndSave(sourceId, options))
@@ -177,7 +177,7 @@ export const crawlLocalRankSource = async (
   void task.finally(() => {
     if (sourceQueues.get(sourceId) === task) sourceQueues.delete(sourceId)
   }).catch(() => undefined)
-  return abortable(task, options.signal)
+  return options.waitForCancellation ? task : abortable(task, options.signal)
 }
 
 const crawlAndSave = async (
@@ -335,7 +335,7 @@ export const attachCompare = (items: NovelRankItem[], previous: LocalRankSnapsho
 
 // categoryCode → 分类名：快照条目只存分类名文本，用种子表还原后按名字匹配。
 // code 给了但种子表查不到时返回空列表（如实呈现「无数据」，不静默回退成未过滤全量）。
-const filterCategory = (items: NovelRankItem[], categoryCode?: string) => {
+export const filterRankItemsByCategory = (items: NovelRankItem[], categoryCode?: string) => {
   const code = String(categoryCode || '').trim()
   if (!code) return items
   const name = findRankCategoryByCode(code)?.name || ''
@@ -383,7 +383,7 @@ export const getLocalRankLatest = async (params: {
   const compareDate = params.compareDate || dates.find(date => date < doc.statDate) || ''
   const compare = compareDate ? await readSnapshot(params.sourceId, compareDate) : null
   const items = filterKeyword(
-    filterCategory(attachCompare(doc.items, compare), params.categoryCode),
+    filterRankItemsByCategory(attachCompare(doc.items, compare), params.categoryCode),
     params.keyword
   )
   const { page, size, total, list } = paged(items, params.page || 1, params.size || 20)

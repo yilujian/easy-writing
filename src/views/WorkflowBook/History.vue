@@ -650,7 +650,7 @@ onUnmounted(() => {
   background: transparent;
   color: var(--ink-main);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s, color 0.18s;
@@ -750,7 +750,7 @@ onUnmounted(() => {
   place-items: center;
   border-radius: 10px;
   background: color-mix(in srgb, currentColor 13%, transparent);
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
 }
 
 .wf-stat--all .wf-stat__icon { color: var(--wf-accent); }
@@ -763,11 +763,11 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .wf-stat__value {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-font-scale, 1));
   font-weight: 600;
   line-height: 1;
 }
@@ -844,7 +844,7 @@ onUnmounted(() => {
 
   em {
     font-style: normal;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     white-space: nowrap;
   }
 }
@@ -857,7 +857,7 @@ onUnmounted(() => {
   border: 1px solid color-mix(in srgb, var(--wf-tone) 30%, transparent);
   border-radius: 50%;
   background: color-mix(in srgb, var(--wf-tone) 9%, transparent);
-  font-size: 17px;
+  font-size: calc(17px * var(--ui-font-scale, 1));
 }
 
 .wf-row__main {
@@ -870,7 +870,7 @@ onUnmounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     font-weight: 600;
     line-height: 1.35;
   }
@@ -882,7 +882,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px 18px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   span {
     display: inline-flex;
@@ -903,14 +903,14 @@ onUnmounted(() => {
   i {
     flex: 0 0 auto;
     color: var(--wf-accent);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
 .wf-row__error {
   margin: 0;
   color: var(--wf-red);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 
@@ -920,7 +920,7 @@ onUnmounted(() => {
   gap: 10px;
 
   strong {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     font-weight: 600;
   }
 }
@@ -968,7 +968,7 @@ onUnmounted(() => {
 
 // 和百分比同一套排版：状态色已由左侧状态圈承担，这里保持深墨色
 .wf-row__progress-label {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 500;
 }
 
@@ -978,7 +978,7 @@ onUnmounted(() => {
   justify-items: start;
   gap: 8px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.4;
 }
 
@@ -989,7 +989,7 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--wf-green) 9%, transparent);
   color: var(--wf-green);
   font-style: normal;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .wf-row__actions {
@@ -1015,17 +1015,17 @@ onUnmounted(() => {
 
   > i {
     color: var(--wf-accent);
-    font-size: 26px;
+    font-size: calc(26px * var(--ui-font-scale, 1));
   }
 
   strong {
     color: var(--ink-main);
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
   }
 
   p {
     margin: 0;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1037,7 +1037,7 @@ onUnmounted(() => {
   margin: 0;
   padding: 14px 0 4px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .wf-more--end {

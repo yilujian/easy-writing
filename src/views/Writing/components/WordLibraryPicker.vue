@@ -81,24 +81,24 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside, true)
 <style scoped>
 .word-picker { position: fixed; z-index: 4201; width: min(360px, calc(100vw - 24px)); max-height: min(350px, calc(100vh - 24px)); box-sizing: border-box; display: flex; flex-direction: column; padding: 14px; border: 1px solid var(--ui-border-hover); border-radius: 6px; color: var(--ink-main); background: var(--popover-bg); box-shadow: var(--ui-shadow); }
 .word-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 12px; flex-shrink: 0; }
-.word-picker-heading strong { font-size: 18px; font-weight: 600; line-height: 1.5; }
-.word-picker-escape { padding: 2px 6px; border: 1px solid var(--ui-border-hover); border-radius: 4px; color: var(--ink-sec); background: var(--input-bg); box-shadow: 0 1px 1px var(--divider); font: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }
+.word-picker-heading strong { font-size: calc(18px * var(--ui-font-scale, 1)); font-weight: 600; line-height: 1.5; }
+.word-picker-escape { padding: 2px 6px; border: 1px solid var(--ui-border-hover); border-radius: 4px; color: var(--ink-sec); background: var(--input-bg); box-shadow: 0 1px 1px var(--divider); font: inherit; font-size: calc(12px * var(--ui-font-scale, 1)); line-height: calc(18px * var(--ui-font-scale, 1)); cursor: pointer; }
 .word-picker-escape:hover { color: var(--ink-main); background: var(--accent-soft); }
 .word-picker-search-field { display: flex; align-items: center; position: relative; flex-shrink: 0; }
-.word-picker-search-field > i { position: absolute; left: 11px; font-size: 14px; color: var(--ink-sec); pointer-events: none; }
-.word-picker-search { width: 100%; min-width: 0; height: 36px; box-sizing: border-box; padding: 7px 32px; font: inherit; font-size: 14px; color: var(--ink-main); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 5px; }
+.word-picker-search-field > i { position: absolute; left: 11px; font-size: calc(14px * var(--ui-font-scale, 1)); color: var(--ink-sec); pointer-events: none; }
+.word-picker-search { width: 100%; min-width: 0; height: 36px; box-sizing: border-box; padding: 7px 32px; font: inherit; font-size: calc(14px * var(--ui-font-scale, 1)); color: var(--ink-main); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 5px; }
 .word-picker-search::placeholder { color: var(--ink-sec); opacity: 1; }
 .word-picker-search:focus-visible { outline: 2px solid var(--word-library-accent, var(--ink-accent)); outline-offset: 1px; }
 .word-picker-clear { position: absolute; right: 5px; display: grid; place-items: center; width: 25px; height: 25px; border: 0; border-radius: 4px; color: var(--ink-sec); background: transparent; cursor: pointer; }
 .word-picker-clear:hover { color: var(--ink-main); background: var(--overlay-hover); }
 .word-picker-list { min-height: 0; overflow-y: auto; margin-top: 10px; }
 .word-picker-option { width: 100%; min-height: 40px; display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-main); font: inherit; text-align: left; cursor: pointer; }
-.word-picker-option strong { min-width: 0; overflow-wrap: anywhere; font-size: 17px; font-weight: 500; line-height: 1.5; }
-.word-picker-option small { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-sec); font-size: 13px; }
+.word-picker-option strong { min-width: 0; overflow-wrap: anywhere; font-size: calc(17px * var(--ui-font-scale, 1)); font-weight: 500; line-height: 1.5; }
+.word-picker-option small { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); }
 .word-picker-option.active, .word-picker-option:hover { background: var(--accent-soft); }
 .word-picker-return { width: 18px; height: 18px; color: var(--word-library-accent, var(--ink-accent)); }
 .word-picker-return-placeholder { width: 18px; }
-.word-picker-state { margin: 16px 2px; color: var(--ink-sec); font-size: 13px; line-height: 1.6; }
-.word-picker-footer { display: flex; justify-content: space-between; gap: 8px; flex-shrink: 0; margin: 10px 2px 0; padding-top: 10px; border-top: 1px solid var(--ui-border); color: var(--ink-sec); font-size: 12px; line-height: 1.5; }
+.word-picker-state { margin: 16px 2px; color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.6; }
+.word-picker-footer { display: flex; justify-content: space-between; gap: 8px; flex-shrink: 0; margin: 10px 2px 0; padding-top: 10px; border-top: 1px solid var(--ui-border); color: var(--ink-sec); font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.5; }
 button:focus-visible { outline: 2px solid var(--word-library-accent, var(--ink-accent)); outline-offset: -2px; }
 </style>

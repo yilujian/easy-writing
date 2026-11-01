@@ -163,7 +163,7 @@ const selfDestructOptions = [
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 700;
   margin-bottom: 16px;
   padding-bottom: 8px;
@@ -180,7 +180,7 @@ const selfDestructOptions = [
 }
 
 .group-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-bottom: 8px;
   font-weight: 600;
@@ -197,7 +197,7 @@ const selfDestructOptions = [
 
 .opt-btn {
   padding: 8px 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   border-radius: 6px;
   border: 2px solid var(--input-border);
   cursor: pointer;
@@ -244,11 +244,11 @@ const selfDestructOptions = [
   border: 1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 .dismissed-highlights {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-main);
 
   button:focus-visible { outline: 2px solid var(--ink-accent); outline-offset: 2px; }
@@ -282,6 +282,6 @@ const selfDestructOptions = [
   button { flex-shrink: 0; }
 }
 .dismissed-name { min-width: 0; overflow-wrap: anywhere; }
-.dismissed-hint { margin: 8px 0 0; color: var(--ink-sec); font-size: 12px; line-height: 1.6; }
+.dismissed-hint { margin: 8px 0 0; color: var(--ink-sec); font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.6; }
 
 </style>

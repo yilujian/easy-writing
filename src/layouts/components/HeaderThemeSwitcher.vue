@@ -54,7 +54,7 @@ const handleThemeChange = (theme: string) => {
   cursor: pointer;
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
   }
 }
 </style>

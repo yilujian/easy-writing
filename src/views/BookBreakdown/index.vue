@@ -23,7 +23,7 @@
         ref="fileInputRef"
         type="file"
         class="file-input"
-        accept=".txt"
+        accept=".txt,.md,.markdown,.docx,.epub"
         @change="handleFileChange"
       />
 
@@ -33,7 +33,7 @@
             <i class="fa-solid fa-cloud-arrow-up"></i>
           </div>
           <div class="upload-title">点击或拖拽文件到此处</div>
-          <div class="upload-hint">支持 .txt 格式，单文件最大 50MB，本地解析不上传</div>
+          <div class="upload-hint">支持 .txt、.md、.docx、.epub，单文件最大 50MB，本地解析不上传</div>
           <div class="upload-actions">
             <button type="button" class="ink-btn ink-btn-primary">
               选择文件
@@ -283,9 +283,9 @@ const triggerPick = () => {
   fileInputRef.value?.click()
 }
 
-// 本地解析目前只认 TXT（docx/epub 解析依赖服务端，开源版收口到纯文本）
+// 本地解析：TXT、Markdown 直接读，docx/epub 在解析 worker 里本机解包转成纯文本
 const MAX_UPLOAD_MB = 50
-const ALLOWED_EXT = ['txt']
+const ALLOWED_EXT = ['txt', 'md', 'markdown', 'docx', 'epub']
 const validateUploadFile = (file: File): boolean => {
   const ext = file.name.split('.').pop()?.toLowerCase() || ''
   if (!ALLOWED_EXT.includes(ext)) {
@@ -506,7 +506,7 @@ onMounted(() => {
 
 .hero-text {
   h1 {
-    font-size: 30px;
+    font-size: calc(30px * var(--ui-font-scale, 1));
     font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
     margin: 0 0 8px;
     color: var(--ink-main);
@@ -515,7 +515,7 @@ onMounted(() => {
   p {
     margin: 0;
     color: var(--ink-sec);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
@@ -525,7 +525,7 @@ onMounted(() => {
   gap: 8px;
   padding: 10px 16px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
@@ -590,18 +590,18 @@ onMounted(() => {
   justify-content: center;
   background: color-mix(in srgb, var(--ink-accent) 12%, transparent);
   color: var(--ink-accent);
-  font-size: 32px;
+  font-size: calc(32px * var(--ui-font-scale, 1));
   box-shadow: 0 10px 20px color-mix(in srgb, var(--ink-accent) 12%, transparent);
 }
 
 .upload-title {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
 
 .upload-hint {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
@@ -618,7 +618,7 @@ onMounted(() => {
 }
 
 .upload-tip {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -666,7 +666,7 @@ onMounted(() => {
 .progress-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -674,7 +674,7 @@ onMounted(() => {
   opacity: 0;
   transform: translateY(6px);
   transition: all 0.3s ease;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-warning);
   background: var(--state-warning-surface);
   padding: 8px 14px;
@@ -712,17 +712,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale, 1));
   border: 1px solid var(--tag-border);
 }
 
 .book-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
 .book-author {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -730,7 +730,7 @@ onMounted(() => {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -742,7 +742,7 @@ onMounted(() => {
 }
 
 .result-desc {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -760,12 +760,12 @@ onMounted(() => {
 }
 
 .data-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .data-val {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 
@@ -781,7 +781,7 @@ onMounted(() => {
 }
 
 .ai-tag {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding: 4px 10px;
   border-radius: 999px;
   color: var(--ink-accent);
@@ -805,13 +805,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 600;
   font-family: 'Noto Serif SC', serif;
 }
 
 .section-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -857,7 +857,7 @@ onMounted(() => {
 }
 
 .history-summary {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -869,7 +869,7 @@ onMounted(() => {
   padding: 30px 0;
   text-align: center;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   i {
     color: var(--ink-accent);
@@ -912,7 +912,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   border: 1px solid var(--tag-border);
 }
 
@@ -929,13 +929,13 @@ onMounted(() => {
 }
 
 .title-text {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
 
 .title-meta {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -943,7 +943,7 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -975,12 +975,12 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .history-action {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-accent);
   display: inline-flex;
   align-items: center;
@@ -1000,7 +1000,7 @@ onMounted(() => {
   color: var(--ink-sec);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 }
 
@@ -1018,7 +1018,7 @@ onMounted(() => {
 }
 
 :global(.ink-confirm .el-message-box__title) {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-main);
 }
 
@@ -1072,20 +1072,20 @@ onMounted(() => {
   padding: 40px 20px;
 
   i {
-    font-size: 40px;
+    font-size: calc(40px * var(--ui-font-scale, 1));
     color: var(--ink-muted, var(--ink-sec));
   }
 
   h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     font-family: var(--font-serif, inherit);
   }
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.8;
     max-width: 420px;
   }

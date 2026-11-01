@@ -1,0 +1,1083 @@
+{
+ "version": 1,
+ "documents": {
+  "chapterCard": {
+   "$defs": {
+    "EmotionCurve": {
+     "additionalProperties": false,
+     "properties": {
+      "open": {
+       "maxLength": 120,
+       "title": "Open",
+       "type": "string"
+      },
+      "peak": {
+       "maxLength": 120,
+       "title": "Peak",
+       "type": "string"
+      },
+      "close": {
+       "maxLength": 120,
+       "title": "Close",
+       "type": "string"
+      }
+     },
+     "required": [
+      "open",
+      "peak",
+      "close"
+     ],
+     "title": "EmotionCurve",
+     "type": "object"
+    },
+    "EntityRef": {
+     "additionalProperties": false,
+     "description": "人物、地点、物品、势力的引用。id 解析不到时省略，宿主放入待登记列表，不以文本名入账。",
+     "properties": {
+      "kind": {
+       "enum": [
+        "character",
+        "location",
+        "item",
+        "faction"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "id": {
+       "description": "人物表或实体表中的编号；解析不到时省略",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Id",
+       "type": "string"
+      },
+      "name": {
+       "maxLength": 120,
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "kind",
+      "name"
+     ],
+     "title": "EntityRef",
+     "type": "object"
+    },
+    "Event": {
+     "additionalProperties": false,
+     "properties": {
+      "eventId": {
+       "description": "按工具返回的原始文本编号传入，不改成数字",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Eventid",
+       "type": "string"
+      },
+      "summary": {
+       "maxLength": 120,
+       "title": "Summary",
+       "type": "string"
+      },
+      "characters": {
+       "items": {
+        "$ref": "#/$defs/EntityRef"
+       },
+       "maxItems": 20,
+       "title": "Characters",
+       "type": "array"
+      },
+      "location": {
+       "$ref": "#/$defs/EntityRef"
+      },
+      "storyOrder": {
+       "description": "故事发生顺序；倒叙、回忆按实际发生时间填写",
+       "minimum": 0,
+       "title": "Storyorder",
+       "type": "integer"
+      },
+      "isFlashback": {
+       "title": "Isflashback",
+       "type": "boolean"
+      },
+      "isMisdirection": {
+       "description": "伪装、误导、假死等后文会推翻的表象",
+       "title": "Ismisdirection",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "eventId",
+      "summary",
+      "characters",
+      "storyOrder",
+      "isFlashback",
+      "isMisdirection"
+     ],
+     "title": "Event",
+     "type": "object"
+    },
+    "Fact": {
+     "additionalProperties": false,
+     "properties": {
+      "factId": {
+       "description": "首次出现时分配，后文引用同一编号；修正旧事实用 supersedes",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Factid",
+       "type": "string"
+      },
+      "text": {
+       "maxLength": 120,
+       "title": "Text",
+       "type": "string"
+      },
+      "quote": {
+       "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Quote",
+       "type": "string"
+      },
+      "supersedes": {
+       "description": "按工具返回的原始文本编号传入，不改成数字",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Supersedes",
+       "type": "string"
+      }
+     },
+     "required": [
+      "factId",
+      "text",
+      "quote"
+     ],
+     "title": "Fact",
+     "type": "object"
+    },
+    "HookSpec": {
+     "additionalProperties": false,
+     "properties": {
+      "position": {
+       "enum": [
+        "opening",
+        "mid",
+        "end"
+       ],
+       "title": "Position",
+       "type": "string"
+      },
+      "type": {
+       "enum": [
+        "悬念",
+        "危机",
+        "反转",
+        "期待",
+        "情绪",
+        "信息",
+        "关系"
+       ],
+       "title": "Type",
+       "type": "string"
+      },
+      "text": {
+       "maxLength": 120,
+       "title": "Text",
+       "type": "string"
+      },
+      "strength": {
+       "maximum": 5,
+       "minimum": 1,
+       "title": "Strength",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "position",
+      "type",
+      "text"
+     ],
+     "title": "HookSpec",
+     "type": "object"
+    },
+    "KnowledgeEntry": {
+     "additionalProperties": false,
+     "properties": {
+      "character": {
+       "$ref": "#/$defs/EntityRef"
+      },
+      "factId": {
+       "description": "按工具返回的原始文本编号传入，不改成数字",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Factid",
+       "type": "string"
+      },
+      "learnedAt": {
+       "description": "得知该事实的故事顺序",
+       "minimum": 0,
+       "title": "Learnedat",
+       "type": "integer"
+      },
+      "viaNarration": {
+       "description": "true 表示只有读者通过叙述得知，人物本身并不知道",
+       "title": "Vianarration",
+       "type": "boolean"
+      },
+      "eventId": {
+       "description": "按工具返回的原始文本编号传入，不改成数字",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Eventid",
+       "type": "string"
+      },
+      "quote": {
+       "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Quote",
+       "type": "string"
+      }
+     },
+     "required": [
+      "character",
+      "factId",
+      "learnedAt",
+      "viaNarration",
+      "quote"
+     ],
+     "title": "KnowledgeEntry",
+     "type": "object"
+    },
+    "PayoffSpec": {
+     "additionalProperties": false,
+     "properties": {
+      "type": {
+       "enum": [
+        "打脸",
+        "装逼",
+        "升级",
+        "收获",
+        "认可",
+        "逆袭",
+        "报复",
+        "掌控",
+        "越级",
+        "情感",
+        "团宠"
+       ],
+       "title": "Type",
+       "type": "string"
+      },
+      "setupRef": {
+       "description": "铺垫来源：线索编号或前文章节与摘录",
+       "maxLength": 120,
+       "title": "Setupref",
+       "type": "string"
+      },
+      "strength": {
+       "maximum": 5,
+       "minimum": 1,
+       "title": "Strength",
+       "type": "integer"
+      },
+      "amplified": {
+       "description": "是否写了旁观者反应放大",
+       "title": "Amplified",
+       "type": "boolean"
+      },
+      "quote": {
+       "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Quote",
+       "type": "string"
+      }
+     },
+     "required": [
+      "type",
+      "strength",
+      "amplified"
+     ],
+     "title": "PayoffSpec",
+     "type": "object"
+    },
+    "StateChange": {
+     "additionalProperties": false,
+     "properties": {
+      "character": {
+       "$ref": "#/$defs/EntityRef"
+      },
+      "field": {
+       "enum": [
+        "realm",
+        "location",
+        "item",
+        "relation",
+        "goal",
+        "alive"
+       ],
+       "title": "Field",
+       "type": "string"
+      },
+      "before": {
+       "maxLength": 120,
+       "title": "Before",
+       "type": "string"
+      },
+      "after": {
+       "maxLength": 120,
+       "title": "After",
+       "type": "string"
+      },
+      "aliveAfter": {
+       "description": "field=alive 时填写：这次变化之后此人是否还活着。假死、濒死、重伤、被封印都算 alive；正文没写清就填 unknown",
+       "enum": [
+        "alive",
+        "dead",
+        "unknown"
+       ],
+       "title": "Aliveafter",
+       "type": "string"
+      },
+      "storyOrder": {
+       "minimum": 0,
+       "title": "Storyorder",
+       "type": "integer"
+      },
+      "eventId": {
+       "description": "所属事件；伪装、误导事件里的变化不参与状态折叠",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Eventid",
+       "type": "string"
+      },
+      "quote": {
+       "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Quote",
+       "type": "string"
+      },
+      "confidence": {
+       "description": "0 到 1；低于 0.7 进入待核实",
+       "maximum": 1,
+       "minimum": 0,
+       "title": "Confidence",
+       "type": "number"
+      }
+     },
+     "required": [
+      "character",
+      "field",
+      "after",
+      "storyOrder",
+      "quote",
+      "confidence"
+     ],
+     "title": "StateChange",
+     "type": "object"
+    },
+    "StoryTime": {
+     "additionalProperties": false,
+     "properties": {
+      "label": {
+       "maxLength": 120,
+       "title": "Label",
+       "type": "string"
+      },
+      "order": {
+       "minimum": 0,
+       "title": "Order",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "label",
+      "order"
+     ],
+     "title": "StoryTime",
+     "type": "object"
+    },
+    "ThreadTouch": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "enum": [
+        "foreshadow",
+        "suspense",
+        "promise",
+        "payoffSetup",
+        "romance"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "action": {
+       "enum": [
+        "plant",
+        "advance",
+        "payoff"
+       ],
+       "title": "Action",
+       "type": "string"
+      },
+      "threadId": {
+       "description": "advance / payoff 必须引用已有线索；plant 留空由宿主分配",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Threadid",
+       "type": "string"
+      },
+      "text": {
+       "maxLength": 120,
+       "title": "Text",
+       "type": "string"
+      },
+      "quote": {
+       "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+       "maxLength": 200,
+       "minLength": 1,
+       "title": "Quote",
+       "type": "string"
+      }
+     },
+     "required": [
+      "kind",
+      "action",
+      "text",
+      "quote"
+     ],
+     "title": "ThreadTouch",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "description": "一章的结构化摘要。来源版本、失效状态由宿主记录，不在文档内。",
+   "properties": {
+    "entityMentions": {
+     "type": "array",
+     "maxItems": 32,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "kind",
+       "name",
+       "quote"
+      ],
+      "properties": {
+       "kind": {
+        "enum": [
+         "character",
+         "item",
+         "technique",
+         "faction",
+         "location"
+        ]
+       },
+       "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+       },
+       "aliases": {
+        "type": "array",
+        "maxItems": 8,
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 80
+        }
+       },
+       "quote": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+       }
+      }
+     }
+    },
+    "oneLine": {
+     "maxLength": 120,
+     "title": "Oneline",
+     "type": "string"
+    },
+    "narrativeOrder": {
+     "description": "叙述顺序，即目录位置",
+     "minimum": 0,
+     "title": "Narrativeorder",
+     "type": "integer"
+    },
+    "events": {
+     "items": {
+      "$ref": "#/$defs/Event"
+     },
+     "maxItems": 30,
+     "title": "Events",
+     "type": "array"
+    },
+    "stateChanges": {
+     "items": {
+      "$ref": "#/$defs/StateChange"
+     },
+     "maxItems": 60,
+     "title": "Statechanges",
+     "type": "array"
+    },
+    "facts": {
+     "items": {
+      "$ref": "#/$defs/Fact"
+     },
+     "maxItems": 40,
+     "title": "Facts",
+     "type": "array"
+    },
+    "knowledge": {
+     "items": {
+      "$ref": "#/$defs/KnowledgeEntry"
+     },
+     "maxItems": 60,
+     "title": "Knowledge",
+     "type": "array"
+    },
+    "threads": {
+     "items": {
+      "$ref": "#/$defs/ThreadTouch"
+     },
+     "maxItems": 30,
+     "title": "Threads",
+     "type": "array"
+    },
+    "hooks": {
+     "items": {
+      "$ref": "#/$defs/HookSpec"
+     },
+     "maxItems": 10,
+     "title": "Hooks",
+     "type": "array"
+    },
+    "payoffs": {
+     "items": {
+      "$ref": "#/$defs/PayoffSpec"
+     },
+     "maxItems": 10,
+     "title": "Payoffs",
+     "type": "array"
+    },
+    "emotion": {
+     "$ref": "#/$defs/EmotionCurve"
+    },
+    "storyTime": {
+     "$ref": "#/$defs/StoryTime"
+    }
+   },
+   "required": [
+    "oneLine",
+    "narrativeOrder",
+    "events",
+    "stateChanges",
+    "facts",
+    "knowledge",
+    "threads",
+    "hooks",
+    "payoffs",
+    "emotion"
+   ],
+   "title": "ChapterCard",
+   "type": "object"
+  },
+  "qualityReport": {
+   "$defs": {
+    "CriticSummary": {
+     "additionalProperties": false,
+     "description": "编辑评审的结果摘要：只有结论与问题，没有评分。",
+     "properties": {
+      "status": {
+       "enum": [
+        "available",
+        "partial",
+        "unavailable",
+        "not_run",
+        "failed"
+       ],
+       "title": "Status",
+       "type": "string"
+      },
+      "errorCode": {
+       "maxLength": 120,
+       "title": "Errorcode",
+       "type": "string"
+      },
+      "retryable": {
+       "title": "Retryable",
+       "type": "boolean"
+      },
+      "persona": {
+       "maxLength": 120,
+       "title": "Persona",
+       "type": "string"
+      },
+      "summary": {
+       "maxLength": 30000,
+       "title": "Summary",
+       "type": "string"
+      },
+      "error": {
+       "maxLength": 120,
+       "title": "Error",
+       "type": "string"
+      },
+      "revisedIssueIds": {
+       "description": "兼容旧报告：仅表示曾尝试修订，不表示问题已解决",
+       "items": {
+        "description": "按工具返回的原始文本编号传入，不改成数字",
+        "maxLength": 160,
+        "minLength": 1,
+        "type": "string"
+       },
+       "maxItems": 60,
+       "title": "Revisedissueids",
+       "type": "array"
+      },
+      "revisionAssessment": {
+       "$ref": "#/$defs/RevisionAssessment"
+      }
+     },
+     "required": [
+      "status"
+     ],
+     "title": "CriticSummary",
+     "type": "object"
+    },
+    "QualityIssue": {
+     "additionalProperties": false,
+     "properties": {
+      "id": {
+       "description": "按工具返回的原始文本编号传入，不改成数字",
+       "maxLength": 160,
+       "minLength": 1,
+       "title": "Id",
+       "type": "string"
+      },
+      "source": {
+       "enum": [
+        "rule",
+        "critic"
+       ],
+       "title": "Source",
+       "type": "string"
+      },
+      "code": {
+       "maxLength": 120,
+       "title": "Code",
+       "type": "string"
+      },
+      "dimension": {
+       "maxLength": 120,
+       "title": "Dimension",
+       "type": "string"
+      },
+      "level": {
+       "description": "block 只用于结构与数据完整性问题；语义判断只能是 suspect 或 notice",
+       "enum": [
+        "block",
+        "suspect",
+        "notice"
+       ],
+       "title": "Level",
+       "type": "string"
+      },
+      "message": {
+       "maxLength": 30000,
+       "title": "Message",
+       "type": "string"
+      },
+      "paragraphs": {
+       "items": {
+        "minimum": 0,
+        "type": "integer"
+       },
+       "maxItems": 50,
+       "title": "Paragraphs",
+       "type": "array"
+      },
+      "quotes": {
+       "description": "suspect 至少两处：状态来源与本章原文",
+       "items": {
+        "description": "来源原文中连续存在的摘录，不改字、不拼接；宿主核对不到原文即降为待核实",
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "maxItems": 10,
+       "title": "Quotes",
+       "type": "array"
+      },
+      "fix": {
+       "maxLength": 30000,
+       "title": "Fix",
+       "type": "string"
+      },
+      "metrics": {
+       "additionalProperties": {
+        "minimum": 0,
+        "type": "number"
+       },
+       "title": "Metrics",
+       "type": "object"
+      },
+      "observation": {
+       "description": "程序检测到的模式线索，尚不构成阅读问题；需要结合语境复核",
+       "title": "Observation",
+       "type": "boolean"
+      },
+      "readerEffect": {
+       "description": "具体如何打断理解、削弱人物可信度或消耗阅读期待",
+       "maxLength": 30000,
+       "title": "Readereffect",
+       "type": "string"
+      },
+      "impact": {
+       "enum": [
+        "major",
+        "minor"
+       ],
+       "title": "Impact",
+       "type": "string"
+      },
+      "repairMode": {
+       "description": "prose_only 为语言修订；draft_edit 为不改变已有事实、主线与本章目标的草稿返工；author_decision 为会改变作者已定事实、增加剧情事件或重大取舍；不成立或仅观察用 none",
+       "enum": [
+        "prose_only",
+        "draft_edit",
+        "author_decision",
+        "none"
+       ],
+       "title": "Repairmode",
+       "type": "string"
+      },
+      "evidenceStatus": {
+       "enum": [
+        "verified",
+        "unlocated"
+       ],
+       "title": "Evidencestatus",
+       "type": "string"
+      },
+      "repairRanges": {
+       "description": "需要联动改写时列出最小完整叙述单元，包含引文段及必须一起调整的邻段，避免只改单句造成上下文重复或断裂；无需联动可省略",
+       "items": {
+        "$ref": "#/$defs/RepairRange"
+       },
+       "maxItems": 10,
+       "title": "Repairranges",
+       "type": "array"
+      }
+     },
+     "required": [
+      "id",
+      "source",
+      "code",
+      "dimension",
+      "level",
+      "message",
+      "paragraphs",
+      "quotes"
+     ],
+     "title": "QualityIssue",
+     "type": "object"
+    },
+    "QualityMetrics": {
+     "additionalProperties": false,
+     "description": "程序量出来的数字：结构计数与文风指纹。只给人看，不进提示词，不作关卡。",
+     "properties": {
+      "words": {
+       "minimum": 0,
+       "title": "Words",
+       "type": "integer"
+      },
+      "paragraphs": {
+       "minimum": 0,
+       "title": "Paragraphs",
+       "type": "integer"
+      },
+      "repeatedParagraphs": {
+       "minimum": 0,
+       "title": "Repeatedparagraphs",
+       "type": "integer"
+      },
+      "estimatedTokens": {
+       "minimum": 0,
+       "title": "Estimatedtokens",
+       "type": "integer"
+      },
+      "avgParagraphLen": {
+       "minimum": 0,
+       "title": "Avgparagraphlen",
+       "type": "number"
+      },
+      "paragraphLenStd": {
+       "minimum": 0,
+       "title": "Paragraphlenstd",
+       "type": "number"
+      },
+      "dialogueRatio": {
+       "minimum": 0,
+       "title": "Dialogueratio",
+       "type": "number"
+      },
+      "sentenceLenStd": {
+       "minimum": 0,
+       "title": "Sentencelenstd",
+       "type": "number"
+      },
+      "fingerprint": {
+       "additionalProperties": {
+        "minimum": 0,
+        "type": "number"
+       },
+       "description": "文风指纹：句长、句长变异、长短句占比、段长、单句段、段末短句、对白占比、各类标点每千字、比喻词每千字、“的”每百字",
+       "title": "Fingerprint",
+       "type": "object"
+      }
+     },
+     "required": [
+      "words",
+      "paragraphs",
+      "repeatedParagraphs",
+      "estimatedTokens"
+     ],
+     "title": "QualityMetrics",
+     "type": "object"
+    },
+    "RepairRange": {
+     "additionalProperties": false,
+     "properties": {
+      "start": {
+       "minimum": 0,
+       "title": "Start",
+       "type": "integer"
+      },
+      "end": {
+       "description": "含末段；连续修订单元必须含该问题至少一处有效引文定位",
+       "minimum": 0,
+       "title": "End",
+       "type": "integer"
+      }
+     },
+     "required": [
+      "start",
+      "end"
+     ],
+     "title": "RepairRange",
+     "type": "object"
+    },
+    "RevisionAssessment": {
+     "additionalProperties": false,
+     "properties": {
+      "progress": {
+       "enum": [
+        "improved",
+        "unchanged",
+        "regressed"
+       ],
+       "title": "Progress",
+       "type": "string"
+      },
+      "factsPreserved": {
+       "title": "Factspreserved",
+       "type": "boolean"
+      },
+      "withinScope": {
+       "title": "Withinscope",
+       "type": "boolean"
+      },
+      "reason": {
+       "maxLength": 30000,
+       "title": "Reason",
+       "type": "string"
+      },
+      "resolvedIssueIds": {
+       "items": {
+        "description": "按工具返回的原始文本编号传入，不改成数字",
+        "maxLength": 160,
+        "minLength": 1,
+        "type": "string"
+       },
+       "title": "Resolvedissueids",
+       "type": "array"
+      }
+     },
+     "required": [
+      "progress",
+      "factsPreserved",
+      "withinScope",
+      "reason",
+      "resolvedIssueIds"
+     ],
+     "title": "RevisionAssessment",
+     "type": "object"
+    },
+    "StyleDrift": {
+     "additionalProperties": false,
+     "description": "生成稿指纹与文风基线的偏移：温度计，只在界面提示，不拦保存，不进评审。",
+     "properties": {
+      "baseline": {
+       "maxLength": 120,
+       "title": "Baseline",
+       "type": "string"
+      },
+      "items": {
+       "items": {
+        "$ref": "#/$defs/StyleDriftItem"
+       },
+       "maxItems": 30,
+       "title": "Items",
+       "type": "array"
+      },
+      "flagged": {
+       "minimum": 0,
+       "title": "Flagged",
+       "type": "integer"
+      },
+      "note": {
+       "maxLength": 30000,
+       "title": "Note",
+       "type": "string"
+      }
+     },
+     "required": [
+      "baseline",
+      "items",
+      "flagged"
+     ],
+     "title": "StyleDrift",
+     "type": "object"
+    },
+    "StyleDriftItem": {
+     "additionalProperties": false,
+     "properties": {
+      "key": {
+       "maxLength": 120,
+       "title": "Key",
+       "type": "string"
+      },
+      "label": {
+       "maxLength": 120,
+       "title": "Label",
+       "type": "string"
+      },
+      "value": {
+       "title": "Value",
+       "type": "number"
+      },
+      "baseline": {
+       "title": "Baseline",
+       "type": "number"
+      },
+      "ratio": {
+       "description": "相对偏差，(value-baseline)/baseline",
+       "title": "Ratio",
+       "type": "number"
+      },
+      "flagged": {
+       "title": "Flagged",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "key",
+      "label",
+      "value",
+      "baseline",
+      "flagged"
+     ],
+     "title": "StyleDriftItem",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "description": "绑定到具体成果版本的体检报告；成果内容变化后由宿主标记过期。",
+   "properties": {
+    "version": {
+     "const": 1,
+     "title": "Version",
+     "type": "integer"
+    },
+    "artifactId": {
+     "description": "按工具返回的原始文本编号传入，不改成数字",
+     "maxLength": 160,
+     "minLength": 1,
+     "title": "Artifactid",
+     "type": "string"
+    },
+    "reviewedRevision": {
+     "minimum": 0,
+     "title": "Reviewedrevision",
+     "type": "integer"
+    },
+    "reviewedFingerprint": {
+     "maxLength": 120,
+     "title": "Reviewedfingerprint",
+     "type": "string"
+    },
+    "rulesetId": {
+     "description": "按工具返回的原始文本编号传入，不改成数字",
+     "maxLength": 160,
+     "minLength": 1,
+     "title": "Rulesetid",
+     "type": "string"
+    },
+    "chapterId": {
+     "description": "按工具返回的原始文本编号传入，不改成数字",
+     "maxLength": 160,
+     "minLength": 1,
+     "title": "Chapterid",
+     "type": "string"
+    },
+    "profileId": {
+     "description": "按工具返回的原始文本编号传入，不改成数字",
+     "maxLength": 160,
+     "minLength": 1,
+     "title": "Profileid",
+     "type": "string"
+    },
+    "issues": {
+     "items": {
+      "$ref": "#/$defs/QualityIssue"
+     },
+     "maxItems": 200,
+     "title": "Issues",
+     "type": "array"
+    },
+    "metrics": {
+     "$ref": "#/$defs/QualityMetrics"
+    },
+    "critic": {
+     "$ref": "#/$defs/CriticSummary"
+    },
+    "writingBasisFingerprint": {
+     "maxLength": 120,
+     "title": "Writingbasisfingerprint",
+     "type": "string"
+    },
+    "styleDrift": {
+     "$ref": "#/$defs/StyleDrift"
+    }
+   },
+   "required": [
+    "version",
+    "artifactId",
+    "reviewedRevision",
+    "reviewedFingerprint",
+    "rulesetId",
+    "profileId",
+    "issues",
+    "metrics"
+   ],
+   "title": "QualityReport",
+   "type": "object"
+  }
+ }
+}

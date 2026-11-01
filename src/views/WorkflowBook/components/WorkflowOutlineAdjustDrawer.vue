@@ -1,6 +1,8 @@
 <template>
   <WorkflowAdjustDrawer
     :visible="visible"
+    :run-id="runId"
+    recovery-key="step:outline_adjust"
     :phase="phase"
     input-title="按要求调整大纲"
     generating-title="正在生成调整候选"
@@ -113,6 +115,7 @@ import type {
 const INSTRUCTION_MAX = 500
 
 const props = withDefaults(defineProps<{
+  runId?: number
   visible: boolean
   phase: WorkflowAdjustPhase
   modelName?: string
@@ -122,6 +125,7 @@ const props = withDefaults(defineProps<{
   errorMessage?: string
 }>(), {
   modelName: '',
+  runId: 0,
   percent: 0,
   stages: () => [],
   candidate: null,
@@ -250,6 +254,12 @@ watch(() => props.candidate, next => {
 })
 
 defineExpose({
+  restoreRequest: (request: WorkflowOutlineAdjustRequest) => {
+    scope.value = request.scope
+    instruction.value = request.instruction
+    preserve.value = [...request.preserve]
+    allowVolumeTitleChange.value = request.allowVolumeTitleChange
+  },
   // 应用之后只清掉已生效的要求，范围和保留项保留：
   // 连着调几轮是常态，每次都要重选范围很烦。
   resetDraft: () => {

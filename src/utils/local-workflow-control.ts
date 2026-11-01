@@ -11,22 +11,24 @@ import { getLocalLibraryStorage } from '@/storage/local-library'
 import { createLocalEntityId, nowIso, LOCAL_USER_ID } from '@/storage/local-library-utils'
 import {
   readLocalWorkflowRun,
+  completeWorkflowAiDraft,
   readRepairedLocalTask,
   writeLocalWorkflowRun,
   writeLocalWorkflowTask,
   type LocalWorkflowRun,
 } from '@/storage/local-workflow'
-import { parseAiJson } from '@/utils/ai-json'
+import { parseWorkflowJson, requestWorkflowAi, WorkflowAiError } from '@/utils/workflow-ai'
 import { getWritingStorage } from '@/storage'
 import { workflowResumeText } from '@/utils/workflow-local-draft'
 import { countWords } from '@/utils/word-count'
-import { requestLocalChatCompletion } from '@/utils/local-ai-client'
 import { createLocalBookFromRun } from '@/utils/local-workflow-book'
 import {
   buildLocalWorkflowEvent,
   emitLocalWorkflowEvent,
   findLiveLocalTaskForRun,
   getLiveLocalTask,
+  registerLiveLocalTask,
+  unregisterLiveLocalTask,
 } from '@/utils/local-workflow-runtime'
 import {
   launchLocalBookWriter,
@@ -69,6 +71,38 @@ const clearReviewChapterStatus = async (task: WorkflowTask, next: string | null)
   )
   if (!chapterId) return
   await getLocalLibraryStorage().updateLocalChapter({ id: chapterId, workflowStatus: next })
+}
+
+/** 模型请求也登记到任务控制器，停止后不能再出现迟到的剧情候选。 */
+const withModelTask = async <T,>(
+  task: WorkflowTask,
+  action: (signal: AbortSignal) => Promise<T>
+): Promise<T> => {
+  if (findLiveLocalTaskForRun(Number(task.runId))) throw new Error('该工作流已有生成任务在运行')
+  const controller = new AbortController()
+  registerLiveLocalTask({
+    taskId: task.id,
+    runId: Number(task.runId),
+    kind: 'rewrite',
+    requestCancel: () => controller.abort()
+  })
+  try {
+    const result = await action(controller.signal)
+    if (controller.signal.aborted) throw new DOMException('已取消', 'AbortError')
+    return result
+  } catch (error) {
+    const canceled = controller.signal.aborted
+    await writeLocalWorkflowTask({
+      ...task,
+      status: canceled ? 'canceled' : 'failed',
+      canCancel: false,
+      errorMessage: canceled ? null : error instanceof Error ? error.message : '生成失败，草稿已保留',
+      errorCode: error instanceof WorkflowAiError ? error.code : canceled ? 'CANCELED' : 'UNKNOWN'
+    })
+    throw error
+  } finally {
+    unregisterLiveLocalTask(task.id)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +180,7 @@ export const pauseLocalWorkflowTask = async (data: { taskId: number }) => {
   if (live?.requestPause && ['queued', 'running'].includes(String(task.status))) {
     live.requestPause()
     const snapshot = { ...task, requestedAction: 'pause' as const }
-    await writeLocalWorkflowTask(snapshot)
+    // 活任务自行保存终态，避免这个旧快照在取消完成后覆盖终态。
     return { data: snapshot }
   }
   return { data: task }
@@ -199,7 +233,7 @@ export const cancelLocalWorkflowTask = async (data: { taskId: number }) => {
   if (live) {
     live.requestCancel()
     const snapshot = { ...task, requestedAction: 'cancel' as const }
-    await writeLocalWorkflowTask(snapshot)
+    // 活任务自行保存终态，避免这个旧快照在取消完成后覆盖终态。
     return { data: snapshot }
   }
   if (['canceled', 'succeeded'].includes(String(task.status))) return { data: task }
@@ -283,7 +317,11 @@ export const reviewLocalWorkflowTask = async (data: {
   if (data.rewriteMode === 'plot') {
     const modelCode = await resolveWorkflowModelCode(run)
     const stored = await readChapterText(String(run.bookId), chapterId)
-    const raw = await requestLocalChatCompletion({
+    const raw = await withModelTask(task, signal => requestWorkflowAi({
+      runId: Number(run.id),
+      key: `plot:${chapterId}`,
+      requiredKeys: ['title', 'summary'],
+      signal,
       scene: 'workflow_plot_adjust',
       sceneLabel: '建书·剧情调整',
       modelCode,
@@ -294,8 +332,8 @@ export const reviewLocalWorkflowTask = async (data: {
           '用户要求': feedback || '换一个更有张力的剧情走向',
         },
       }),
-    })
-    const parsed = parseAiJson(raw, ['title', 'summary'])
+    }))
+    const parsed = parseWorkflowJson(raw, ['title', 'summary'])
     const title = asText(parsed?.title)
     const summary = asText(parsed?.summary)
     if (!title || !summary) throw new Error('新章纲生成失败，请重试')
@@ -314,6 +352,7 @@ export const reviewLocalWorkflowTask = async (data: {
       },
     }
     await writeLocalWorkflowTask(next)
+    await completeWorkflowAiDraft(Number(run.id), `plot:${chapterId}`)
     return { data: next }
   }
 
@@ -485,7 +524,11 @@ export const rewriteLocalWorkflowChapter = async (data: {
   if (data.mode === 'plot') {
     // 剧情模式：先出新章纲候选，任务停在待确认；正文在用户确认后才动
     const modelCode = await resolveWorkflowModelCode(run)
-    const raw = await requestLocalChatCompletion({
+    const raw = await withModelTask(task, signal => requestWorkflowAi({
+      runId: Number(run.id),
+      key: `plot:${chapter.id}`,
+      requiredKeys: ['title', 'summary'],
+      signal,
       scene: 'workflow_plot_adjust',
       sceneLabel: '建书·剧情调整',
       modelCode,
@@ -496,8 +539,8 @@ export const rewriteLocalWorkflowChapter = async (data: {
           '用户要求': instruction || '换一个更有张力的剧情走向',
         },
       }),
-    })
-    const parsed = parseAiJson(raw, ['title', 'summary'])
+    }))
+    const parsed = parseWorkflowJson(raw, ['title', 'summary'])
     const title = asText(parsed?.title)
     const summary = asText(parsed?.summary)
     if (!title || !summary) {
@@ -520,6 +563,7 @@ export const rewriteLocalWorkflowChapter = async (data: {
       },
     }
     await writeLocalWorkflowTask(next)
+    await completeWorkflowAiDraft(Number(run.id), `plot:${chapter.id}`)
     return { data: next }
   }
 
@@ -598,7 +642,10 @@ export const polishLocalWorkflowParagraph = async (data: {
   const issue = (task?.payload?.qualityReview?.issues || task?.payload?.qualitySuggestions?.issues || []).find(
     item => `${item.source}:${item.code}:${item.message}` === data.issueKey
   )
-  const polished = await requestLocalChatCompletion({
+  const polished = await requestWorkflowAi({
+    runId: Number(run?.id || task?.runId || 0),
+    key: `polish:${data.chapterId}:${data.issueKey}`,
+    format: 'text',
     scene: 'workflow_paragraph_polish',
     sceneLabel: '建书·段落润色',
     modelCode,

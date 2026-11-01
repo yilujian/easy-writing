@@ -35,7 +35,7 @@
           <i v-else class="fa-solid fa-book-open-reader"></i>
           {{ bookReport ? '查看全书报告' : '生成全书报告' }}
         </button>
-        <button v-if="desktop" class="ink-btn ink-btn-outline" type="button" @click="agentResultsVisible = true">拆书章节卡与报告</button>
+        <button v-if="desktop" class="ink-btn ink-btn-outline" type="button" @click="agentResultsVisible = true">历史章节卡与报告</button>
         <button v-if="desktop" class="ink-btn ink-btn-outline" type="button" @click="pacingVisible = true">
           <i class="fa-solid fa-chart-column"></i>
           节奏与对比
@@ -54,7 +54,7 @@
     </header>
 
     <p v-if="projectDetail?.agentIndexedChapters" class="agent-results-notice">
-      已保存 {{ projectDetail.agentIndexedChapters }}/{{ totalCount }} 章的 Agent 章节卡。
+      已保存 {{ projectDetail.agentIndexedChapters }}/{{ totalCount }} 章的历史章节卡。
       <button class="ink-btn ink-btn-outline" @click="agentResultsVisible = true">查看拆书结果</button>
       下方为逐段深拆工作台，使用独立的分析结果。
     </p>
@@ -943,7 +943,20 @@ const handleBack = () => {
   router.push('/bookBreakdown')
 }
 
+let sharedRefreshTimer: ReturnType<typeof setTimeout> | undefined
+const onSharedBreakdownChanged = (event: Event) => {
+  if ((event as CustomEvent<{ projectId: number }>).detail?.projectId !== projectId.value) return
+  clearTimeout(sharedRefreshTimer)
+  sharedRefreshTimer = setTimeout(() => {
+    const previousStatus = chapterDetail.value?.status
+    void Promise.all([refreshProject(), refreshChapters()]).then(async () => {
+      const selected = chapterList.value.find(c => c.id === selectedChapterId.value)
+      if (selected?.status === 'done' && previousStatus !== 'done') await loadChapterDetail(selected.id)
+    }).catch(error => showApiError(error, '更新拆书进度失败'))
+  }, 100)
+}
 onMounted(() => {
+  window.addEventListener('ew-breakdown-tasks-changed', onSharedBreakdownChanged)
   bootstrapWorkbench()
   document.addEventListener('click', closeContextMenu)
 })
@@ -968,6 +981,8 @@ onBeforeRouteLeave(() => {
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(sharedRefreshTimer)
+  window.removeEventListener('ew-breakdown-tasks-changed', onSharedBreakdownChanged)
   pageActive.value = false
   stopProjectPolling()
   document.removeEventListener('click', closeContextMenu)
@@ -1007,7 +1022,7 @@ onBeforeUnmount(() => {
 
 .back-btn {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .book-icon {
@@ -1028,13 +1043,13 @@ onBeforeUnmount(() => {
 }
 
 .book-title {
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale, 1));
   font-weight: 600;
   font-family: 'Noto Serif SC', serif;
 }
 
 .book-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1046,7 +1061,7 @@ onBeforeUnmount(() => {
 }
 
 .book-tag {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   padding: 3px 8px;
   border-radius: 999px;
   background: var(--tag-bg);
@@ -1097,7 +1112,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-font-scale, 1));
   background: color-mix(in srgb, var(--ink-accent) 12%, transparent);
   color: var(--ink-accent);
 }
@@ -1108,13 +1123,13 @@ onBeforeUnmount(() => {
 }
 
 .workbench-state .state-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
 
 .workbench-state .state-desc {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1143,12 +1158,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
 .col-count {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1159,7 +1174,7 @@ onBeforeUnmount(() => {
 }
 
 .filter-chip {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--tag-border);
@@ -1188,7 +1203,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   border-bottom: 1px solid var(--ui-border);
   cursor: pointer;
@@ -1219,7 +1234,7 @@ onBeforeUnmount(() => {
 
 .chap-error {
   flex: 1;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--el-color-danger, var(--state-danger));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1228,7 +1243,7 @@ onBeforeUnmount(() => {
 
 .chap-retry {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   padding: 2px 10px;
   border-radius: 6px;
   border: 1px solid var(--el-color-danger, var(--state-danger));
@@ -1253,7 +1268,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1289,7 +1304,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: transparent;
   text-align: left;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   cursor: pointer;
 }
@@ -1315,7 +1330,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1341,12 +1356,12 @@ onBeforeUnmount(() => {
 }
 
 .reader-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 600;
 }
 
 .reader-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1355,7 +1370,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   padding: 26px 40px;
   overflow-y: auto;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   line-height: 1.8;
   color: var(--ink-main);
 }
@@ -1395,7 +1410,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
@@ -1406,7 +1421,7 @@ onBeforeUnmount(() => {
 
 .insight-sub {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1417,7 +1432,7 @@ onBeforeUnmount(() => {
 }
 
 .pane-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -1427,7 +1442,7 @@ onBeforeUnmount(() => {
 }
 
 .summary-title {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
   margin-bottom: 8px;
   color: var(--ink-main);
@@ -1438,7 +1453,7 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background: var(--panel-bg);
   border: 1px solid var(--ui-border);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.6;
 }
@@ -1459,7 +1474,7 @@ onBeforeUnmount(() => {
 
 .dim-key {
   display: block;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
   margin-bottom: 4px;
@@ -1469,12 +1484,12 @@ onBeforeUnmount(() => {
   margin-left: 6px;
   font-style: normal;
   font-weight: 400;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .dim-desc {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.6;
 }
@@ -1507,19 +1522,19 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
   margin-bottom: 6px;
 }
 
 .card-range {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
 .card-text {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   line-height: 1.6;
 }
@@ -1532,7 +1547,7 @@ onBeforeUnmount(() => {
 }
 
 .tag {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   padding: 2px 6px;
   border-radius: 6px;
   background: var(--tag-bg);
@@ -1600,7 +1615,7 @@ onBeforeUnmount(() => {
 
   .pane-title {
     margin: 18px 0 10px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
   }
@@ -1623,7 +1638,7 @@ onBeforeUnmount(() => {
   .dim-key {
     font-weight: 600;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     em {
       margin-left: 6px;
@@ -1639,7 +1654,7 @@ onBeforeUnmount(() => {
 
   .dim-desc {
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
   }
 }
@@ -1652,7 +1667,7 @@ onBeforeUnmount(() => {
   background: var(--card-bg);
   color: var(--ink-sec);
   line-height: 1.8;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .pacing-curve {
@@ -1687,7 +1702,7 @@ onBeforeUnmount(() => {
   margin: 0;
   padding-left: 20px;
   color: var(--ink-sec);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 2;
 }
 </style>

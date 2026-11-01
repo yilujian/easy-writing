@@ -125,6 +125,7 @@ const {
   fontBold,
   fontColor,
   fontLineHeight,
+  isFirstLineIndent,
   writingScrollRatio,
   writingScrollSource
 } = storeToRefs(store)
@@ -165,7 +166,8 @@ const readerStyle = computed(() => ({
   fontSize: `${fontSize.value}px`,
   fontWeight: fontBold.value ? '700' : '400',
   color: fontColor.value || 'var(--preview-reader-text)',
-  lineHeight: String(fontLineHeight.value)
+  lineHeight: String(fontLineHeight.value),
+  '--editor-text-indent': isFirstLineIndent.value ? '2em' : '0'
 }))
 const paragraphs = computed(() =>
   activeChapterTextContent.value
@@ -313,12 +315,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 600;
 
   small {
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-weight: 400;
   }
 }
@@ -352,7 +354,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 14px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   > span {
     flex: 0 0 56px;
@@ -372,13 +374,13 @@ onBeforeUnmount(() => {
     border-radius: 6px;
     background: var(--input-bg);
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
     transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 
     i {
       margin-right: 5px;
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
     }
 
     &:hover,
@@ -397,11 +399,11 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   strong {
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
   }
 }
@@ -424,7 +426,7 @@ onBeforeUnmount(() => {
     border-radius: 6px;
     background: var(--input-bg);
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
     transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 
@@ -576,7 +578,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   color: var(--preview-reader-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .mobile-status {
@@ -625,7 +627,7 @@ onBeforeUnmount(() => {
   h1 {
     margin: 0 0 24px;
     color: inherit;
-    font-size: 21px;
+    font-size: calc(21px * var(--ui-font-scale, 1));
     line-height: 1.35;
     font-weight: 700;
   }
@@ -639,7 +641,7 @@ onBeforeUnmount(() => {
     font-size: inherit;
     font-weight: inherit;
     line-height: inherit;
-    text-indent: 2em;
+    text-indent: var(--editor-text-indent, 2em);
     letter-spacing: 0;
     word-break: break-word;
   }
@@ -654,10 +656,10 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 10px;
   color: var(--preview-reader-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   i {
-    font-size: 24px;
+    font-size: calc(24px * var(--ui-font-scale, 1));
   }
 }
 

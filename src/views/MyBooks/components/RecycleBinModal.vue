@@ -215,7 +215,7 @@ const handlePurge = async (book: Book) => {
 }
 
 .book-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
   margin: 0;
@@ -225,18 +225,18 @@ const handlePurge = async (book: Book) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .word-count {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .delete-time {
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin: 0;
 
@@ -292,7 +292,7 @@ const handlePurge = async (book: Book) => {
     justify-content: center;
 
     i {
-      font-size: 42px;
+      font-size: calc(42px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       opacity: 0.6;
       position: relative;
@@ -314,14 +314,14 @@ const handlePurge = async (book: Book) => {
   }
 
   .empty-text {
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-main);
     margin-bottom: 8px;
   }
 
   .empty-subtext {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     opacity: 0.8;
     font-style: italic;

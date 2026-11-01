@@ -346,6 +346,7 @@ onBeforeUnmount(() => {
 }
 
 .ew-modal-container {
+  max-width: calc(100vw - 24px);
   max-height: 95vh;
   display: flex;
   flex-direction: column;
@@ -407,7 +408,7 @@ onBeforeUnmount(() => {
   }
 
   .ew-modal-title {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
     letter-spacing: 0.1em;

@@ -278,7 +278,7 @@ fetchInspirations()
   border: 1px solid color-mix(in srgb, var(--ink-main) 10%, var(--ui-border));
   padding: 0;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   color: var(--ink-main);
   line-height: 1.6;
   min-height: clamp(100px, 14vh, 142px);
@@ -296,7 +296,7 @@ fetchInspirations()
 .note-footer {
   flex: 0 0 auto;
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   text-align: right;
   white-space: nowrap;

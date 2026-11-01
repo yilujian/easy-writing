@@ -33,6 +33,11 @@
             导入
           </button>
 
+          <button v-if="continueBook" class="ink-btn ink-btn-outline" type="button" title="继续上次的听书" @click="continueListening">
+            <i class="fa-solid fa-headphones"></i>
+            继续听
+          </button>
+
         </div>
 
         <div class="toolbar-right">
@@ -214,6 +219,10 @@ v-for="option in sortOptions" :key="option.value" :command="option.value"
                           <i class="fa-solid fa-pen-to-square"></i>
                           编辑作品
                         </el-dropdown-item>
+                        <el-dropdown-item class="listen-item" @click.stop="handleListen(work)">
+                          <i class="fa-solid fa-headphones"></i>
+                          听书
+                        </el-dropdown-item>
                         <el-dropdown-item class="export-item" @click.stop="handleExport(work)">
                           <i class="fa-solid fa-file-export"></i>
                           导出作品
@@ -289,6 +298,7 @@ import { Book, BookGroup } from "@/types"
 import { CATEGORY_TAG_MAP } from '@/utils/constants'
 import { useThemeStore } from '@/stores/theme'
 import { getLocalLibraryStorage } from '@/storage/local-library'
+import { readLastListeningBook } from '@/storage/listening-position'
 
 const wordCounter = useWordCount()
 
@@ -452,9 +462,32 @@ const handleGroupDeleted = (groupId: string) => {
   }
 }
 
+const continueBook = ref<Book | null>(null)
+
+const refreshContinueBook = async () => {
+  const id = Number(readLastListeningBook())
+  if (!Number.isFinite(id) || !id) {
+    continueBook.value = null
+    return
+  }
+  try {
+    const detail = await getLocalLibraryStorage().getLocalBookDetail(id)
+    continueBook.value = detail ? detail as Book : null
+  } catch {
+    continueBook.value = null
+  }
+}
+
+const continueListening = () => {
+  const id = continueBook.value?.id
+  if (!id) return
+  router.push({ name: 'Listen', params: { bookId: id } })
+}
+
 // 初始化：先并行拉列表与分组渲染首屏，认领检测在列表就绪后异步执行
 onMounted(() => {
   void refreshBooks()
+  void refreshContinueBook()
   if (route.query.create === '1' || route.query.create === 'true') {
     handleCreate()
     const nextQuery = { ...route.query }
@@ -501,6 +534,13 @@ const formatWordCount = (value?: number | null) => {
 const openWriting = (work: Book) => {
   router.push({
     name: 'Writing',
+    params: { bookId: work.id }
+  })
+}
+
+const handleListen = (work: Book) => {
+  router.push({
+    name: 'Listen',
     params: { bookId: work.id }
   })
 }
@@ -688,7 +728,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
 
         > i {
           color: var(--ink-sec);
-          font-size: 13px;
+          font-size: calc(13px * var(--ui-font-scale, 1));
           flex-shrink: 0;
         }
 
@@ -702,7 +742,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           appearance: none;
           background: transparent;
           color: var(--ink-main);
-          font-size: 13px;
+          font-size: calc(13px * var(--ui-font-scale, 1));
 
           &:focus {
             border: none;
@@ -734,7 +774,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           }
 
           i {
-            font-size: 12px;
+            font-size: calc(12px * var(--ui-font-scale, 1));
           }
         }
       }
@@ -746,7 +786,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
         background: transparent;
         border: 1px solid transparent;
         color: var(--ink-sec);
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         cursor: pointer;
         transition: all 0.3s ease;
         padding: 6px 12px;
@@ -798,7 +838,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           }
 
           i {
-            font-size: 14px;
+            font-size: calc(14px * var(--ui-font-scale, 1));
           }
         }
       }
@@ -850,12 +890,12 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     color: var(--ink-main);
     cursor: pointer;
     transition: all 0.25s ease;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     white-space: nowrap;
     flex-shrink: 0;
 
     i {
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
     }
 
@@ -875,7 +915,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
       background: color-mix(in srgb, var(--ink-sec) 12%, transparent);
       color: var(--ink-sec);
       font-style: normal;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       line-height: 1.25;
       text-align: center;
     }
@@ -958,7 +998,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-font-scale, 1));
     font-weight: 700;
     color: var(--ink-main);
 
@@ -989,7 +1029,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     border: none;
     background: transparent;
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
     padding: 4px 0;
     transition: color 0.2s ease;
@@ -1006,7 +1046,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     .caret-icon {
       margin-left: 2px;
       color: currentColor;
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
     }
   }
 }
@@ -1114,7 +1154,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
             width: 100%;
             height: 100%;
             box-sizing: border-box;
-            font-size: 17px;
+            font-size: calc(17px * var(--ui-font-scale, 1));
             font-weight: 800;
             color: var(--ink-main);
             text-align: center;
@@ -1130,12 +1170,12 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           }
 
           .placeholder-title.is-long {
-            font-size: 15px;
+            font-size: calc(15px * var(--ui-font-scale, 1));
             letter-spacing: 1px;
           }
 
           .placeholder-title.is-compact {
-            font-size: 13px;
+            font-size: calc(13px * var(--ui-font-scale, 1));
             letter-spacing: 0;
             line-height: 1.22;
           }
@@ -1258,7 +1298,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
         width: 100%;
         height: 100%;
         box-sizing: border-box;
-        font-size: 15px;
+        font-size: calc(15px * var(--ui-font-scale, 1));
         color: var(--ink-main);
         text-align: center;
         font-weight: 800;
@@ -1274,12 +1314,12 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
       }
 
       .placeholder-title.is-long {
-        font-size: 13px;
+        font-size: calc(13px * var(--ui-font-scale, 1));
         letter-spacing: 1px;
       }
 
       .placeholder-title.is-compact {
-        font-size: 11.5px;
+        font-size: calc(11.5px * var(--ui-font-scale, 1));
         letter-spacing: 0;
         line-height: 1.22;
       }
@@ -1309,7 +1349,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
       }
 
       .work-title {
-        font-size: 18px;
+        font-size: calc(18px * var(--ui-font-scale, 1));
         font-weight: bold;
         color: var(--ink-main);
         letter-spacing: 1px;
@@ -1330,7 +1370,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     }
 
     .work-description {
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       line-height: 1.6;
       margin-bottom: 12px;
@@ -1343,7 +1383,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     }
 
     .work-meta {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       font-family: system-ui, sans-serif;
       opacity: 0.7;
@@ -1358,7 +1398,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
         gap: 6px;
 
         i {
-          font-size: 12px;
+          font-size: calc(12px * var(--ui-font-scale, 1));
         }
       }
     }
@@ -1392,7 +1432,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           //   padding: 6px 12px;
           //   border: 1px solid var(--ui-border);
           //   border-radius: 4px;
-          //   font-size: 12px;
+          //   font-size: calc(12px * var(--ui-font-scale, 1));
           //   color: var(--ink-sec);
           //   background: transparent;
           //   cursor: pointer;
@@ -1405,7 +1445,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           //   }
 
           //   i {
-          //     font-size: 12px;
+          //     font-size: calc(12px * var(--ui-font-scale, 1));
           //   }
           // }
         }
@@ -1417,7 +1457,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
           color: var(--ink-sec);
           cursor: pointer;
           transition: color 0.3s ease;
-          font-size: 14px;
+          font-size: calc(14px * var(--ui-font-scale, 1));
 
           &:hover {
             color: var(--ink-main);
@@ -1588,7 +1628,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
 @media (max-width: 420px) {
   .ink-btn-action {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
 
     .btn-text {
       display: none;
@@ -1716,7 +1756,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
     justify-content: center;
 
     i {
-      font-size: 48px;
+      font-size: calc(48px * var(--ui-font-scale, 1));
       color: var(--ink-sec);
       opacity: 0.5;
       position: relative;
@@ -1737,7 +1777,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
   }
 
   .empty-title {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-main);
     margin-bottom: 12px;
@@ -1745,7 +1785,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
   }
 
   .empty-desc {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     line-height: 1.8;
     margin-bottom: 32px;
@@ -1754,7 +1794,7 @@ const hasActiveFilter = computed(() => Boolean(searchKeyword.value.trim()) || ac
 
   .large-btn {
     padding: 10px 24px;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
 
     i {
       margin-right: 8px;

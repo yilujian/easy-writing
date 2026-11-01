@@ -38,14 +38,15 @@
   overflow: hidden;
 
   .editor-toolbar {
-    height: 40px;
+    height: calc(40px * var(--ui-control-scale, 1));
+    flex-shrink: 0;
     min-width: 0;
     max-width: 100%;
     display: flex;
     align-items: center;
     position: relative;
     padding: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     background: var(--toolbar-bg, transparent);
     overflow: hidden;
@@ -58,7 +59,7 @@
       align-items: center;
       gap: 18px;
       padding: 0 16px;
-      overflow-x: hidden;
+      overflow-x: auto;
       overflow-y: hidden;
       transition: padding 0.2s ease;
     }
@@ -134,14 +135,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 28px;
+      height: calc(28px * var(--ui-control-scale, 1));
       padding: 0 4px;
       gap: 4px;
       background: none;
       border: none;
       border-radius: 4px;
       color: var(--ink-sec);
-      font-size: 14px;
+      font-size: calc(14px * var(--ui-font-scale, 1));
       line-height: 1;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -160,7 +161,7 @@
       }
 
       i {
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-font-scale, 1));
         line-height: 1;
         display: inline-flex;
         align-items: center;
@@ -180,7 +181,7 @@
     }
 
     &.toolbar-icon-only-mode .toolbar-btn {
-      width: 22px;
+      width: calc(22px * var(--ui-control-scale, 1));
       padding: 0;
       gap: 0;
     }
@@ -195,12 +196,43 @@
   }
 
   .editor-content {
-    /* 明确设置高度，减去工具栏(40px)和状态栏(32px) */
-    height: calc(100% - 40px - 32px);
+    /* 工具栏、状态栏随 UI 字号增长，正文占用剩余高度。 */
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 40px 80px;
     position: relative;
+    // 仅正文区覆盖全局隐藏规则。固定槽宽，不因悬停改变正文行宽。
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+    scrollbar-gutter: stable;
+
+    @supports selector(::-webkit-scrollbar) {
+      // Chromium 的标准属性会覆盖伪元素样式，支持伪元素时交给下面的精细样式。
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+    &::-webkit-scrollbar { width: 12px; height: 0; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-track:hover {
+      background: var(--overlay-hover);
+      background: color-mix(in srgb, var(--ink-main) 12%, transparent);
+    }
+    &::-webkit-scrollbar-thumb {
+      min-height: 40px;
+      border: 4px solid transparent;
+      border-radius: 8px;
+      background-color: var(--scrollbar-thumb);
+      background-color: color-mix(in srgb, var(--scrollbar-thumb) 60%, var(--ink-sec));
+      background-clip: padding-box;
+    }
+    &::-webkit-scrollbar-thumb:hover, &::-webkit-scrollbar-thumb:active {
+      border-width: 3px;
+      background-color: var(--scrollbar-thumb-hover);
+      background-color: color-mix(in srgb, var(--scrollbar-thumb-hover) 40%, var(--ink-main));
+    }
+    @supports not (scrollbar-gutter: stable) { overflow-y: scroll; }
 
     .editor-area-wrapper {
       max-width: 768px;
@@ -297,12 +329,12 @@
           align-items: center;
           justify-content: center;
           color: var(--ink-sec);
-          font-size: 14px;
+          font-size: calc(14px * var(--ui-font-scale, 1));
           gap: 8px;
           pointer-events: none;
 
           i {
-            font-size: 18px;
+            font-size: calc(18px * var(--ui-font-scale, 1));
           }
 
           &.is-loading {
@@ -326,7 +358,7 @@
   .panel-header {
     display: flex;
     justify-content: space-between;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
 
     small {
@@ -345,7 +377,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     &.column {
       flex-direction: column;
@@ -367,14 +399,14 @@
     }
 
     .model-desc {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       margin: 0;
       color: var(--ink-sec);
     }
   }
 
   .config-desc {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     display: flex;
     align-items: center;
@@ -382,7 +414,7 @@
   }
 
   .key-tag {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     padding: 2px 6px;
     border-radius: 6px;
     background: var(--overlay-hover);
@@ -468,8 +500,8 @@
   border-radius: 6px;
   background: var(--popover-bg);
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 
-  strong { font-size: 16px; }
+  strong { font-size: calc(16px * var(--ui-font-scale, 1)); }
   p { margin: 10px 0 16px; line-height: 1.7; color: var(--ink-sec); }
 }

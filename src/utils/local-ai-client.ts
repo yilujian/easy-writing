@@ -1,3 +1,4 @@
+import { beginPetActivity } from '@/desktop-pet/events'
 import type {
   AiThinkingMode,
   UserAiModelSavePayload,
@@ -21,7 +22,7 @@ const REQUEST_TIMEOUT_MS = 20000
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
-const resolveAiFetch = async (): Promise<FetchLike> => {
+export const resolveAiFetch = async (): Promise<FetchLike> => {
   if (isTauriRuntime()) {
     const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
     // 插件会给每个请求自动补 Origin 头（Windows 是 http://tauri.localhost），
@@ -233,7 +234,7 @@ const resolveRequestConfig = (payload: Partial<UserAiModelSavePayload>) => {
 /** 中止判定：浏览器 fetch 抛 DOMException(AbortError)；tauri-plugin-http 中止时
  *  JS 侧抛 Error('Request cancelled')、Rust 侧回字符串 'Request canceled'，三种都得认，
  *  否则桌面端的超时和用户取消会被当成普通失败，界面只看到一句"请求失败" */
-const isAbortError = (error: unknown): boolean => {
+export const isAbortError = (error: unknown): boolean => {
   if (error instanceof DOMException) return error.name === 'AbortError'
   const text = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
   return /request cancel+ed/i.test(text)
@@ -258,7 +259,7 @@ const readableRequestError = (error: unknown): string => {
   return error instanceof Error ? error.message : '请求失败'
 }
 
-const readableHttpError = async (response: Response): Promise<string> => {
+export const readableHttpError = async (response: Response): Promise<string> => {
   let detail = ''
   try {
     const body = await response.json()
@@ -292,35 +293,17 @@ export const testLocalAiModel = async (
   payload: Partial<UserAiModelSavePayload>
 ): Promise<{ data: UserAiModelTestResult }> => {
   const { baseUrl, apiKey, modelCode, provider, thinking, extraParams, scene } = resolveRequestConfig(payload)
-  // 向量模型没有 chat 接口，测试要打 /embeddings；拿对话接口测它只会得到一个误导性的 404
-  const isEmbedding = scene === 'embedding'
-  const url = joinAiUrl(baseUrl, isEmbedding ? 'embeddings' : 'chat/completions')
+  const url = joinAiUrl(baseUrl, 'chat/completions')
   const startedAt = Date.now()
   const result = (ok: boolean, message: string): { data: UserAiModelTestResult } => ({
     data: { ok, message, latency: Date.now() - startedAt, url, testedAt: new Date().toISOString() },
   })
   if (!baseUrl) return result(false, '请先填写接口地址（BaseURL）')
   if (!modelCode) return result(false, '请先填写模型名称（modelCode）')
+  if (scene !== undefined && scene !== 'text' && scene !== 'image') return result(false, '不支持的模型用途，请选择文字或图像生成')
 
   try {
     const aiFetch = await resolveAiFetch()
-    if (isEmbedding) {
-      const response = await withTimeout(signal =>
-        aiFetch(url, {
-          method: 'POST',
-          signal,
-          headers: buildAuthHeaders(apiKey),
-          body: JSON.stringify({ model: modelCode, input: ['连通性测试'], encoding_format: 'float' }),
-        })
-      )
-      if (!response.ok) return result(false, await readableHttpError(response))
-      const body = await response.json().catch(() => null)
-      const vector = Array.isArray(body?.data) ? body.data[0]?.embedding : null
-      if (!Array.isArray(vector) || !vector.length) {
-        return result(false, '接口没有返回向量数据，请确认所选模型是 embedding（向量）类型')
-      }
-      return result(true, `连接成功，向量 ${vector.length} 维`)
-    }
     const response = await withTimeout(signal =>
       aiFetch(url, {
         method: 'POST',
@@ -452,6 +435,7 @@ export const requestLocalChatCompletion = async (options: {
   if (!model.baseUrl || !model.modelCode) {
     throw new Error(`模型「${model.name}」配置不完整，请到模型管理检查`)
   }
+  const petActivity = beginPetActivity(options.sceneLabel ? `正在${options.sceneLabel}…` : 'AI 正在处理…')
   const startedAt = Date.now()
   const recordInput = messagesToText(options.messages)
   const timeoutMs = options.timeoutMs || COMPLETION_TIMEOUT_MS
@@ -511,6 +495,7 @@ export const requestLocalChatCompletion = async (options: {
       outputTokens: Number(body?.usage?.completion_tokens) || undefined,
       startedAt,
     })
+    petActivity.done()
     return content
   } catch (error) {
     // 用户主动中止统一整形成 AbortError 抛出（桌面端原始值是字符串），调用方按老约定静默
@@ -533,8 +518,11 @@ export const requestLocalChatCompletion = async (options: {
         errorMsg: readable.message,
       })
     }
+    if (readable instanceof DOMException && readable.name === 'AbortError') petActivity.cancel()
+    else petActivity.error()
     throw readable
   } finally {
+    petActivity.cancel()
     window.clearTimeout(timer)
     if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)
   }
@@ -592,6 +580,8 @@ export interface LocalChatStreamCallbacks {
  */
 export const streamLocalChatCompletion = async (
   options: {
+    requireComplete?: boolean
+    maxTokens?: number
     modelCode: string
     messages: LocalChatMessageInput[]
     /** 采样温度（0-2）：来自提示词库逐场景配置；未传用模型服务默认 */
@@ -612,8 +602,10 @@ export const streamLocalChatCompletion = async (
     callbacks.onError(`模型「${model.name}」配置不完整，请到模型管理检查`)
     return { content: '', toolCalls: [], finishReason: 'error' }
   }
+  const petActivity = beginPetActivity(options.sceneLabel ? `正在${options.sceneLabel}…` : 'AI 正在处理…')
   const startedAt = Date.now()
   const recordInput = messagesToText(options.messages)
+  let inputTokens:number|undefined, outputTokens:number|undefined
   let collected = ''
   let finishReason = ''
   const toolCallParts = new Map<number, LocalChatToolCall>()
@@ -624,6 +616,7 @@ export const streamLocalChatCompletion = async (
   })
   let recorded = false
   const recordStream = (status: 0 | 1, errorMsg?: string) => {
+    if (status === 0) petActivity.error()
     if (recorded) return
     recorded = true
     recordAiCall({
@@ -632,6 +625,7 @@ export const streamLocalChatCompletion = async (
       model,
       status,
       input: recordInput,
+      inputTokens,outputTokens,
       output: [collected, describeToolCalls(collectToolCalls(toolCallParts))].filter(Boolean).join('\n'),
       startedAt,
       errorMsg,
@@ -662,6 +656,11 @@ export const streamLocalChatCompletion = async (
 
   try {
     const aiFetch = await resolveAiFetch()
+    const extraBody = { ...parseExtraParams(model.extraParams) }
+    if (options.requireComplete) {
+      for (const name of ['messages','model','tools','tool_choice','stream','max_tokens','max_completion_tokens']) delete extraBody[name]
+      extraBody.stream_options = { include_usage: true }
+    }
     armIdle(STREAM_CONNECT_TIMEOUT_MS)
     const response = await aiFetch(joinAiUrl(model.baseUrl, 'chat/completions'), {
       method: 'POST',
@@ -673,9 +672,9 @@ export const streamLocalChatCompletion = async (
           modelCode: model.modelCode,
           provider: model.provider,
           thinking: model.thinking,
-          extraBody: parseExtraParams(model.extraParams),
+          extraBody,
           messages: options.messages,
-          maxTokens: model.maxOutputTokens || undefined,
+          maxTokens: options.maxTokens || model.maxOutputTokens || undefined,
           temperature: options.temperature,
           stream: true,
           tools: options.tools,
@@ -690,6 +689,7 @@ export const streamLocalChatCompletion = async (
       return result('error')
     }
     if (!response.body) {
+      petActivity.error()
       callbacks.onError('当前环境不支持流式读取')
       return result('error')
     }
@@ -723,6 +723,7 @@ export const streamLocalChatCompletion = async (
             callbacks.onError(message)
             return result('error')
           }
+          if(chunk.usage){inputTokens=Number(chunk.usage.prompt_tokens)||undefined;outputTokens=Number(chunk.usage.completion_tokens)||undefined}
           const choice = chunk?.choices?.[0]
           const delta = choice?.delta?.content
           if (typeof delta === 'string' && delta) {
@@ -745,109 +746,36 @@ export const streamLocalChatCompletion = async (
       collected += tail
       callbacks.onDelta(tail)
     }
+    if (options.requireComplete && finishReason !== 'stop') {
+      const message=finishReason==='length'?'正文达到输出上限，未交付半稿':'供应商未确认正文完整结束，未交付候选'
+      recordStream(0,message);callbacks.onError(message);return result(finishReason||'incomplete')
+    }
     recordStream(1)
+    petActivity.done()
     callbacks.onDone()
     return result(finishReason || (toolCallParts.size ? 'tool_calls' : 'stop'))
   } catch (error) {
     if (isAbortError(error)) {
       if (timedOut) {
+        petActivity.error()
         recordStream(0, 'AI 响应超时')
         callbacks.onError('AI 响应超时，请重试')
         return result('error')
       }
+      petActivity.cancel()
       // 用户主动中止按正常收尾：已产出的部分如实入账
       recordStream(1)
       callbacks.onDone()
       return result('aborted')
     }
+    petActivity.error()
     const message = readableRequestError(error)
     recordStream(0, message)
     callbacks.onError(message)
     return result('error')
   } finally {
+    petActivity.cancel()
     clearIdle()
-    if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 向量（POST {base}/embeddings，OpenAI 兼容形状）：妙笔语义检索用
-// ---------------------------------------------------------------------------
-
-const EMBEDDING_TIMEOUT_MS = 60_000
-
-/** 一批文本 → 一批向量（顺序与输入一致）。失败抛可读文案；用户中止抛 AbortError */
-export const requestLocalEmbeddings = async (
-  options: { modelCode: string; texts: string[]; signal?: AbortSignal; timeoutMs?: number } & LocalAiSceneTag
-): Promise<number[][]> => {
-  const texts = options.texts.map(text => String(text || ''))
-  if (!texts.length) return []
-  const model = getLocalAiModelSecret(options.modelCode)
-  if (!model) throw new Error(NO_MODEL_MESSAGE)
-  if (!model.baseUrl || !model.modelCode) {
-    throw new Error(`模型「${model.name}」配置不完整，请到模型管理检查`)
-  }
-  const startedAt = Date.now()
-  const chars = texts.reduce((sum, text) => sum + text.length, 0)
-  const recordInput = `${texts.length} 段文本，共 ${chars} 字`
-  const tag: LocalAiSceneTag = { scene: options.scene || 'embedding', sceneLabel: options.sceneLabel || '向量检索' }
-  const timeoutMs = options.timeoutMs || EMBEDDING_TIMEOUT_MS
-  const controller = new AbortController()
-  let timedOut = false
-  const timer = window.setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, timeoutMs)
-  const onCallerAbort = () => controller.abort()
-  if (options.signal) {
-    if (options.signal.aborted) controller.abort()
-    else options.signal.addEventListener('abort', onCallerAbort, { once: true })
-  }
-  try {
-    const aiFetch = await resolveAiFetch()
-    const response = await aiFetch(joinAiUrl(model.baseUrl, 'embeddings'), {
-      method: 'POST',
-      signal: controller.signal,
-      headers: buildAuthHeaders(model.apiKey),
-      body: JSON.stringify({ model: model.modelCode, input: texts, encoding_format: 'float' }),
-    })
-    if (!response.ok) throw new Error(await readableHttpError(response))
-    const body = await response.json()
-    if (body?.error?.message) throw new Error(String(body.error.message))
-    const rows: Array<{ index?: unknown; embedding?: unknown }> = Array.isArray(body?.data) ? body.data : []
-    const vectors: number[][] = texts.map(() => [])
-    rows.forEach((row, position) => {
-      const index = Number.isInteger(row?.index) ? Number(row.index) : position
-      const vector = Array.isArray(row?.embedding) ? row.embedding.map(Number) : []
-      if (index >= 0 && index < texts.length) vectors[index] = vector
-    })
-    if (vectors.some(vector => !vector.length || vector.some(value => !Number.isFinite(value)))) {
-      throw new Error('向量模型返回的数据不完整，请确认所选模型是 embedding 类型')
-    }
-    recordAiCall({
-      recordType: 'text',
-      tag,
-      model,
-      status: 1,
-      input: recordInput,
-      output: `${vectors.length} 个向量 · ${vectors[0].length} 维`,
-      inputTokens: Number(body?.usage?.prompt_tokens) || undefined,
-      outputTokens: 0,
-      startedAt,
-    })
-    return vectors
-  } catch (error) {
-    const readable = isAbortError(error)
-      ? timedOut
-        ? new Error(`向量计算超时（${timeoutMs / 1000} 秒无结果），请重试`)
-        : new DOMException('The operation was aborted.', 'AbortError')
-      : new Error(readableRequestError(error))
-    if (!(readable instanceof DOMException)) {
-      recordAiCall({ recordType: 'text', tag, model, status: 0, input: recordInput, output: '', outputTokens: 0, startedAt, errorMsg: readable.message })
-    }
-    throw readable
-  } finally {
-    window.clearTimeout(timer)
     if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)
   }
 }
@@ -929,6 +857,7 @@ export const generateLocalAiImageRequest = async (options: {
   if (!model.baseUrl || !model.modelCode) {
     throw new Error(`模型「${model.name}」配置不完整，请到模型管理检查`)
   }
+  const petActivity = beginPetActivity(options.sceneLabel ? `正在${options.sceneLabel}…` : 'AI 正在处理…')
   const startedAt = Date.now()
   const recordImage = (status: 0 | 1, errorMsg?: string) =>
     recordAiCall({
@@ -977,8 +906,10 @@ export const generateLocalAiImageRequest = async (options: {
     const item = body?.data?.[0] || {}
     const b64 = String(item.b64_json || '')
     if (b64) {
+      const blob = base64ToBlob(b64)
+      petActivity.done()
       recordImage(1)
-      return { blob: base64ToBlob(b64) }
+      return { blob }
     }
     const url = String(item.url || '')
     if (!url) throw new Error('生图接口没有返回图片数据')
@@ -986,9 +917,13 @@ export const generateLocalAiImageRequest = async (options: {
     try {
       const imageResponse = await aiFetch(url, { method: 'GET', signal: controller.signal })
       if (!imageResponse.ok) throw new Error(`HTTP ${imageResponse.status}`)
-      return { blob: await imageResponse.blob() }
+      const blob = await imageResponse.blob()
+      petActivity.done()
+      return { blob }
     } catch {
       // 网页端常见：图床跨域取不回二进制——退回远程地址，调用方如实标注可能过期
+      if (options.signal?.aborted) petActivity.cancel()
+      else petActivity.done()
       return { remoteUrl: url }
     }
   } catch (error) {
@@ -998,8 +933,11 @@ export const generateLocalAiImageRequest = async (options: {
         : new DOMException('The operation was aborted.', 'AbortError')
       : new Error(readableRequestError(error))
     if (!(readable instanceof DOMException)) recordImage(0, readable.message)
+    if (readable instanceof DOMException && readable.name === 'AbortError') petActivity.cancel()
+    else petActivity.error()
     throw readable
   } finally {
+    petActivity.cancel()
     window.clearTimeout(timer)
     if (options.signal) options.signal.removeEventListener('abort', onCallerAbort)
   }

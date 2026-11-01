@@ -4,7 +4,7 @@ import { nowIso } from './local-library-utils'
 /**
  * 微信助手本地状态：只记作者在微信里选的"当前作品"。
  *
- * 绑定凭据在 Rust 侧的 weixin-bot.json；对话在宿主的微信会话里；主动推送在宿主的投递队列（agent_delivery_queue）；
+ * 绑定凭据在 Rust 侧的 weixin-bot.json；对话在宿主的微信会话里；主动推送在宿主的投递队列（weixin_delivery）；
  * 写操作的确认由宿主的审批门按通道档案处理。与灵感便签同一存储通道（桌面端 SQLite 设置记录，网页端 localStorage）。
  */
 

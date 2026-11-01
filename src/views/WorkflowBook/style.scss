@@ -79,7 +79,7 @@
   color: var(--workflow-ink);
   box-shadow: var(--workflow-shadow);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   pointer-events: auto;
 
@@ -103,7 +103,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 6%, var(--workflow-surface));
   color: var(--workflow-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   > i {
     flex: 0 0 auto;
@@ -128,7 +128,7 @@
     background: var(--workflow-surface);
     color: var(--workflow-accent);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover:not(:disabled) {
@@ -221,7 +221,7 @@
   border-radius: 50%;
   background: var(--workflow-subtle);
   color: var(--workflow-muted);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
   line-height: 1;
 }
@@ -239,13 +239,13 @@
   }
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
   small {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 }
@@ -265,6 +265,23 @@
     height: 0;
     border-top: 2px dashed color-mix(in srgb, var(--workflow-muted) 62%, transparent);
   }
+}
+
+html[data-ui-enlarged] & {
+  .workflow-book-top-actions { position: static; margin-bottom: 12px; justify-content: flex-end; }
+  .workflow-book-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-inline: 20px; }
+  .workflow-book-step { align-items: flex-start; justify-content: flex-start; }
+  .workflow-book-step__copy { max-width: none; }
+  .workflow-book-step-line { display: none; }
+  .workflow-book-step__copy strong,
+  .workflow-book-step__copy small,
+  .original-assist-grid strong,
+  .original-assist-grid small { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  .original-assist-grid > button > span { min-width: 0; }
+}
+
+@container (max-width: 960px) {
+  html[data-ui-enlarged] & .workflow-book-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 // 主体内容区独立滚动，页面整体不出现全局滚动条；macOS 下滚动条仅滚动时浮现
@@ -331,7 +348,7 @@
   align-items: center;
   gap: 10px;
   color: var(--workflow-ink);
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale, 1));
   font-weight: 700;
   line-height: 1.2;
 
@@ -348,7 +365,7 @@
       color: var(--workflow-muted);
       background: transparent;
       font-family: inherit;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       cursor: pointer;
     }
   }
@@ -372,7 +389,7 @@
   align-items: center;
   gap: 6px;
   color: var(--workflow-accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.3;
 
   &.ready {
@@ -394,7 +411,7 @@
 
   > span:first-child {
     color: var(--workflow-ink);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
@@ -422,7 +439,7 @@
 .original-inspiration-subtitle {
   margin: 8px 0 0;
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 
@@ -461,7 +478,7 @@
     border-radius: 999px;
     background: color-mix(in srgb, var(--workflow-surface) 88%, transparent);
     color: color-mix(in srgb, var(--workflow-muted) 78%, transparent);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
     line-height: 1.3;
     pointer-events: none;
@@ -485,7 +502,7 @@
   align-items: center;
   gap: 8px;
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.4;
 
   i {
@@ -522,7 +539,7 @@
   p {
     margin: 6px 0 10px;
     color: var(--workflow-muted);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.55;
   }
 
@@ -531,7 +548,7 @@
     flex-wrap: wrap;
     gap: 6px 18px;
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   dl div {
@@ -593,7 +610,7 @@
   background: var(--btn-outline-bg);
   color: var(--workflow-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   i {
@@ -654,7 +671,7 @@
   background: var(--btn-outline-bg);
   color: var(--workflow-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   transform: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
@@ -725,7 +742,7 @@
     height: 34px;
     border-radius: 50%;
     color: var(--workflow-accent);
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-font-scale, 1));
   }
 
   span {
@@ -742,13 +759,13 @@
   }
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
   small {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -779,7 +796,7 @@
     max-height: 168px;
     overflow-y: auto;
     color: var(--workflow-ink);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.7;
   }
 }
@@ -791,7 +808,7 @@
   gap: 12px;
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   button {
@@ -829,7 +846,7 @@
     background: var(--workflow-field);
     color: var(--workflow-muted);
     font-family: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:disabled {
@@ -853,7 +870,7 @@
 
   span {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 400;
   }
 }
@@ -901,7 +918,7 @@
     background: var(--workflow-field);
     color: var(--workflow-ink);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.65;
     outline: none;
     resize: vertical;
@@ -921,7 +938,7 @@
 
   strong {
     color: var(--workflow-ink);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
   }
 
   em {
@@ -929,7 +946,7 @@
     align-items: center;
     gap: 6px;
     color: var(--el-color-success);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 }
@@ -937,13 +954,13 @@
 .writing-parameter-hint {
   margin: -8px 0 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .base-config-panel h2 {
   margin: 0 0 16px;
   color: var(--workflow-ink);
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-font-scale, 1));
   line-height: 1.25;
 }
 
@@ -963,7 +980,7 @@
   gap: 10px;
   min-width: 0;
   color: var(--workflow-ink);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   line-height: 1.2;
 
   span {
@@ -976,17 +993,17 @@
     border-radius: 50%;
     background: var(--workflow-subtle);
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-weight: 700;
   }
 
   strong {
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
   }
 
   em {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 }
@@ -1057,7 +1074,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 14%, transparent);
   color: var(--workflow-accent);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
   line-height: 1;
 }
@@ -1075,13 +1092,13 @@
   }
 
   strong {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
   small {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 }
@@ -1098,7 +1115,7 @@
   border-radius: 50%;
   background: var(--workflow-accent);
   color: var(--workflow-on-accent);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   line-height: 1;
 }
 
@@ -1119,7 +1136,7 @@
   background: var(--btn-outline-bg);
   color: var(--workflow-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   transform: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
@@ -1178,7 +1195,7 @@
   background: transparent;
   color: var(--workflow-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1;
   opacity: 0;
   outline: none;
@@ -1203,7 +1220,7 @@
   background: var(--workflow-field);
   color: var(--workflow-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   outline: none;
 
   &::placeholder {
@@ -1231,7 +1248,7 @@
 
   > span:first-child {
     color: var(--workflow-ink);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
@@ -1250,7 +1267,7 @@
 
   .el-select__selected-item,
   .el-input__inner {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1290,7 +1307,7 @@
   dd {
     min-width: 0;
     margin: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.4;
   }
 
@@ -1323,7 +1340,7 @@
     background: transparent;
     color: var(--workflow-muted);
     font-family: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
     transform: none;
 
@@ -1397,7 +1414,7 @@
 
   strong {
     padding-right: 20px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.25;
     white-space: nowrap;
   }
@@ -1405,7 +1422,7 @@
   small {
     display: -webkit-box;
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.45;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1565,7 +1582,7 @@
   h3 {
     margin: 0;
     color: var(--workflow-ink);
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     line-height: 1.25;
   }
 }
@@ -1587,7 +1604,7 @@
   border-radius: 8px;
   background: var(--workflow-field);
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.3;
   text-align: center;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
@@ -1615,7 +1632,7 @@
 .outline-result-panel > .outline-section:nth-of-type(2) {
   .workflow-inline-edit {
     color: var(--workflow-ink);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.7;
     text-align: left;
   }
@@ -1635,7 +1652,7 @@
   padding: 0;
   list-style: none;
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   line-height: 1.65;
 
   li {
@@ -1691,13 +1708,13 @@
   .workflow-inline-edit:first-child {
     color: var(--workflow-ink);
     font-weight: 700;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.35;
   }
 
   .workflow-inline-edit:last-child {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.45;
   }
 }
@@ -1705,7 +1722,7 @@
 .outline-stage-section__hint {
   margin: -2px 0 10px;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .outline-dynamic-range {
@@ -1713,7 +1730,7 @@
   align-items: center;
   gap: 5px;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   input {
     width: 58px;
@@ -1762,7 +1779,7 @@
 .outline-stage-card__title {
   min-width: 0;
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 
@@ -1772,7 +1789,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--workflow-accent) 8%, var(--workflow-field));
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .outline-stage-fields {
@@ -1787,7 +1804,7 @@
 
     > span {
       color: var(--workflow-muted);
-      font-size: 11px;
+      font-size: calc(11px * var(--ui-font-scale, 1));
       font-weight: 600;
     }
   }
@@ -1799,7 +1816,7 @@
     border-radius: 7px;
     background: var(--workflow-field);
     color: var(--workflow-ink);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.5;
   }
 }
@@ -1852,7 +1869,7 @@
     background: transparent;
     color: var(--workflow-muted);
     font-family: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
   }
 }
@@ -1871,7 +1888,7 @@
   padding: 8px 0 10px;
   border-bottom: 1px dashed color-mix(in srgb, var(--workflow-muted) 28%, transparent);
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   line-height: 1.35;
 }
 
@@ -1881,7 +1898,7 @@
 
 .outline-chapter-summary {
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.45;
 }
 
@@ -1898,12 +1915,12 @@
   align-items: center;
   gap: 8px;
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
 
   i {
     color: var(--workflow-muted);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   button {
@@ -1913,7 +1930,7 @@
     background: transparent;
     color: var(--workflow-muted);
     font-family: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover {
@@ -1926,7 +1943,7 @@
 .outline-chapter-pending__desc {
   margin: 8px 0 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -1971,7 +1988,7 @@
 
   i {
     color: var(--workflow-accent);
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-font-scale, 1));
   }
 
   span {
@@ -1988,13 +2005,13 @@
   }
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 
   small {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.2;
   }
 }
@@ -2019,7 +2036,7 @@
 
   dt {
     color: var(--workflow-muted);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.5;
   }
 
@@ -2027,7 +2044,7 @@
     min-width: 0;
     margin: 0;
     color: var(--workflow-ink);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.5;
   }
 }
@@ -2044,7 +2061,7 @@
   background: var(--btn-outline-bg);
   color: var(--workflow-ink);
   font-family: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   cursor: pointer;
   transform: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
@@ -2072,7 +2089,7 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--workflow-accent) 12%, transparent);
   color: var(--workflow-accent);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   font-weight: 400;
   line-height: 1.7;
   white-space: nowrap;
@@ -2108,7 +2125,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 6%, var(--workflow-surface));
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   i {
     color: var(--workflow-accent);
@@ -2128,7 +2145,7 @@
   margin: 0 0 12px;
   padding: 8px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
   color: var(--ink-main);
   background: color-mix(in srgb, #d98324 12%, transparent);
@@ -2152,7 +2169,7 @@
   background: var(--workflow-accent);
   color: var(--workflow-on-accent);
   font-family: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   transition: filter 0.18s ease, box-shadow 0.18s ease;
@@ -2175,7 +2192,7 @@
   gap: 6px;
   margin: 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 /* —— 第三步「按要求调整大纲」抽屉 ——
@@ -2238,7 +2255,7 @@
 
   strong {
     color: var(--workflow-ink);
-    font-size: 17px;
+    font-size: calc(17px * var(--ui-font-scale, 1));
     font-weight: 700;
   }
 }
@@ -2248,7 +2265,7 @@
   border: 1px solid var(--workflow-soft-line);
   border-radius: 999px;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 
   &.is-done {
@@ -2278,12 +2295,12 @@
     gap: 8px;
     margin: 0;
     color: var(--workflow-ink);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     font-weight: 600;
 
     small {
       color: var(--workflow-muted);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       font-weight: 400;
     }
   }
@@ -2301,7 +2318,7 @@
     background: var(--workflow-surface);
     color: var(--workflow-ink);
     font-family: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover {
@@ -2346,7 +2363,7 @@
     right: 12px;
     bottom: 10px;
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
     pointer-events: none;
   }
@@ -2377,12 +2394,12 @@
     > i {
       margin-top: 1px;
       color: var(--workflow-muted);
-      font-size: 15px;
+      font-size: calc(15px * var(--ui-font-scale, 1));
     }
 
     strong {
       display: block;
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
       font-weight: 600;
     }
 
@@ -2390,7 +2407,7 @@
       display: block;
       margin-top: 2px;
       color: var(--workflow-muted);
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
       line-height: 1.5;
     }
 
@@ -2415,7 +2432,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .adjust-drawer-switch {
@@ -2454,7 +2471,7 @@
   gap: 6px;
   margin: 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -2467,7 +2484,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 6%, var(--workflow-surface));
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   i {
     color: var(--workflow-accent);
@@ -2484,7 +2501,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--el-color-danger) 6%, transparent);
   color: var(--el-color-danger);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -2500,7 +2517,7 @@
 
   em {
     color: var(--workflow-ink);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-style: normal;
     font-variant-numeric: tabular-nums;
   }
@@ -2512,7 +2529,7 @@
   align-items: center;
   gap: 10px;
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 
   i {
     color: var(--workflow-accent);
@@ -2547,7 +2564,7 @@
     gap: 10px;
     padding: 9px 0;
     color: var(--workflow-muted);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     &.is-running {
       color: var(--workflow-accent);
@@ -2567,7 +2584,7 @@
   height: 22px;
   border: 1px solid var(--workflow-soft-line);
   border-radius: 50%;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 
   .is-done & {
     border-color: var(--el-color-success);
@@ -2582,7 +2599,7 @@
 }
 
 .adjust-drawer-stages__status {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 400;
 }
 
@@ -2594,14 +2611,14 @@
 
   summary {
     color: var(--workflow-ink);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     cursor: pointer;
   }
 
   p {
     margin: 8px 0 0;
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
   }
 }
@@ -2613,7 +2630,7 @@
 
 .adjust-drawer-candidate__head strong {
   color: var(--workflow-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .adjust-drawer-tags {
@@ -2627,7 +2644,7 @@
     border-radius: 6px;
     background: color-mix(in srgb, var(--workflow-accent) 7%, transparent);
     color: var(--workflow-accent);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -2641,7 +2658,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--el-color-warning) 10%, transparent);
   color: var(--el-color-warning);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -2665,7 +2682,7 @@
 
   dt {
     color: var(--workflow-muted);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
   }
 
@@ -2675,7 +2692,7 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--workflow-muted);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.6;
 
     &.is-next {
@@ -2692,7 +2709,7 @@
   background: transparent;
   color: var(--workflow-accent);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   &:hover { text-decoration: underline; }
@@ -2715,12 +2732,12 @@
     border-radius: 4px;
     background: color-mix(in srgb, var(--workflow-accent) 12%, transparent);
     color: var(--workflow-accent);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 
   strong {
     color: var(--workflow-ink);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -2733,7 +2750,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--el-color-success) 8%, transparent);
   color: var(--el-color-success);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 
   &.is-failed {
@@ -2779,7 +2796,7 @@
 .adjust-drawer-foot-note {
   margin: 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   text-align: center;
 }
 
@@ -2791,7 +2808,7 @@
   background: var(--workflow-surface);
   color: var(--workflow-ink);
   font-family: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 
@@ -2825,7 +2842,7 @@
 
     i {
       margin-right: 6px;
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 
@@ -2899,7 +2916,7 @@
   background: transparent;
   color: var(--workflow-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
 
@@ -2933,7 +2950,7 @@
     background: transparent;
     color: var(--workflow-ink);
     font-family: inherit;
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     cursor: pointer;
     transition: color 0.18s ease;
 
@@ -2970,7 +2987,7 @@
   background: transparent;
   color: var(--workflow-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   cursor: pointer;
   transition:
     color 0.18s ease,
@@ -2978,7 +2995,7 @@
 
   > i {
     line-height: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   &:hover {
@@ -3026,14 +3043,14 @@
   border-radius: 7px;
   background: color-mix(in srgb, var(--workflow-accent) 10%, transparent);
   color: var(--workflow-accent);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .setting-card__title {
   flex: 1;
   min-width: 0;
   color: var(--workflow-ink);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3043,7 +3060,7 @@
 .setting-card__body {
   min-width: 0;
   color: var(--workflow-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -3072,7 +3089,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--workflow-accent) 8%, transparent);
   color: var(--workflow-accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.4;
 }
 
@@ -3112,7 +3129,7 @@
 
 .setting-core-intro {
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -3133,7 +3150,7 @@
 
     > strong {
       color: var(--workflow-accent);
-      font-size: 13px;
+      font-size: calc(13px * var(--ui-font-scale, 1));
     }
   }
 }
@@ -3162,7 +3179,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 10%, transparent);
   color: var(--workflow-accent);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .setting-ability-row {
@@ -3184,7 +3201,7 @@
   strong {
     display: block;
     margin-bottom: 2px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -3198,7 +3215,7 @@
 
 .setting-dimension-label {
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .setting-mechanic-grid {
@@ -3220,7 +3237,7 @@
   strong {
     display: block;
     margin-bottom: 2px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -3240,7 +3257,7 @@
   background: var(--workflow-surface);
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -3282,7 +3299,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--workflow-accent) 8%, var(--workflow-subtle));
   color: color-mix(in srgb, var(--workflow-muted) 64%, transparent);
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale, 1));
 }
 
 .setting-character-body {
@@ -3301,7 +3318,7 @@
 
 .setting-character-name {
   color: var(--workflow-ink);
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 
@@ -3312,7 +3329,7 @@
   border-radius: 999px;
   color: var(--workflow-accent);
   background: color-mix(in srgb, var(--workflow-accent) 8%, transparent);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 
@@ -3332,7 +3349,7 @@
     background: transparent;
     color: inherit;
     cursor: pointer;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1;
 
     &:hover {
@@ -3353,14 +3370,14 @@
   align-items: center;
   gap: 12px;
   color: color-mix(in srgb, var(--workflow-muted) 78%, transparent);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   button {
     border: 0;
     background: transparent;
     color: inherit;
     cursor: pointer;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
 
     &:hover {
       color: var(--workflow-accent);
@@ -3373,7 +3390,7 @@
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: start;
   gap: 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.55;
 }
 
@@ -3397,7 +3414,7 @@
 .setting-storyline-intro {
   margin: 0;
   color: var(--workflow-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -3468,7 +3485,7 @@
   border: 1px solid color-mix(in srgb, var(--workflow-accent) 40%, var(--workflow-line));
   border-radius: 50%;
   color: var(--workflow-accent);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 
@@ -3476,7 +3493,7 @@
   display: block;
   min-height: 42px;
   color: var(--workflow-ink);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 700;
   line-height: 1.4;
   text-align: center;
@@ -3493,14 +3510,14 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--workflow-accent) 8%, var(--workflow-subtle));
   color: color-mix(in srgb, var(--workflow-accent) 78%, var(--workflow-muted));
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-font-scale, 1));
 }
 
 .setting-storyline-desc {
   width: 100%;
   min-height: 96px;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.55;
   text-align: left;
 }
@@ -3509,7 +3526,7 @@
   width: 100%;
   margin-top: 4px;
   color: var(--workflow-accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 700;
   text-align: center;
 }
@@ -3518,7 +3535,7 @@
   width: 100%;
   min-height: 62px;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.55;
   text-align: left;
 }
@@ -3564,7 +3581,7 @@
 .setting-assistant-hint {
   margin: 8px 0 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.5;
 }
 
@@ -3608,7 +3625,7 @@
     border-radius: 50%;
     background: color-mix(in srgb, var(--workflow-accent) 10%, transparent);
     color: var(--workflow-accent);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   span {
@@ -3625,13 +3642,13 @@
   }
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     line-height: 1.25;
   }
 
   small {
     color: var(--workflow-muted);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     line-height: 1.25;
   }
 }
@@ -3643,7 +3660,7 @@
 
 .setting-side-title strong {
   color: var(--workflow-ink);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   line-height: 1.25;
 }
 
@@ -3662,7 +3679,7 @@
   gap: 8px;
   min-width: 0;
   color: var(--workflow-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.4;
 
   i {
@@ -3698,20 +3715,20 @@
   border-radius: 50%;
   background: var(--workflow-accent);
   color: var(--workflow-on-accent);
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-font-scale, 1));
   font-weight: 700;
 }
 
 .placeholder-step h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale, 1));
   line-height: 1.25;
 }
 
 .placeholder-step p {
   margin: 10px 0 24px;
   color: var(--workflow-muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
 }
 
 .placeholder-step__body {
@@ -3749,6 +3766,34 @@
   border-top: 1px solid var(--workflow-soft-line);
 }
 
+.workflow-footer-status {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-right: auto;
+  color: var(--workflow-muted);
+  font-size: calc(13px * var(--ui-font-scale, 1));
+  line-height: 1.5;
+
+  i {
+    color: var(--workflow-accent);
+  }
+
+  small {
+    flex-basis: 100%;
+    color: var(--workflow-muted);
+    font-size: calc(12px * var(--ui-font-scale, 1));
+    overflow-wrap: anywhere;
+  }
+
+  &.is-error,
+  &.is-error i {
+    color: var(--el-color-danger);
+  }
+}
+
 .primary-action,
 .ghost-action {
   min-width: 122px;
@@ -3760,7 +3805,7 @@
   padding: 0 26px;
   border-radius: 6px;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   cursor: pointer;
   white-space: nowrap;
 }
@@ -3850,7 +3895,7 @@
   }
 
   .workflow-book-step__copy strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   .workflow-book-step-line {
@@ -4075,7 +4120,7 @@
     width: 30px;
     height: 30px;
     flex-basis: 30px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 
   .workflow-book-step__copy {
@@ -4086,7 +4131,7 @@
     }
 
     strong {
-      font-size: 12px;
+      font-size: calc(12px * var(--ui-font-scale, 1));
     }
   }
 
@@ -4170,20 +4215,20 @@
   padding: 40px 20px;
 
   i {
-    font-size: 40px;
+    font-size: calc(40px * var(--ui-font-scale, 1));
     color: var(--ink-muted, var(--ink-sec));
   }
 
   h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     font-family: var(--font-serif);
   }
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     line-height: 1.8;
     max-width: 420px;
   }

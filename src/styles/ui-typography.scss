@@ -1,0 +1,91 @@
+/* 界面字号统一比例。各组件保留原字号层级，默认 1，不使用页面缩放。 */
+:root {
+  --ui-font-scale: 1;
+  --ui-control-scale: 1;
+}
+
+body { font-size: calc(16px * var(--ui-font-scale, 1)); }
+
+/* 未声明字号的原生表单控件默认是 13⅓px；保留基线，只接入同一比例。 */
+button, input, select, textarea { font-size: calc(1rem * 5 / 6 * var(--ui-font-scale, 1)); }
+
+/* Element Plus 的浮层挂在 body 下，与主界面共用字号和控件高度。 */
+:root[data-ui-font-size] {
+  --el-font-size-extra-small: calc(12px * var(--ui-font-scale));
+  --el-font-size-small: calc(13px * var(--ui-font-scale));
+  --el-font-size-base: calc(14px * var(--ui-font-scale));
+  --el-font-size-medium: calc(16px * var(--ui-font-scale));
+  --el-font-size-large: calc(18px * var(--ui-font-scale));
+  --el-font-size-extra-large: calc(20px * var(--ui-font-scale));
+  --el-component-size-small: calc(24px * var(--ui-control-scale));
+  --el-component-size: calc(32px * var(--ui-control-scale));
+  --el-component-size-large: calc(40px * var(--ui-control-scale));
+}
+
+:root[data-ui-font-size] .el-picker-panel,
+:root[data-ui-font-size] .el-date-table,
+:root[data-ui-font-size] .el-month-table,
+:root[data-ui-font-size] .el-year-table { font-size: var(--el-font-size-extra-small); }
+
+/* 正文和手机阅读画面独立于 UI；提示层继续使用它们自己的原始字号。 */
+.ProseMirror,
+.reader-scroll {
+  --ui-font-scale: 1;
+  --ui-control-scale: 1;
+}
+
+/* 仅放大时为文字留空间，默认大小保留原有布局。 */
+html[data-ui-enlarged] {
+  .writing-editor { container-type: inline-size; container-name: writing-editor; }
+  .ink-btn,
+  .ink-btn-action {
+    min-height: calc(1.4em + 14px);
+    height: auto;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .el-button { height: auto; min-height: var(--el-component-size); }
+  .el-button > span { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+  .el-form-item__label { height: auto; line-height: 1.5; padding-top: 6px; padding-bottom: 6px; }
+  .el-checkbox,
+  .el-radio { height: auto; min-height: var(--el-component-size); }
+  .el-checkbox__label,
+  .el-radio__label { white-space: normal; line-height: 1.5; overflow-wrap: anywhere; }
+  .el-checkbox__input,
+  .el-radio__input { flex-shrink: 0; }
+
+  .ew-modal-header { flex-shrink: 0; }
+  .ew-modal-title { min-width: 0; overflow-wrap: anywhere; }
+  .ew-modal-footer { flex-shrink: 0; flex-wrap: wrap; }
+  .ew-close-btn { flex-shrink: 0; }
+
+  .settings-center-modal {
+    .settings-center-nav { min-height: 0; overflow-y: auto; }
+    .settings-nav-item { height: auto; min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+    .settings-nav-item span { overflow-wrap: anywhere; }
+    .settings-nav-item i { flex-shrink: 0; }
+    .option-row { flex-wrap: wrap; }
+    .settings-option-btn { white-space: normal; overflow-wrap: anywhere; }
+    .settings-footer,
+    .footer-actions { flex-wrap: wrap; }
+    .font-choice-heading { flex-wrap: wrap; }
+    .font-choice-heading + .option-row.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}
+
+@media (min-width: 821px) {
+  html[data-ui-enlarged] .settings-center-modal .settings-center-shell { grid-template-columns: 216px minmax(0, 1fr); }
+}
+
+/* 同时打开目录和参考面板时，按编辑区实际宽度换行，保留所有工具入口。 */
+@container writing-editor (max-width: 480px) {
+  html[data-ui-enlarged] .writing-editor {
+    .editor-toolbar { height: auto; min-height: calc(40px * var(--ui-control-scale)); }
+    .editor-toolbar .toolbar-scroll { height: auto; flex-wrap: wrap; row-gap: 4px; padding-block: 6px; }
+    .editor-toolbar .toolbar-actions { min-width: 0; flex: 1 1 auto; flex-wrap: wrap; margin-left: 0; }
+    .editor-content { padding-inline: 20px; }
+    .editor-content .editor-area-wrapper { max-width: 100% !important; }
+  }
+}

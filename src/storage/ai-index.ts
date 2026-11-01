@@ -1,4 +1,4 @@
-import { agentCommand } from '@/agent/client'
+import { writingCommand } from '@/writing-service/client'
 import { usesSqliteCore } from './storage-mode'
 
 /**
@@ -38,7 +38,7 @@ export const canUseAiIndex = () => usesSqliteCore()
  */
 export const aiIndexBook = async (bookId: string | number): Promise<AiBookIndexOutcome> => {
   const started = Date.now()
-  const outcome = await agentCommand<{ queued: number }>('index_rebuild', { bookId: String(bookId), onlyMissing: true })
+  const outcome = await writingCommand<{ queued: number }>('index_rebuild', { bookId: String(bookId), onlyMissing: true })
   return { total: outcome.queued, indexed: 0, skipped: 0, removed: 0, millis: Date.now() - started }
 }
 
@@ -49,7 +49,7 @@ export const aiSearchText = (params: {
   untilChapterId?: string | number | null
   limit?: number
 }) =>
-  agentCommand<AiTextSearchResult>('canon_query', {
+  writingCommand<AiTextSearchResult>('canon_query', {
     bookId: String(params.bookId),
     view: 'search',
     query: params.query,

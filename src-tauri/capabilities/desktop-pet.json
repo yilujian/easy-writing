@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-pet",
+  "description": "桌宠窗口只接收状态与拖动，不读取数据库、请求模型或创建窗口",
+  "windows": ["desktop-pet"],
+  "permissions": ["core:event:default", "core:window:allow-start-dragging"]
+}

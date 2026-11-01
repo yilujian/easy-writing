@@ -1,8 +1,8 @@
 /** 思考模式：off=关闭 / default=跟随模型默认 / on=开启；请求层按供应商翻译成各家参数 */
 export type AiThinkingMode = 'off' | 'default' | 'on'
 
-/** 模型用途：text=对话/生成 image=生图 embedding=向量（全书语义记忆用，接口是 /embeddings 而非 chat） */
-export type UserAiModelScene = 'text' | 'image' | 'embedding'
+/** 模型用途：text=对话/生成，image=生图。 */
+export type UserAiModelScene = 'text' | 'image'
 
 export interface UserAiModelSavePayload {
   id?: number

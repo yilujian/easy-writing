@@ -269,7 +269,7 @@ const handleSave = (status: StorylineNodeStatus) => {
 
   > span {
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 }
 
@@ -283,7 +283,7 @@ const handleSave = (status: StorylineNodeStatus) => {
   border-radius: 6px;
   background: color-mix(in srgb, var(--ui-glass-bg) 72%, transparent);
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 
   &.empty {
     color: var(--ink-sec);

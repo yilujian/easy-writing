@@ -1,3 +1,4 @@
+import { notifyPetActivity } from '@/desktop-pet/events'
 const isTauriRuntime = () => {
   return typeof window !== 'undefined' && Boolean((window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ || (window as unknown as Record<string, unknown>).__TAURI__)
 }
@@ -49,6 +50,12 @@ export const saveBlobFile = async (blob: Blob, filename: string) => {
   if (!filePath) return false
 
   const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
-  await invoke('write_export_file', { filePath, bytes })
+  try {
+    await invoke('write_export_file', { filePath, bytes })
+    notifyPetActivity({ id: 'export', phase: 'done', message: '文件已导出。', target: 'current' })
+  } catch (error) {
+    notifyPetActivity({ id: 'export', phase: 'error', message: '文件导出失败，请回到平台重试。', target: 'current' })
+    throw error
+  }
   return true
 }

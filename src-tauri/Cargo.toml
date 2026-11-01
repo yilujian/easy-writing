@@ -1,6 +1,6 @@
 [package]
 name = "ew-client-desktop"
-version = "2.0.1"
+version = "2.1.0"
 description = "易创桌面客户端"
 authors = ["yilujian"]
 license = "AGPL-3.0-only"
@@ -21,7 +21,7 @@ local-tests = []
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-dialog = "2"
 # unsafe-headers：允许前端把 Origin 传成空串，让插件摘掉自动补的 Origin 头。
 # 本地模型服务（Ollama 等）会按来源拒绝桌面端请求，见 utils/local-ai-client.ts 的 resolveAiFetch。
@@ -33,9 +33,14 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Node 的 Windows 文件入口需要标准路径；复用 Tauri 已有的路径转换库。
+dunce = "1.0.5"
 jsonschema = { version = "0.33", default-features = false }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 sha2 = "0.10"
+hmac = "0.12"
+# 复用锁文件已有版本，章节字数与前端 Unicode Letter/Number 口径保持一致。
+regex = "1"
 similar = "3.2"
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"

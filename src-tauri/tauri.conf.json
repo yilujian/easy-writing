@@ -1,15 +1,16 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "易创",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "identifier": "com.yichuang.writing",
   "build": {
     "beforeDevCommand": "pnpm dev:desktop:ui",
     "devUrl": "http://localhost:4414",
-    "beforeBuildCommand": "pnpm build:desktop",
+    "beforeBuildCommand": "pnpm build:desktop && node agent-pi/scripts/package-runtime.mjs",
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [],
     "security": {
       "csp": {
@@ -19,21 +20,21 @@
         "img-src": "'self' data: blob: https:",
         "font-src": "'self' data:",
         "media-src": "'self' blob:",
-        "connect-src": "'self' ipc: http://ipc.localhost",
+        "connect-src": "'self' ipc: http://ipc.localhost wss:",
         "worker-src": "'self' blob:",
         "object-src": "'none'",
         "base-uri": "'self'",
         "form-action": "'self'"
       },
-      "devCsp": "default-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; img-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; font-src 'self' data: http://localhost:* http://127.0.0.1:*; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https:; worker-src 'self' blob:"
+      "devCsp": "default-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; img-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; font-src 'self' data: http://localhost:* http://127.0.0.1:*; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https: wss:; worker-src 'self' blob:"
     }
   },
   "bundle": {
-    "resources": { "binaries/agent/": "agent/", "resources/skills/": "skills/" },
     "macOS": {
       "minimumSystemVersion": "11.0"
     },
     "active": true,
+    "resources": { "resources/": "resources/" },
     "targets": [
       "app",
       "dmg",

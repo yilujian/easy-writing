@@ -697,7 +697,7 @@ fn persist_progress(app: &DesktopAppHandle, cursor: Option<&str>, context: Optio
     write_credentials_file(&path, credentials)?;
     if token_renewed {
         // 拿到新令牌：之前推不出去的通知现在能补发了
-        crate::agent_delivery_queue::flush_soon(app, crate::agent_delivery_queue::WEIXIN);
+        crate::weixin_delivery::flush_soon(app, crate::weixin_delivery::WEIXIN);
     }
     Ok(())
 }

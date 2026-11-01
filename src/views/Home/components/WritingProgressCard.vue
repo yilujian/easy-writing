@@ -156,7 +156,7 @@ fetchProgress()
   position: absolute;
   right: -12px;
   top: -28px;
-  font-size: 140px;
+  font-size: calc(140px * var(--ui-font-scale, 1));
   font-family: "Ma Shan Zheng", "Noto Serif SC", "Songti SC", SimSun, serif;
   color: color-mix(in srgb, var(--ink-main) 14%, transparent);
   pointer-events: none;
@@ -179,7 +179,7 @@ fetchProgress()
 }
 
 .progress-current {
-  font-size: 32px;
+  font-size: calc(32px * var(--ui-font-scale, 1));
   font-weight: 700;
   color: var(--ink-main);
   font-family: "Noto Serif SC", "Songti SC", SimSun, serif;
@@ -187,7 +187,7 @@ fetchProgress()
 }
 
 .progress-unit {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -196,7 +196,7 @@ fetchProgress()
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .note-item {
@@ -245,7 +245,7 @@ fetchProgress()
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   color: var(--ink-main);
 }
@@ -255,18 +255,18 @@ fetchProgress()
 }
 
 .progress-block-update {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   margin-left: 12px;
   white-space: nowrap;
 }
 
 .progress-block .progress-current {
-  font-size: 30px;
+  font-size: calc(30px * var(--ui-font-scale, 1));
 }
 
 .progress-block-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .progress-block-sub.manual {
@@ -296,7 +296,7 @@ fetchProgress()
   justify-content: center;
   padding: 0 14px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   box-shadow: 0 8px 18px rgba(28, 25, 23, 0.15);
 }
 

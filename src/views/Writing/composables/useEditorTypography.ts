@@ -9,6 +9,7 @@ interface EditorTypographyOptions {
   fontLineHeight: Ref<number>
   contentWidth: Ref<number>
   isParagraphGap: Ref<boolean>
+  isFirstLineIndent: Ref<boolean>
   rulerStyle: Ref<'none' | 'solid' | 'dashed'>
   alignMode: Ref<'left' | 'center' | 'justify'>
   fontColor: Ref<string | undefined>
@@ -26,6 +27,7 @@ export const useEditorTypography = (options: EditorTypographyOptions) => {
     fontLineHeight,
     contentWidth,
     isParagraphGap,
+    isFirstLineIndent,
     rulerStyle,
     alignMode,
     fontColor,
@@ -99,6 +101,7 @@ export const useEditorTypography = (options: EditorTypographyOptions) => {
       '--ruler-step': `${lineHeightPx}px`,
       '--ruler-offset': `${Math.max(lineHeightPx / 2, 0)}px`,
       '--paragraph-gap-factor': isParagraphGap.value ? '1' : '0',
+      '--editor-text-indent': isFirstLineIndent.value ? '2em' : '0',
       '--editor-text-align': alignMode.value || 'left',
     } as Record<string, string>
   })

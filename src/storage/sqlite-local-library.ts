@@ -3,6 +3,7 @@ import { encodeBookAssets, encodeImportedBookAssets, decodeBookAssets } from './
 import { trackStorageWrite } from './storage-maintenance'
 import { libraryImportStatements } from './desktop-import'
 import { desktopInvoke } from './desktop-records'
+import updateBookStatsSql from './sql/update-book-stats.sql?raw'
 import type { TextCounts } from '@/types/ui-preferences'
 import type { JsonRecord } from '@/types/json'
 import type {
@@ -216,12 +217,12 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
   }
 
   private async refreshBookStats(bookId: number | string) {
-    const book = await this.getLocalBookDetail(bookId)
-    if (!book) return null
-    const stats = await calcLocalBookStatsWithDrafts(bookId, await this.listBookChapters(bookId))
-    const next = normalizeLocalBook({ ...book, ...stats, updateTime: nowIso() })
-    await this.putBook(next)
-    return next
+    // 沿用原统计入口完成旧正文计数补齐及 SQLite 表初始化。
+    await loadLocalDraftWordCounts(bookId)
+    const db = await this.getDb()
+    await db.execute(updateBookStatsSql, [String(bookId), nowIso()])
+    const book = await this.get<LocalBook>(TABLE_BOOKS, bookId)
+    return book ? decodeBookAssets(book) : null
   }
 
   private async syncChapterStatsWithDrafts(
@@ -233,7 +234,15 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
       const wordCount = resolveLocalChapterWords(chapter, draftWords)
       const textWordCount = resolveLocalChapterTextWords(chapter, draftWords)
       if (Number(chapter.wordCount || 0) !== wordCount || chapter.textWordCount !== textWordCount) {
-        await this.putChapter(normalizeLocalChapter({ ...chapter, wordCount, textWordCount, updateTime: chapter.updateTime }))
+        const db = await this.getDb()
+        // 只修正派生计数，不能把读取时的旧章名/删除状态整行覆盖回去。
+        // 若正文计数已更新，则跳过这份过期快照。
+        await db.execute(`UPDATE local_chapters SET payload=json_set(payload,'$.wordCount',$1,'$.textWordCount',$2)
+          WHERE id=$3 AND bookId=$4 AND deletedAt IS NULL AND (
+            EXISTS(SELECT 1 FROM chapter_contents d WHERE d.chapterId=$3 AND d.bookId=$4 AND d.userId='guest' AND d.wordCount=$1 AND d.textWordCount IS $2)
+            OR (NOT EXISTS(SELECT 1 FROM chapter_contents d WHERE d.chapterId=$3 AND d.bookId=$4 AND d.userId='guest')
+              AND COALESCE(json_extract(payload,'$.wordCount'),0)=$1)
+          )`, [wordCount, textWordCount, chapter.id, String(bookId)])
       }
     }
   }
@@ -245,9 +254,10 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
     await this.syncChapterStatsWithDrafts(book.id, chapters, draftWords)
     const stats = await calcLocalBookStatsWithDrafts(book.id, chapters, draftWords)
     if (Number(book.wordCount || 0) === stats.wordCount && Number(book.chapterCount || 0) === stats.chapterCount && book.textWordCount === stats.textWordCount) return book
-    const next = normalizeLocalBook({ ...book, ...stats, updateTime: book.updateTime })
-    await this.putBook(next)
-    return next
+    const db = await this.getDb()
+    await db.execute(updateBookStatsSql, [String(book.id), null])
+    const current = await this.get<LocalBook>(TABLE_BOOKS, book.id)
+    return current ? decodeBookAssets(current) : book
   }
 
   async exportAllRecords() {
@@ -544,10 +554,20 @@ export class SqliteLocalLibraryStorage implements LocalLibraryStorage {
     if (first) await this.refreshBookStats(first.bookId)
   }
 
-  async updateLocalChapterContentMeta(payload: { bookId: number | string; chapterId: number; wordCount: number; title?: string }) {
-    const chapter = await this.get<LocalChapter>(TABLE_CHAPTERS, payload.chapterId)
-    if (!chapter) return
-    await this.putChapter(normalizeLocalChapter({ ...chapter, title: payload.title || chapter.title, wordCount: payload.wordCount, updateTime: nowIso() }))
+  async updateLocalChapterContentMeta(payload: { bookId: number | string; chapterId: number; wordCount: number; title?: string; expectedLocalVersion?: number }) {
+    const db = await this.getDb()
+    const expected = payload.expectedLocalVersion ?? null
+    if (expected !== null && (!Number.isSafeInteger(expected) || expected < 0)) throw new Error('正文版本无效')
+    const result = await db.execute(`UPDATE local_chapters SET payload=json_set(payload,
+        '$.title',CASE WHEN $1 IS NULL OR $1='' THEN json_extract(payload,'$.title') ELSE $1 END,
+        '$.wordCount',$2,'$.updateTime',$3)
+      WHERE id=$4 AND bookId=$5 AND deletedAt IS NULL
+      AND EXISTS(SELECT 1 FROM local_books b WHERE CAST(b.id AS TEXT)=$5 AND b.deletedAt IS NULL)
+      AND ($6 IS NULL OR EXISTS(
+        SELECT 1 FROM chapter_contents d WHERE d.chapterId=$4 AND d.bookId=$5 AND d.userId='guest'
+        AND COALESCE(json_extract(d.payload,'$.localVersion'),0)=$6
+      ))`, [payload.title ?? null, payload.wordCount, nowIso(), payload.chapterId, String(payload.bookId), expected]) as { rowsAffected: number }
+    if (result.rowsAffected !== 1) return
     return await this.refreshBookStats(payload.bookId)
   }
 }

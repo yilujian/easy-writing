@@ -137,7 +137,7 @@ const showHelpIcon = computed(() => route.path === '/statistics')
   }
 
   .page-title {
-    font-size: 24px;
+    font-size: calc(24px * var(--ui-font-scale, 1));
     font-weight: bold;
     color: var(--ink-main);
     letter-spacing: 1px;
@@ -150,13 +150,13 @@ const showHelpIcon = computed(() => route.path === '/statistics')
 
   .page-title--greeting {
     font-family: "Ma Shan Zheng", "Noto Serif SC", "Songti SC", SimSun, serif;
-    font-size: 24px;
+    font-size: calc(24px * var(--ui-font-scale, 1));
     font-weight: 500;
     letter-spacing: 2px;
   }
 
   .page-subtitle {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     display: flex;
     align-items: center;
@@ -176,13 +176,13 @@ const showHelpIcon = computed(() => route.path === '/statistics')
 
   .page-subtitle--poem {
     font-family: "Noto Serif SC", "Songti SC", SimSun, serif;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     opacity: 0.85;
     letter-spacing: 0.5px;
   }
 
   .welcome-badge {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     background: var(--ui-glass-bg);
     backdrop-filter: blur(12px);
     padding: 6px 12px;
@@ -196,7 +196,7 @@ const showHelpIcon = computed(() => route.path === '/statistics')
     gap: 4px;
 
     i {
-      font-size: 10px;
+      font-size: calc(10px * var(--ui-font-scale, 1));
     }
 
     &:hover {
@@ -253,7 +253,7 @@ const showHelpIcon = computed(() => route.path === '/statistics')
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 21px;
+    font-size: calc(21px * var(--ui-font-scale, 1));
   }
 
   :global(body.web-runtime .header-left .page-subtitle){

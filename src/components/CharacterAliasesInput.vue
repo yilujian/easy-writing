@@ -46,5 +46,5 @@ const conflicts = computed(() => {
 <style scoped>
 .character-aliases-input { min-width: 0; width: 100%; }
 .character-aliases-input :deep(.el-select) { width: 100%; }
-.alias-conflicts { margin: 6px 0 0; color: var(--ink-main); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.alias-conflicts { margin: 6px 0 0; color: var(--ink-main); font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.6; overflow-wrap: anywhere; }
 </style>

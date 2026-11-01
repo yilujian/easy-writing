@@ -1,6 +1,7 @@
 <template>
   <section class="workflow-task-panel">
     <div class="workflow-task-scroll custom-scroll">
+      <WorkflowRecoveryPanel v-if="task?.runId" :run-id="Number(task.runId)" />
       <section v-if="outlineWarnings.length" class="workflow-outline-warning">
         <div class="workflow-section-title">
           <span>
@@ -376,6 +377,7 @@
 </template>
 
 <script setup lang="ts">
+import WorkflowRecoveryPanel from '@/components/WorkflowRecoveryPanel.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type {
   WorkflowQualityIssue,
@@ -715,7 +717,7 @@ watch(
 
   p {
     margin: 0 0 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
   }
 
@@ -734,7 +736,7 @@ watch(
     padding: 7px 9px;
     border-radius: 7px;
     background: var(--state-warning-surface);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 
   strong {
@@ -760,7 +762,7 @@ watch(
 .workflow-section-title {
   min-height: 28px;
   margin-bottom: 14px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 700;
 
   > span:first-child {
@@ -787,7 +789,7 @@ watch(
   border-radius: 999px;
   color: var(--ink-sec);
   background: var(--ui-bg-soft, color-mix(in srgb, var(--ink-main) 6%, transparent));
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 
   &.is-generating,
@@ -814,7 +816,7 @@ watch(
 .workflow-control-hint {
   margin: 0 0 12px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.65;
 }
 
@@ -832,7 +834,7 @@ watch(
 .workflow-progress-meta {
   margin-bottom: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   span {
     min-width: 0;
@@ -875,14 +877,14 @@ watch(
   dt {
     margin-bottom: 4px;
     color: var(--ink-tertiary, var(--ink-sec));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
   }
 
   dd {
     margin: 0;
     overflow: hidden;
     color: var(--ink-main);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -902,7 +904,7 @@ watch(
 .workflow-review-chapter {
   display: block;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
 }
 
 .workflow-review-meta {
@@ -911,7 +913,7 @@ watch(
   gap: 5px 10px;
   margin-bottom: 10px;
   color: var(--ink-tertiary, var(--ink-sec));
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
 }
 
 .workflow-review-unavailable {
@@ -920,7 +922,7 @@ watch(
   border-radius: 7px;
   color: var(--state-warning-on);
   background: var(--state-warning-surface);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -934,7 +936,7 @@ watch(
   justify-content: space-between;
   margin-bottom: 6px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   span {
     min-width: 20px;
@@ -955,7 +957,7 @@ watch(
   margin: 0 0 10px;
   padding-left: 0;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.6;
   list-style: none;
 
@@ -970,7 +972,7 @@ watch(
     flex-wrap: wrap;
     gap: 4px;
     color: var(--ink-tertiary, var(--ink-sec));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-weight: 600;
   }
 }
@@ -992,8 +994,8 @@ watch(
   padding: 0 6px;
   border-radius: 4px;
   font-style: normal;
-  font-size: 11px;
-  line-height: 18px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  line-height: calc(18px * var(--ui-font-scale, 1));
   color: #4d8f3a;
   background: rgba(103, 194, 58, 0.14);
 }
@@ -1004,7 +1006,7 @@ watch(
 
 .workflow-issue-polish-hint {
   margin: 2px 0 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   color: var(--ink-tertiary, var(--ink-sec));
 }
 
@@ -1024,8 +1026,8 @@ watch(
   padding: 0 6px;
   border-radius: 4px;
   font-style: normal;
-  font-size: 11px;
-  line-height: 18px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  line-height: calc(18px * var(--ui-font-scale, 1));
 }
 
 .issue-chip-blocking {
@@ -1070,7 +1072,7 @@ watch(
     background: transparent;
     color: var(--ink-sec);
     font: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     cursor: pointer;
 
     &:hover {
@@ -1081,7 +1083,7 @@ watch(
 
 .workflow-issue-dismissed {
   margin: 0 0 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   color: var(--ink-tertiary, var(--ink-sec));
 
   button {
@@ -1121,7 +1123,7 @@ watch(
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-weight: 600;
 
   > span:first-child {
@@ -1146,7 +1148,7 @@ watch(
     border-radius: 999px;
     color: var(--ink-accent);
     background: color-mix(in srgb, var(--ink-accent) 10%, transparent);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-style: normal;
   }
 
@@ -1167,7 +1169,7 @@ watch(
     color: var(--ink-main);
     background: var(--input-bg, transparent);
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     line-height: 1.6;
     resize: vertical;
 
@@ -1186,7 +1188,7 @@ watch(
     right: 8px;
     bottom: 6px;
     color: var(--ink-tertiary, var(--ink-sec));
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     font-style: normal;
     font-variant-numeric: tabular-nums;
     pointer-events: none;
@@ -1199,7 +1201,7 @@ watch(
   gap: 7px;
   color: var(--ink-main);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 
   input {
     position: absolute;
@@ -1211,14 +1213,14 @@ watch(
 
   i {
     color: var(--ink-accent);
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
   }
 }
 
 .workflow-feedback-hint {
   margin: 0;
   color: var(--ink-tertiary, var(--ink-sec));
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.6;
 }
 
@@ -1232,7 +1234,7 @@ watch(
   font: inherit;
 
   strong {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   span {
@@ -1240,7 +1242,7 @@ watch(
     align-items: center;
     gap: 7px;
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1268,7 +1270,7 @@ watch(
     grid-template-columns: 56px minmax(0, 1fr);
     gap: 8px;
     color: var(--ink-sec);
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-font-scale, 1));
     line-height: 1.55;
 
     &::before {

@@ -9,8 +9,10 @@ import type {
   WorkflowStepTask,
   WorkflowTask,
 } from '@/types/workflow'
-import { isLiveLocalTask } from '@/utils/local-workflow-runtime'
+import { isLiveLocalTask, isLiveWorkflowAiDraft } from '@/utils/local-workflow-runtime'
 import { createLocalEntityId, nowIso } from './local-library-utils'
+import type { WorkflowAiDraft } from '@/types/workflow-ai'
+import type { WorkflowGeneration } from '@/types/workflow-generation'
 
 /**
  * 工作流建书本地库：替代旧服务端 /writing/workflow/* 的 run 与任务存取。
@@ -39,6 +41,7 @@ export interface LocalAdjustCandidate {
   /** 应用时要落为新产物的完整内容（大纲或设定） */
   content: JsonRecord
   createTime: string
+  generationId?: number
 }
 
 const DB_NAME = 'ew-local-workflow'
@@ -62,6 +65,60 @@ const writeValue = async (key: string, value: unknown) => {
 export const readLocalWorkflowRun = (id: number | string) => readValue<LocalWorkflowRun>(runKey(id))
 
 export const writeLocalWorkflowRun = (run: LocalWorkflowRun) => writeValue(runKey(run.id), run)
+
+export const readWorkflowGeneration = (id: number) => readValue<WorkflowGeneration>(`generation:${id}`)
+export const writeWorkflowGeneration = (value: WorkflowGeneration) => writeValue(`generation:${value.id}`, value)
+export const listWorkflowGenerations = async (runId: number) => {
+  const keys = await withStore<IDBValidKey[]>('readonly', store => store.getAllKeys())
+  const records = await Promise.all(keys.filter(key => String(key).startsWith('generation:')).map(key => readValue<WorkflowGeneration>(String(key))))
+  return records.filter((record): record is WorkflowGeneration => !!record && record.runId === runId)
+    .sort((a, b) => b.createdAt - a.createdAt || a.id - b.id)
+}
+const generationWrites = new Map<number, Promise<unknown>>()
+export const updateWorkflowGeneration = (id: number, edit: (value: WorkflowGeneration) => void) => {
+  const pending = (generationWrites.get(id) || Promise.resolve()).catch(() => undefined).then(async () => {
+    const value = await readWorkflowGeneration(id)
+    if (!value) throw new Error('恢复任务不存在')
+    edit(value)
+    value.updatedAt = Date.now()
+    await writeWorkflowGeneration(value)
+    return value
+  })
+  generationWrites.set(id, pending)
+  void pending.finally(() => { if (generationWrites.get(id) === pending) generationWrites.delete(id) }).catch(() => undefined)
+  return pending
+}
+
+// 与工作流使用同一命名空间，桌面 SQLite / 网页 IndexedDB / 整库备份共用现有链路。
+export const writeWorkflowAiDraft = (draft: WorkflowAiDraft) => writeValue(`recovery:${draft.id}`, draft)
+
+export const listWorkflowAiDrafts = async (runId: number): Promise<WorkflowAiDraft[]> => {
+  const keys = await withStore<IDBValidKey[]>('readonly', store => store.getAllKeys())
+  const records: WorkflowAiDraft[] = []
+  for (const key of keys) {
+    if (!String(key).startsWith('recovery:')) continue
+    const record = await readValue<WorkflowAiDraft>(String(key))
+    if (record && record.runId === runId) records.push(record)
+  }
+  return records.sort((a, b) => b.startedAt - a.startedAt || a.id - b.id)
+}
+
+/** 只有业务结果确实落库后才收起恢复草稿；落库失败时下次可直接复用完整结果。 */
+export const completeWorkflowAiDraft = async (runId: number, key: string) => {
+  try {
+    const records = (await listWorkflowAiDrafts(runId)).filter(record => record.key === key)
+    const ready = records.find(record => record.status === 'ready')
+    if (!ready) return
+    for (const record of records) {
+      if (record.request === ready.request && !isLiveWorkflowAiDraft(record.id)) {
+        await writeWorkflowAiDraft({ ...record, status: 'applied', updatedAt: Date.now() })
+      }
+    }
+  } catch (error) {
+    // 业务成果已经落库，归档标记失败只保留恢复副本，不反过来将成功任务改为失败。
+    console.warn('工作流恢复草稿归档失败，副本保留', error)
+  }
+}
 
 export const listLocalWorkflowRuns = async (): Promise<LocalWorkflowRun[]> => {
   const keys = await withStore<IDBValidKey[]>('readonly', store => store.getAllKeys())
@@ -145,14 +202,15 @@ export const STEP_TITLES: Record<string, string> = {
 
 export const deleteLocalWorkflow = async (data: { id: number }) => {
   const run = await readLocalWorkflowRun(data.id)
-  if (run?.activeTaskId && isLiveLocalTask(Number(run.activeTaskId))) {
+  if ((run?.activeTaskId && isLiveLocalTask(Number(run.activeTaskId))) ||
+      (run?.latestStepTaskId && isLiveLocalTask(Number(run.latestStepTaskId)))) {
     throw new Error('该工作流还有生成任务在运行，请先停止生成再删除')
   }
   // run 删除时顺带清掉它名下的任务记录，不留读不到的死数据
   const keys = await withStore<IDBValidKey[]>('readonly', store => store.getAllKeys())
   for (const key of keys) {
     const text = String(key)
-    if (!text.startsWith('task:')) continue
+    if (!text.startsWith('task:') && !text.startsWith('recovery:') && !text.startsWith('generation:')) continue
     const task = await readValue<WorkflowTask>(text)
     if (task && Number(task.runId) === Number(data.id)) {
       await withStore('readwrite', store => store.delete(text))
@@ -238,12 +296,16 @@ export const getLocalWorkflowTaskStatus = async (taskId: number, _opts?: { signa
 
 /** 进行中的向导步骤任务（灵感/大纲/设定/调整）；终态或没有则为 null */
 export const getLocalActiveStepTask = async (runId: number) => {
+  const { data: task } = await getLocalLatestStepTask(runId)
+  if (!task || !['queued', 'running'].includes(String(task.status || ''))) return { data: null as WorkflowStepTask | null }
+  return { data: task }
+}
+
+/** 重开时也能接回已完成但尚未展示/采用的结果。 */
+export const getLocalLatestStepTask = async (runId: number) => {
   const run = await readLocalWorkflowRun(runId)
   if (!run?.latestStepTaskId) return { data: null as WorkflowStepTask | null }
   const task = await readRepairedLocalTask(Number(run.latestStepTaskId))
-  if (!task || !['queued', 'running'].includes(String(task.status || ''))) {
-    return { data: null as WorkflowStepTask | null }
-  }
   return { data: task as WorkflowStepTask }
 }
 
@@ -300,6 +362,12 @@ export const applyArtifactToLocalRun = (
     ...(run.artifacts || []).filter(item => item.artifactType !== stepType),
     artifact,
   ]
+  // 原 UI 快照不能遮住刚生成/刚采用的产物。未确认的调整候选不走这里。
+  if (stepType === 'outline' || stepType === 'setting') {
+    const key = stepType === 'outline' ? 'workflowOutline' : 'workflowSetting'
+    run.summary = { ...(run.summary || {}), [key]: content }
+    delete run.summary[`${key}Ui`]
+  }
   run.updateTime = nowIso()
   return artifact
 }
@@ -328,6 +396,7 @@ export const applyLocalWorkflowOutlineAdjust = async (data: {
   const { run, candidate } = await consumeAdjustCandidate(data.runId, data.candidateId, 'outline_adjust')
   const artifact = applyArtifactToLocalRun(run, 'outline', candidate.content)
   await writeLocalWorkflowRun(run)
+  if (candidate.generationId) await updateWorkflowGeneration(candidate.generationId, g => { g.status = 'applied' }).catch(error => console.warn('恢复草稿归档失败，正式结果已保存', error))
   return {
     data: {
       artifact,
@@ -342,8 +411,9 @@ export const discardLocalWorkflowOutlineAdjust = async (data: {
   runId: number
   candidateId: number
 }) => {
-  const { run } = await consumeAdjustCandidate(data.runId, data.candidateId, 'outline_adjust')
+  const { run, candidate } = await consumeAdjustCandidate(data.runId, data.candidateId, 'outline_adjust')
   await writeLocalWorkflowRun(run)
+  if (candidate.generationId) await updateWorkflowGeneration(candidate.generationId, g => { g.status = 'discarded' })
   return { data: { discarded: true } }
 }
 
@@ -355,6 +425,7 @@ export const applyLocalWorkflowSettingAdjust = async (data: {
   const { run, candidate } = await consumeAdjustCandidate(data.runId, data.candidateId, 'setting_adjust')
   const artifact = applyArtifactToLocalRun(run, 'setting', candidate.content)
   await writeLocalWorkflowRun(run)
+  if (candidate.generationId) await updateWorkflowGeneration(candidate.generationId, g => { g.status = 'applied' }).catch(error => console.warn('恢复草稿归档失败，正式结果已保存', error))
   return {
     data: {
       artifact,
@@ -369,8 +440,9 @@ export const discardLocalWorkflowSettingAdjust = async (data: {
   runId: number
   candidateId: number
 }) => {
-  const { run } = await consumeAdjustCandidate(data.runId, data.candidateId, 'setting_adjust')
+  const { run, candidate } = await consumeAdjustCandidate(data.runId, data.candidateId, 'setting_adjust')
   await writeLocalWorkflowRun(run)
+  if (candidate.generationId) await updateWorkflowGeneration(candidate.generationId, g => { g.status = 'discarded' })
   return { data: { discarded: true } }
 }
 

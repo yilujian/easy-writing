@@ -1,3 +1,4 @@
+import { notifyPetActivity } from '@/desktop-pet/events'
 import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import dayjs from 'dayjs'
 import { getWritingStorage } from './index'
@@ -431,6 +432,12 @@ export class LocalBackupService {
         backupRetention: settings.backupRetention,
         lastBackupAt,
       })
+    }
+
+    if (failed.length || reference.failed.length) {
+      notifyPetActivity({ id: 'backup', phase: 'error', message: '部分备份未完成，请回到平台查看。', target: 'settings' })
+    } else if (didBackupSomething && !options.offline) {
+      notifyPetActivity({ id: 'backup', phase: 'done', message: '本轮文稿备份已完成。' })
     }
 
     return {

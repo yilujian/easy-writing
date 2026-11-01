@@ -269,6 +269,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiChartFontSize } from '@/utils/ui-typography'
 import { useWordCount } from '@/composables/use-word-count'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
@@ -437,7 +438,7 @@ const buildTrendOption = () => {
       borderColor: split,
       borderWidth: 1,
       padding: [10, 12],
-      textStyle: { color: main, fontSize: 12 },
+      textStyle: { color: main, fontSize: uiChartFontSize(12) },
       axisPointer: { type: 'line', lineStyle: { color: split } },
       formatter: (params: JsonRecord | JsonRecord[]) => {
         const rows: JsonRecord[] = Array.isArray(params) ? params : [params]
@@ -460,13 +461,13 @@ const buildTrendOption = () => {
       type: 'category',
       data: xAxis,
       boundaryGap: false,
-      axisLabel: { color: sec, fontSize: 11 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(11) },
       axisLine: { lineStyle: { color: split } },
       axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: sec, fontSize: 11 },
+      axisLabel: { color: sec, fontSize: uiChartFontSize(11) },
       splitLine: { lineStyle: { color: split, type: 'dashed' } },
       axisLine: { show: false },
       axisTick: { show: false }
@@ -625,7 +626,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.count-mode-note { color: var(--ink-sec); font-size: 13px; margin: 0 0 16px; }
+.count-mode-note { color: var(--ink-sec); font-size: calc(13px * var(--ui-font-scale, 1)); margin: 0 0 16px; }
 .statistics-page {
   padding: 4px 14px 36px;
   min-height: calc(100vh - var(--desktop-titlebar-height, 0px) - 56px);
@@ -653,7 +654,7 @@ onBeforeUnmount(() => {
 .card-title,
 .calendar-title,
 .progress-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 800;
   color: var(--ink-main);
 }
@@ -674,7 +675,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 10px;
   left: 0;
-  font-size: 34px;
+  font-size: calc(34px * var(--ui-font-scale, 1));
   font-weight: 800;
   color: var(--ink-main);
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -690,13 +691,13 @@ onBeforeUnmount(() => {
 
   span {
     display: block;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     margin-bottom: 8px;
   }
 
   strong {
-    font-size: 38px;
+    font-size: calc(38px * var(--ui-font-scale, 1));
     line-height: 1;
     color: var(--ink-main);
   }
@@ -704,7 +705,7 @@ onBeforeUnmount(() => {
   em {
     margin-left: 6px;
     font-style: normal;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 }
@@ -734,7 +735,7 @@ onBeforeUnmount(() => {
     z-index: 0;
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    font-size: 42px;
+    font-size: calc(42px * var(--ui-font-scale, 1));
     opacity: 0.48;
   }
 
@@ -772,7 +773,7 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   align-items: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
   font-weight: 800;
   margin-bottom: 18px;
 }
@@ -780,14 +781,14 @@ onBeforeUnmount(() => {
 .source-value {
   position: relative;
   z-index: 1;
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-font-scale, 1));
   font-weight: 800;
   color: var(--ink-main);
   white-space: nowrap;
 
   span {
     margin-left: 5px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
     font-weight: 500;
   }
@@ -797,7 +798,7 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 800;
 }
 
@@ -807,11 +808,11 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin: auto 0 0;
   padding-top: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   i {
-    font-size: 7px;
+    font-size: calc(7px * var(--ui-font-scale, 1));
     color: color-mix(in srgb, var(--ink-sec) 76%, transparent);
   }
 }
@@ -836,7 +837,7 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   gap: 12px 18px;
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 
   strong {
@@ -849,7 +850,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 28px;
   margin: 22px 0 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-main);
 }
 
@@ -894,7 +895,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
   background: color-mix(in srgb, var(--ui-glass-bg) 62%, transparent);
 }
@@ -960,7 +961,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -992,12 +993,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 800;
 
   i {
     flex: 0 0 auto;
-    font-size: 22px;
+    font-size: calc(22px * var(--ui-font-scale, 1));
   }
 
   span {
@@ -1022,7 +1023,7 @@ onBeforeUnmount(() => {
 
   span,
   em {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     font-style: normal;
     color: var(--ink-sec);
   }
@@ -1034,7 +1035,7 @@ onBeforeUnmount(() => {
   strong {
     flex: 1 0 auto;
     min-width: max-content;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     font-weight: 800;
     line-height: 1.1;
     color: var(--ink-main);
@@ -1123,7 +1124,7 @@ onBeforeUnmount(() => {
 .week-label {
   padding: 9px 0;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1152,7 +1153,7 @@ onBeforeUnmount(() => {
 }
 
 .day-num {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 800;
   color: var(--ink-main);
   line-height: 1;
@@ -1163,12 +1164,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
 
   i {
     width: 12px;
-    font-size: 10px;
+    font-size: calc(10px * var(--ui-font-scale, 1));
   }
 
   &--manual {
@@ -1201,7 +1202,7 @@ onBeforeUnmount(() => {
 
   p {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     text-align: right;
     color: var(--ink-sec);
   }
@@ -1233,7 +1234,7 @@ onBeforeUnmount(() => {
     conic-gradient(var(--ring-color) var(--percent), color-mix(in srgb, var(--ring-color) 18%, var(--ui-border)) 0);
 
   span {
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     font-weight: 800;
     color: var(--ink-main);
   }
@@ -1252,7 +1253,7 @@ onBeforeUnmount(() => {
   }
 
   span {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 
@@ -1303,12 +1304,12 @@ onBeforeUnmount(() => {
   }
 
   span {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 
   strong {
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     white-space: nowrap;
   }
@@ -1331,14 +1332,14 @@ onBeforeUnmount(() => {
   gap: 6px;
 
   span {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 }
 
 .settings-tip {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   color: var(--ink-sec);
 }
 
@@ -1373,7 +1374,7 @@ onBeforeUnmount(() => {
   }
 
   .source-value {
-    font-size: 26px;
+    font-size: calc(26px * var(--ui-font-scale, 1));
   }
 
   .chart-area {

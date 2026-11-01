@@ -248,14 +248,14 @@ const copyEmail = async () => {
 
   .eyebrow {
     margin: 0 0 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     letter-spacing: 0.12em;
     color: var(--ink-accent);
   }
 
   h1 {
     margin: 0 0 12px;
-    font-size: 32px;
+    font-size: calc(32px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     font-family: var(--font-serif);
   }
@@ -294,7 +294,7 @@ const copyEmail = async () => {
 
   h2 {
     margin: 0 0 14px;
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 }
@@ -314,13 +314,13 @@ const copyEmail = async () => {
   .label {
     display: block;
     margin-bottom: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 
   .value {
     display: block;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
     line-height: 1.6;
     word-break: break-word;
@@ -340,7 +340,7 @@ const copyEmail = async () => {
   gap: 8px;
 
   span {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     font-weight: 600;
     color: var(--ink-main);
   }
@@ -358,7 +358,7 @@ const copyEmail = async () => {
   border-radius: 12px;
   background: transparent;
   color: var(--ink-main);
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   line-height: 1.7;
   resize: vertical;
   outline: none;
@@ -374,7 +374,7 @@ const copyEmail = async () => {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   line-height: 1.8;
   color: var(--ink-sec);
   font-family: "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, monospace;
@@ -399,7 +399,7 @@ const copyEmail = async () => {
 .contact-head {
   h2 {
     margin: 0 0 6px;
-    font-size: 20px;
+    font-size: calc(20px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
@@ -412,7 +412,7 @@ const copyEmail = async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-font-scale, 1));
 
   li {
     display: flex;
@@ -422,7 +422,7 @@ const copyEmail = async () => {
 
   span {
     flex: 0 0 2.5em;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
     color: var(--ink-sec);
   }
 
@@ -445,7 +445,7 @@ const copyEmail = async () => {
 
   i {
     color: var(--ink-sec);
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   &:hover i {
@@ -483,7 +483,7 @@ const copyEmail = async () => {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-font-scale, 1));
     color: var(--ink-main);
   }
 
@@ -506,7 +506,7 @@ const copyEmail = async () => {
   }
 
   .page-head h1 {
-    font-size: 28px;
+    font-size: calc(28px * var(--ui-font-scale, 1));
   }
 
   .submit-panel,

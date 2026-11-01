@@ -1248,7 +1248,7 @@ watch(
   background: transparent;
   color: var(--ink-sec);
   font-family: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   &:hover {
@@ -1301,7 +1301,7 @@ watch(
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-glass-bg) 88%, transparent);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   backdrop-filter: blur(10px);
 }
 
@@ -1340,11 +1340,11 @@ watch(
   gap: 9px;
   padding: 16px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   text-align: center;
 
   i {
-    font-size: 18px;
+    font-size: calc(18px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1419,7 +1419,7 @@ watch(
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-glass-bg) 90%, transparent);
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   white-space: nowrap;
   transform: translateX(-50%);
   backdrop-filter: blur(10px);
@@ -1457,7 +1457,7 @@ watch(
   background: transparent;
   color: var(--ink-sec);
   font-family: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   cursor: pointer;
 
   &:hover:not(:disabled) {
@@ -1524,7 +1524,7 @@ watch(
 
   .t2 {
     color: var(--ink-sec);
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-font-scale, 1));
   }
 }
 
@@ -1561,7 +1561,7 @@ watch(
   justify-content: center;
   gap: 8px;
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .history-list {
@@ -1613,7 +1613,7 @@ watch(
   justify-content: center;
   padding: 5px;
   color: var(--ink-sec);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   text-align: center;
 }
 
@@ -1627,7 +1627,7 @@ watch(
 .meta-title {
   overflow: hidden;
   color: var(--ink-main);
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1635,14 +1635,14 @@ watch(
 
 .meta-time {
   color: var(--ink-sec);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 
 .meta-error {
   max-height: 32px;
   overflow: hidden;
   color: var(--state-danger);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 1.35;
 }
 
@@ -1698,7 +1698,7 @@ watch(
 
 @media (max-width: 620px) {
   .mode-tab {
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-font-scale, 1));
   }
 
   .config-body {
