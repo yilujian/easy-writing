@@ -16,7 +16,7 @@ export interface ListenBookSource {
 export const loadListenBook = async (bookId: string | number): Promise<ListenBookSource> => {
   const library = getLocalLibraryStorage()
   const detail = await library.getLocalBookDetail(bookId)
-  if (!detail) throw new Error('作品不存在或已被删除')
+  if (!detail || detail.deletedAt) throw new Error('作品不存在或已被删除')
   const tree = await library.getLocalBookTree(bookId)
   const chapters: ListenChapterRef[] = []
   tree.forEach(volume => {

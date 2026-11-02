@@ -535,8 +535,7 @@ export const useListeningStore = defineStore('listening', () => {
           }
         } catch (cause) {
           if (request !== bookRequest || token !== generation) return false
-          cancelPlayback()
-          script.value = null
+          endSession()
           error.value = cause instanceof Error ? cause.message : '刷新朗读正文失败'
           status.value = 'error'
           diagnose('refresh-chapter', error.value)
@@ -615,6 +614,7 @@ export const useListeningStore = defineStore('listening', () => {
     } catch (cause) {
       if (request !== bookRequest) return false
       const message = cause instanceof Error ? cause.message : '打开作品失败'
+      endSession()
       error.value = message
       status.value = 'error'
       diagnose('open-book', message)
