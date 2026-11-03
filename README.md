@@ -152,7 +152,7 @@ API Key 留空即可，不用填。若仍报 403，多半是本地服务按请�
 
 **微信群**：易创网文反馈群，使用问题和建议可以在群里直接提。群二维码每周更换，过期请加上面的微信拉你进群。
 
-<img src="./docs/images/wechat-group.png" alt="易创网文反馈群二维码" width="260">
+<img src="./docs/images/wechat-group.png?v=20261103" alt="易创网文反馈群二维码" width="260">
 
 ## 协议
 

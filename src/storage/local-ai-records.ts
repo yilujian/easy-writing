@@ -22,8 +22,10 @@ export interface LocalAiRecordInput {
   sceneLabel: string
   modelCode: string
   modelName: string
-  /** 1=成功 0=失败（与服务端状态口径一致；本地没有"生成中"落账） */
-  status: 0 | 1
+  /** 1=成功、0=失败、3=用户取消；本地没有“生成中”落账。 */
+  status: 0 | 1 | 3
+  /** 测试缺少 usage 时明确标注，不按字数虚构思考消耗。 */
+  usageSource?: 'reported' | 'estimated' | 'unavailable'
   input: string
   output: string
   inputTokens: number
@@ -106,6 +108,7 @@ const toListItem = (record: LocalAiRecord): AiRecordListItem => ({
   output: record.output,
   inputTokens: record.inputTokens,
   outputTokens: record.outputTokens,
+  usageSource: record.usageSource,
   totalCost: 0,
   duration: record.duration,
   errorMsg: record.errorMsg,
@@ -137,6 +140,7 @@ export const getLocalAiRecordSummary = async (
     inputTokens: matched.reduce((sum, record) => sum + record.inputTokens, 0),
     outputTokens: matched.reduce((sum, record) => sum + record.outputTokens, 0),
     totalCost: 0,
+    unknownUsageTotal: matched.filter(record => record.usageSource === 'unavailable').length,
   }
   return { data: summary }
 }

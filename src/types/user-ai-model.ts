@@ -20,6 +20,8 @@ export interface UserAiModelSavePayload {
   thinking?: AiThinkingMode
   /** 额外请求参数（JSON 对象文本），原样合并进 chat/completions 请求体，给自定义渠道填各家思考开关等 */
   extraParams?: string
+  /** 仅影响连接测试；缺省按云端 2 分钟、本地 5 分钟处理。 */
+  testWaitSeconds?: import('./model-test').ModelTestWaitSeconds
 }
 
 export interface UserAiModelTestResult {
@@ -28,6 +30,10 @@ export interface UserAiModelTestResult {
   latency: number
   url: string
   testedAt: string
+  outcome?: import('./model-test').ModelTestOutcome
+  reply?: string
+  inputTokens?: number
+  outputTokens?: number
 }
 
 export interface UserAiRemoteModelListResult {

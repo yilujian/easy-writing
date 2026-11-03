@@ -1,5 +1,5 @@
 export type AiRecordType = '' | 'text' | 'image'
-export type AiRecordStatus = '' | '0' | '1' | '2'
+export type AiRecordStatus = '' | '0' | '1' | '2' | '3'
 
 export interface AiRecordPageQuery {
   page: number
@@ -28,6 +28,7 @@ export interface AiRecordListItem {
   imageUrl?: string
   inputTokens: number
   outputTokens: number
+  usageSource?: 'reported' | 'estimated' | 'unavailable'
   totalCost: number
   duration: number
   errorMsg?: string
@@ -44,4 +45,5 @@ export interface AiRecordSummary {
   inputTokens: number
   outputTokens: number
   totalCost: number
+  unknownUsageTotal?: number
 }

@@ -28,6 +28,7 @@
         <span class="summary-info">
           <span class="label">Token 用量</span>
           <strong>{{ formatNumber(summary.inputTokens + summary.outputTokens) }}</strong>
+          <small v-if="summary.unknownUsageTotal">另有 {{ summary.unknownUsageTotal }} 次调用未获取到用量</small>
         </span>
       </div>
     </div>
@@ -179,11 +180,11 @@
               <span class="record-duration">{{ formatDuration(record.duration) }}</span>
 
               <!-- 供应商响应带 usage 时是真实值，流式/生图按字数估算 -->
-              <span class="record-cost">{{ formatNumber(record.inputTokens + record.outputTokens) }}</span>
+              <span class="record-cost">{{ record.usageSource === 'unavailable' ? '未获取' : formatNumber(record.inputTokens + record.outputTokens) }}</span>
             </div>
 
             <div v-if="expandedKey === recordKey(record)" class="record-detail">
-              <p v-if="record.status === 0 && record.errorMsg" class="detail-error">
+              <p v-if="(record.status === 0 || record.status === 3) && record.errorMsg" class="detail-error" :class="{ cancelled: record.status === 3 }">
                 <i class="fa-solid fa-circle-exclamation"></i>
                 {{ record.errorMsg }}
               </p>
@@ -389,12 +390,14 @@ const stripPageQuery = (payload: AiRecordPageQuery) => {
 }
 
 const statusLabel = (status?: number) => {
+  if (status === 3) return '已取消'
   if (status === 1) return '成功'
   if (status === 2) return '生成中'
   return '失败'
 }
 
 const statusClass = (status?: number) => {
+  if (status === 3) return 'cancelled'
   if (status === 1) return 'success'
   if (status === 2) return 'running'
   return 'fail'
@@ -749,6 +752,7 @@ $record-columns: minmax(240px, 1.6fr) minmax(140px, 1fr) 168px 72px 110px;
 }
 
 .detail-error {
+  &.cancelled { color: var(--ink-sec); background: var(--input-bg); }
   margin: 0 0 10px;
   display: flex;
   align-items: flex-start;

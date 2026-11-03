@@ -1,5 +1,6 @@
 import type { PiActivity, PiChatState, PiEvent, PiMessage, PiDraft, PiSessionHistory } from '@/types/agent-pi'
 import { toolOperation, summarizeToolArgs, summarizeToolResult } from './tool-summaries'
+import { draftBelongsToCall, draftIdFromResult } from './draft-references'
 import { normalizeAnswer, normalizeQuestionSpec } from './questions'
 import { parseSkillCommand } from './skills'
 import type { PiQuestionAnswer, PiQuestionSpec } from '@/types/agent-pi'
@@ -73,14 +74,6 @@ export function formatDuration(ms: number) {
   return seconds % 60 ? `${minutes} 分 ${seconds % 60} 秒` : `${minutes} 分钟`
 }
 
-const candidateTools = new Set([
-  'save_draft',
-  'save_new_chapter_draft',
-  'save_outline_draft',
-  'save_creation_draft',
-  'save_skill_draft'
-])
-
 function messageOperation(messages: PiMessage[], message: PiMessage) {
   if (!message.toolCallId) return message.toolName
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -93,7 +86,8 @@ function messageOperation(messages: PiMessage[], message: PiMessage) {
 }
 
 export function projectPiMessage(message: PiMessage, operation = message.toolName): PiMessage {
-  if (message.role === 'toolResult')
+  if (message.role === 'toolResult') {
+    const draftId = draftIdFromResult(message.details)
     return {
       role: message.role,
       timestamp: message.timestamp,
@@ -104,14 +98,15 @@ export function projectPiMessage(message: PiMessage, operation = message.toolNam
       content: message.isError ? message.content : [],
       ...(message.details?.supersededByAuthorInput
         ? { details: { supersededByAuthorInput: true } }
-        : candidateTools.has(message.toolName || '') && typeof message.details?.draftId === 'string'
-        ? { details: { draftId: message.details.draftId } }
+        : draftId
+        ? { details: { draftId } }
         : message.details?.questionSpec
           ? { details: { questionSpec: message.details.questionSpec, answer: normalizeAnswer(message.details.answer ? message.details.answer as Record<string, unknown> : message.details) } }
         : message.toolName === 'ask_author' && message.details
           ? { details: { answer: normalizeAnswer(message.details.answer ? (message.details.answer as Record<string, unknown>) : message.details) } }
           : {})
     }
+  }
   return {
     ...message,
     content:
@@ -444,12 +439,12 @@ export function buildPiTurns(
       if (draft && !documents.has(draft.id)) documents.set(draft.id, draft)
     }
     for (const message of group.messages) {
-      if (candidateTools.has(message.toolName || '') && typeof message.details?.draftId === 'string')
-        attach(byId.get(message.details.draftId))
-      // 已有候选的稳定编号由原生会话和工具调用编号组成，无需按书名猜测或迁移记录。
+      const draftId = message.role === 'toolResult' ? draftIdFromResult(message.details) : undefined
+      if (draftId) attach(byId.get(draftId))
+      // 正文编号按作者轮次生成，来源另存调用编号；其他候选直接使用会话与调用编号。
       for (const call of calls(message))
-        if (call.id && candidateTools.has(call.name || ''))
-          for (const draft of drafts) if (draft.id === `${draft.sessionId}:${call.id}`) attach(draft)
+        if (call.id)
+          for (const draft of drafts) if (draftBelongsToCall(draft, call.id)) attach(draft)
     }
     const round: PiTurnRound = {
       id: group.id,

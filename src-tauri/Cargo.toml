@@ -1,6 +1,6 @@
 [package]
 name = "ew-client-desktop"
-version = "2.1.0"
+version = "2.1.1"
 description = "易创桌面客户端"
 authors = ["yilujian"]
 license = "AGPL-3.0-only"
@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
 # 本地完整验收文件按仓库约定不上传；普通构建不依赖它们。
-local-tests = []
+local-tests = ["tauri/test"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -44,7 +44,8 @@ regex = "1"
 similar = "3.2"
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
-tauri-plugin-updater = "2"
+# configure_client 使用更新器公开的 HTTP 配置接口，固定 minor 版本避免类型漂移。
+tauri-plugin-updater = "~2.10"
 # 关窗兜底超时用（tauri 自带 async_runtime 即 tokio，这里显式声明以使用 tokio::time）
 tokio = { version = "1", features = ["time", "net", "sync", "rt", "rt-multi-thread"] }
 # 模型网关：本机 HTTP 服务端与到供应商的客户端；与 tauri-plugin-http 共用同一版本的 reqwest/hyper

@@ -1,6 +1,7 @@
 import { appSettings } from '@/storage/app-settings'
 import { isTauriRuntime } from '@/storage'
 import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
+import type { DesktopUpdateMetadata } from '@/types/desktop-update'
 
 const DESKTOP_UPDATE_NOTES_KEY = 'ew-desktop-update-notes'
 
@@ -148,8 +149,10 @@ export const checkDesktopUpdate = async (options: DesktopUpdateOptions = {}): Pr
     await dismissDesktopUpdate()
     options.onStateChange?.({ phase: 'checking', message: '正在检查新版本...' })
     try {
-      const { check } = await import('@tauri-apps/plugin-updater')
-      pendingUpdate = await check({ timeout: 15000 })
+      const { invoke } = await import('@tauri-apps/api/core')
+      const { Update } = await import('@tauri-apps/plugin-updater')
+      const metadata = await invoke<DesktopUpdateMetadata | null>('check_desktop_update')
+      pendingUpdate = metadata ? new Update(metadata) : null
       if (!pendingUpdate) return { status: 'latest' }
       const info = toUpdateInfo(pendingUpdate)
       options.onStateChange?.({ phase: 'available', info, message: '新版本已准备好，可选择立即更新。' })
@@ -183,7 +186,8 @@ export const installDesktopUpdate = async (options: DesktopUpdateOptions & {
     const emit = (phase: DesktopUpdatePhase, message: string) => options.onStateChange?.({ phase, info, progress: { ...progress }, message })
     try {
       emit('downloading', '正在下载更新包...')
-      await update.download(event => updateDownloadProgress(event, info, progress, options.onStateChange), { timeout: 120000 })
+      // 后台按连续无数据 120 秒中止；不要再传入整包下载总时限。
+      await update.download(event => updateDownloadProgress(event, info, progress, options.onStateChange))
       emit('preparing', '正在保存并备份作品，请稍候...')
       await options.beforeInstall()
       savePendingUpdateNotes(info)

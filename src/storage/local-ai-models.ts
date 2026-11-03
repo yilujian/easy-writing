@@ -2,6 +2,7 @@ import { appSettings, flushAppSettings } from '@/storage/app-settings'
 import type { AiModelGroupCode, AiModelOption } from '@/types/ai-model'
 import type { AiThinkingMode, UserAiModelSavePayload, UserAiModelScene } from '@/types/user-ai-model'
 import { createLocalEntityId, nowIso } from './local-library-utils'
+import { isModelTestWait, modelTestConfiguration } from '@/utils/model-test-policy'
 
 /**
  * BYOK 模型本地库：替代旧服务端 /ai/user_model/* 数据通道。
@@ -30,6 +31,8 @@ export interface LocalAiModel {
   thinking?: AiThinkingMode
   /** 额外请求参数 JSON 文本 */
   extraParams?: string
+  testWaitSeconds?: import('@/types/model-test').ModelTestWaitSeconds
+  lastTestOutcome?: import('@/types/model-test').ModelTestOutcome
   /** 最近一次连通测试：1=已连接 2=失败，缺省=未测试 */
   testStatus?: number
   lastTestAt?: string
@@ -97,6 +100,8 @@ const toOption = (model: LocalAiModel): AiModelOption => ({
   maxOutputTokens: model.maxOutputTokens,
   thinking: model.thinking || defaultThinkingFor(model.provider),
   extraParams: model.extraParams || '',
+  testWaitSeconds: model.testWaitSeconds,
+  lastTestOutcome: model.lastTestOutcome,
   status: model.status,
   testStatus: model.testStatus,
   lastTestAt: model.lastTestAt,
@@ -116,10 +121,12 @@ export const listLocalAiModels = async (params?: { scene?: string }) => {
 
 export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
   if (payload.scene !== 'text' && payload.scene !== 'image') throw new Error('不支持的模型用途，请选择文字或图像生成')
+  if (payload.testWaitSeconds !== undefined && !isModelTestWait(payload.testWaitSeconds)) throw new Error('测试等待时间请选择 2、5 或 10 分钟')
   const store = loadStore()
   if (payload.id != null) {
     const model = store.models.find(item => item.id === payload.id)
     if (!model) throw new Error('模型不存在')
+    const previousTestConfig = modelTestConfiguration(model)
     model.name = payload.name
     model.scene = payload.scene
     model.provider = payload.provider
@@ -131,6 +138,14 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     model.maxOutputTokens = payload.maxOutputTokens
     if (payload.thinking) model.thinking = payload.thinking
     if (payload.extraParams !== undefined) model.extraParams = String(payload.extraParams || '').trim()
+    model.testWaitSeconds = payload.testWaitSeconds
+    if (previousTestConfig !== modelTestConfiguration(model)) {
+      delete model.testStatus
+      delete model.lastTestOutcome
+      delete model.lastTestAt
+      delete model.lastLatency
+      delete model.lastError
+    }
     model.status = payload.status
     if (payload.sort != null) model.sort = payload.sort
     await saveStore(store)
@@ -152,6 +167,7 @@ export const saveLocalAiModel = async (payload: UserAiModelSavePayload) => {
     createTime: nowIso(),
     thinking: payload.thinking || defaultThinkingFor(payload.provider),
     extraParams: String(payload.extraParams || '').trim(),
+    testWaitSeconds: payload.testWaitSeconds,
   }
   store.models.push(model)
   await saveStore(store)
@@ -170,12 +186,14 @@ export const setLocalAiModelStatus = async (id: number, status: number) => {
 /** 记录连通测试结果，列表"测试"列据此显示已连接/失败（原服务端在 test 接口里顺手写回，本地版由调用方显式落库） */
 export const recordLocalAiModelTest = async (
   id: number,
-  result: { ok: boolean; message?: string; latency?: number | null; testedAt?: string }
+  result: { ok: boolean; message?: string; latency?: number | null; testedAt?: string; outcome?: import('@/types/model-test').ModelTestOutcome }
 ) => {
+  if (result.outcome === 'cancelled') return
   const store = loadStore()
   const model = store.models.find(item => item.id === id)
   if (!model) throw new Error('模型不存在')
   model.testStatus = result.ok ? 1 : 2
+  model.lastTestOutcome = result.outcome
   model.lastTestAt = result.testedAt || nowIso()
   model.lastLatency = result.latency ?? null
   model.lastError = result.ok ? '' : String(result.message || '')

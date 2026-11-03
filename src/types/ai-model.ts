@@ -53,6 +53,8 @@ export interface AiModelOption {
   maxOutputTokens?: number
   thinking?: AiThinkingMode
   extraParams?: string
+  testWaitSeconds?: import('./model-test').ModelTestWaitSeconds
+  lastTestOutcome?: import('./model-test').ModelTestOutcome
   status?: number
   testStatus?: number
   lastTestAt?: string

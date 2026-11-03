@@ -1,6 +1,7 @@
 import { initialRunControl, readRunControl, changeRunControl, allowsTaskContinuation, RUN_CONTROL_EVENT } from '@/agent-pi/run-control'
 import type { PiRunControl, PiRunControlChange } from '@/types/agent-pi'
 import { toolOperation } from '@/agent-pi/tool-summaries'
+import { draftIdFromResult } from '@/agent-pi/draft-references'
 import { piErrorMessage } from '@/agent-pi/errors'
 import { receivePiRetry } from '@/agent-pi/conversation'
 import '@/agent-pi/task-providers'
@@ -488,12 +489,7 @@ export const usePiWorkspace = defineStore('agent-pi-workspace', () => {
       }
       if (event.toolName === 'plan_chapters' && !event.isError)
         window.dispatchEvent(new CustomEvent('ew-writing-catalog-refresh'))
-      if (
-        ['save_draft', 'save_skill_draft', 'save_new_chapter_draft', 'save_outline_draft', 'save_creation_draft'].includes(
-          event.toolName || ''
-        ) &&
-        !event.isError
-      ) {
+      if (!event.isError && draftIdFromResult(event.result?.details)) {
         void reloadChatDrafts(chat).catch(cause => fail(cause, chat))
       }
     }

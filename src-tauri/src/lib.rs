@@ -31,6 +31,9 @@ mod story_extraction;
 mod background_process;
 mod book_replace;
 mod desktop_pet;
+mod desktop_update;
+#[cfg(all(test, feature = "local-tests"))]
+mod desktop_update_tests;
 mod pi_host;
 mod story_index;
 mod book_notes;
@@ -1178,6 +1181,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            desktop_update::check_desktop_update,
             speech_signing::speech_digest,
             book_replace::replace_book_chapters,
             desktop_pet::desktop_pet,

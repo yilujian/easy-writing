@@ -1,5 +1,6 @@
 import groups from '../../agent-pi/contracts/tool-groups.json'
 import { entitySpecs } from './creation'
+import { draftIdFromResult } from './draft-references'
 import type { PiEntityKind, PiMessage } from '@/types/agent-pi'
 
 type Group = { selector: string; default: string; operations: Record<string, string> }
@@ -228,6 +229,7 @@ export function summarizeToolResult(tool: string | undefined, message: Pick<PiMe
   const data = parseJson(text)
   if (isRec(data) && data.supersededByAuthorInput === true) return str(data.status)
   if (isRec(data) && data.draftSubmitted === false && data.message) return clip(str(data.message))
+  if (draftIdFromResult(data)) return draftResult(data)
   const summary = data === undefined ? '' : BY_TOOL[tool || '']?.(data) || ''
   if (summary) return summary
   // 没有登记的结构化结果不截 JSON 给作者看。

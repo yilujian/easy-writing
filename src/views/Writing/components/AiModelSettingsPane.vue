@@ -149,26 +149,27 @@
                 />
               </td>
               <td>
-                <span class="status-pill" :class="getTestClass(model.testStatus)">
-                  {{ getTestLabel(model.testStatus) }}
+                <span v-if="rowTest(model.id)?.running" class="model-test-running">
+                  <el-icon class="is-loading"><Loading /></el-icon>
+                  {{ elapsedText(rowTest(model.id)?.progress.elapsedMs || 0) }}
                 </span>
-                <small v-if="model.lastLatency">{{ model.lastLatency }}ms</small>
+                <el-tag v-else size="small" effect="plain" :type="getTestClass(model)">{{ getTestLabel(model) }}</el-tag>
+                <small v-if="!rowTest(model.id)?.running && (rowTest(model.id)?.result || model.lastLatency)">{{ durationText(rowTest(model.id)?.result?.latency ?? model.lastLatency ?? 0) }}</small>
               </td>
               <td class="url-cell">
                 <span class="url-text" :title="model.baseUrl || ''">{{ model.baseUrl || '-' }}</span>
                 <!-- 报错单独挂 title：单元格被 nowrap 截断，悬浮时要能看到完整错误而不是外层的地址 -->
-                <small v-if="model.lastError" class="error-text" :title="model.lastError">{{ model.lastError }}</small>
+                <small v-if="model.lastError && !rowTest(model.id)?.running && rowTest(model.id)?.result?.outcome !== 'cancelled'" class="error-text" :class="{ 'test-warning': ['timeout', 'unverified'].includes(model.lastTestOutcome || '') }" :title="model.lastError">{{ model.lastError }}</small>
               </td>
               <td>
                 <div class="row-actions">
-                  <button type="button" :disabled="testingRowId === model.id" @click="testRowModel(model)">
-                    {{ testingRowId === model.id ? '测试中' : '测试' }}
-                  </button>
-                  <button type="button" @click="editModel(model)">编辑</button>
-                  <button type="button" @click="toggleStatus(model)">
+                  <el-button v-if="!rowTest(model.id)?.running" link type="primary" @click="testRowModel(model)">测试</el-button>
+                  <el-button v-if="rowTest(model.id)?.running" link type="primary" @click="cancelTest(model.id)">取消测试</el-button>
+                  <el-button link @click="editModel(model)">编辑</el-button>
+                  <el-button link @click="toggleStatus(model)">
                     {{ model.status === 1 ? '禁用' : '启用' }}
-                  </button>
-                  <button type="button" class="danger" @click="deleteModel(model)">删除</button>
+                  </el-button>
+                  <el-button link type="danger" @click="deleteModel(model)">删除</el-button>
                 </div>
               </td>
             </tr>
@@ -338,50 +339,69 @@
           </div>
         </div>
 
-        <!-- 连接测试结果：一条状态条，不再单独占一张卡 -->
-        <div class="test-result" :class="testResultClass">
-          <div class="test-icon">
-            <i v-if="testingCurrent" class="fa-solid fa-spinner fa-spin"></i>
-            <i v-else-if="testResult?.ok" class="fa-solid fa-check"></i>
-            <i v-else-if="testResult" class="fa-solid fa-xmark"></i>
-            <i v-else class="fa-solid fa-signal"></i>
-          </div>
-          <div class="test-body">
-            <strong>{{ testResultTitle }}</strong>
-            <span :title="testResultMessage">{{ testResultMessage }}</span>
-          </div>
-          <dl v-if="testResult" class="test-meta">
-            <div>
-              <dt>耗时</dt>
-              <dd>{{ testResult.latency ? `${testResult.latency}ms` : '-' }}</dd>
-            </div>
-            <div>
-              <dt>时间</dt>
-              <dd>{{ testResult.testedAt || '-' }}</dd>
-            </div>
-            <div class="test-meta-url">
-              <dt>地址</dt>
-              <dd :title="testResult.url || form.baseUrl">{{ testResult.url || form.baseUrl || '-' }}</dd>
-            </div>
-          </dl>
-        </div>
+        <el-collapse v-if="form.scene === 'text'" v-model="advancedOpen" class="model-test-advanced">
+          <el-collapse-item title="高级设置" name="test-wait">
+            <label class="field model-test-wait">
+              <span>等待模型开始回复</span>
+              <el-select v-model="selectedTestWait" aria-label="等待模型开始回复" size="small" popper-class="ai-model-select-popper">
+                <el-option label="2 分钟" :value="120" />
+                <el-option label="5 分钟" :value="300" />
+                <el-option label="10 分钟" :value="600" />
+              </el-select>
+              <small>仅影响连接测试。云端默认 2 分钟，本地默认 5 分钟。</small>
+            </label>
+          </el-collapse-item>
+        </el-collapse>
       </div>
 
       <template #footer>
-        <div class="composer-footer">
-          <el-switch v-model="modelEnabled" active-text="启用" inactive-text="禁用" />
-          <div class="form-actions">
-            <button class="ink-btn ink-btn-outline" type="button" @click="closeComposer">取消</button>
-            <button class="ink-btn ink-btn-outline" type="button" :disabled="testingCurrent" @click="testCurrentModel">
-              <i v-if="testingCurrent" class="fa-solid fa-spinner fa-spin"></i>
-              <i v-else class="fa-solid fa-plug-circle-check"></i>
-              测试连接
-            </button>
-            <button class="ink-btn ink-btn-primary" type="button" :disabled="saving" @click="saveModel">
-              <i v-if="saving" class="fa-solid fa-spinner fa-spin"></i>
-              <i v-else class="fa-solid fa-floppy-disk"></i>
-              {{ editingId ? '保存修改' : '保存模型' }}
-            </button>
+        <div class="composer-test-footer">
+          <div class="test-result" :class="testResultClass">
+            <div class="test-icon" aria-hidden="true">
+              <el-icon v-if="testingCurrent" class="is-loading"><Loading /></el-icon>
+              <i v-else-if="testResult?.ok" class="fa-solid fa-check"></i>
+              <i v-else-if="testResult?.outcome === 'cancelled'" class="fa-solid fa-minus"></i>
+              <i v-else-if="testResult" class="fa-solid fa-xmark"></i>
+              <i v-else class="fa-solid fa-signal"></i>
+            </div>
+            <div class="test-body">
+              <strong role="status" aria-live="polite">{{ testResultTitle }}</strong>
+              <span :title="testResultMessage">{{ testResultMessage }}</span>
+              <el-text v-if="testResult?.reply" :line-clamp="2" class="model-test-reply">模型回复：{{ testResult.reply }}</el-text>
+            </div>
+            <dl v-if="testResult" class="test-meta">
+              <div v-if="form.scene === 'text'">
+                <dt>Token 用量</dt>
+                <dd>{{ testResult.inputTokens != null && testResult.outputTokens != null ? testResult.inputTokens + testResult.outputTokens : '未获取' }}</dd>
+              </div>
+              <div>
+                <dt>耗时</dt>
+                <dd>{{ durationText(testResult.latency) }}</dd>
+              </div>
+              <div>
+                <dt>时间</dt>
+                <dd>{{ testedTimeText(testResult.testedAt) }}</dd>
+              </div>
+              <div class="test-meta-url">
+                <dt>地址</dt>
+                <dd :title="testResult.url || form.baseUrl">{{ testResult.url || form.baseUrl || '-' }}</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="composer-footer">
+            <el-switch v-model="modelEnabled" active-text="启用" inactive-text="禁用" />
+            <div class="form-actions">
+              <el-button class="ink-btn ink-btn-outline" @click="closeComposer">关闭</el-button>
+              <el-button class="ink-btn ink-btn-outline" :disabled="testingCurrent" :loading="testingCurrent" @click="testCurrentModel">
+                <i v-if="!testingCurrent" class="fa-solid fa-plug-circle-check" aria-hidden="true"></i>
+                测试连接
+              </el-button>
+              <el-button v-if="testingCurrent" class="ink-btn ink-btn-outline" @click="cancelTest(editingId)">取消测试</el-button>
+              <el-button class="ink-btn ink-btn-primary" type="primary" :loading="saving" @click="saveModel">
+                <i v-if="!saving" class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                {{ editingId ? '保存修改' : '保存模型' }}
+              </el-button>
+            </div>
           </div>
         </div>
       </template>
@@ -390,8 +410,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, markRaw, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import type { ModelTestProgress } from '@/types/model-test'
+import { modelTestWaitSeconds } from '@/utils/model-test-policy'
+import { persistModelTestResult } from '@/utils/model-connection-test'
 import EwModal from '@/components/EwModal/index.vue'
 import { inkConfirm } from '@/utils/ink-confirm'
 import { showApiError } from '@/utils/api-error'
@@ -401,7 +425,6 @@ import { AI_MODEL_GROUPS, type AiModelGroupCode, type AiModelOption } from '@/ty
 import {
   deleteLocalAiModel as deleteUserAiModelApi,
   listLocalAiModels as getUserAiModelsApi,
-  recordLocalAiModelTest,
   saveLocalAiModel as saveUserAiModelApi,
   setLocalAiModelStatus as setUserAiModelStatusApi,
 } from '@/storage/local-ai-models'
@@ -502,8 +525,6 @@ const composerOpen = ref(false)
 const aiModelStore = useAiModelStore()
 const loading = ref(false)
 const saving = ref(false)
-const testingCurrent = ref(false)
-const testingRowId = ref<number | null>(null)
 const togglingRowId = ref<number | null>(null)
 const remoteModelLoading = ref(false)
 const remoteModelPanelVisible = ref(false)
@@ -513,7 +534,51 @@ const models = ref<AiModelOption[]>([])
 const remoteModels = ref<string[]>([])
 const keyword = ref('')
 const statusFilter = ref<'all' | 'enabled' | 'disabled'>('all')
-const testResult = ref<UserAiModelTestResult | null>(null)
+interface TestState {
+  controller: AbortController
+  progress: ModelTestProgress
+  running: boolean
+  result: UserAiModelTestResult | null
+}
+const tests = reactive(new Map<string, TestState>())
+const testKey = (id: number | null | undefined) => id == null ? 'composer' : `model:${id}`
+const currentTest = computed(() => tests.get(testKey(editingId.value)))
+const testingCurrent = computed(() => !!currentTest.value?.running)
+const testResult = computed(() => currentTest.value?.result ?? null)
+const advancedOpen = ref<string[]>([])
+let mounted = true
+const rowTest = (id: number) => tests.get(testKey(id))
+const elapsedText = (ms: number) => `已等待 ${Math.floor(ms / 1000)} 秒`
+const durationText = (ms: number) => `${(ms / 1000).toFixed(1)} 秒`
+const testedTimeText = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
+function cancelTest(id: number | null | undefined) { tests.get(testKey(id))?.controller.abort() }
+function resetCurrentTest() {
+  cancelTest(editingId.value)
+  tests.delete(testKey(editingId.value))
+}
+async function runTest(payload: Partial<UserAiModelSavePayload>) {
+  const key = testKey(payload.id)
+  if (tests.get(key)?.running) return
+  const state = reactive<TestState>({ controller: markRaw(new AbortController()), progress: { phase: 'waiting', elapsedMs: 0 }, running: true, result: null })
+  tests.set(key, state)
+  try {
+    const { data } = await testUserAiModelApi(payload, {
+      signal: state.controller.signal,
+      onProgress: progress => { if (tests.get(key) === state) state.progress = progress }
+    })
+    if (!mounted || tests.get(key) !== state) return
+    state.result = data
+    if (data.outcome === 'cancelled') ElMessage.info('已取消测试')
+    else if (data.ok) ElMessage.success(data.message)
+    else if (data.outcome === 'timeout' || data.outcome === 'unverified') ElMessage.warning(data.message)
+    else ElMessage.error(data.message)
+    await refreshModels()
+  } catch (error) {
+    if (mounted && tests.get(key) === state) showApiError(error, '模型测试未完成')
+  } finally {
+    state.running = false
+  }
+}
 
 /** 新增态的默认供应商：表单初值与重置都从这条预设取，保证与预设卡片一致 */
 const DEFAULT_PRESET = providerPresets[0]
@@ -532,6 +597,12 @@ const form = reactive<UserAiModelSavePayload>({
   sort: 0,
   thinking: DEFAULT_PRESET.thinking,
   extraParams: '',
+  testWaitSeconds: undefined,
+})
+
+const selectedTestWait = computed({
+  get: () => modelTestWaitSeconds(form),
+  set: (value: 120 | 300 | 600) => { form.testWaitSeconds = value }
 })
 
 const modelEnabled = computed({
@@ -600,21 +671,23 @@ const filteredModels = computed(() => {
   })
 })
 
-const testResultClass = computed(() => {
-  if (testingCurrent.value) return 'testing'
-  if (!testResult.value) return 'idle'
-  return testResult.value.ok ? 'success' : 'error'
-})
+const testResultClass = computed(() => testingCurrent.value ? 'testing' : !testResult.value || testResult.value.outcome === 'cancelled' ? 'idle' : testResult.value.ok ? 'success' : ['timeout', 'unverified'].includes(testResult.value.outcome || '') ? 'warning' : 'error')
 
 const testResultTitle = computed(() => {
   if (testingCurrent.value) return '正在测试'
   if (!testResult.value) return '等待测试'
-  return testResult.value.ok ? '连接成功' : '连接失败'
+  if (testResult.value.outcome === 'cancelled') return '已取消测试'
+  if (testResult.value.outcome === 'timeout') return '等待超时'
+  if (testResult.value.outcome === 'unverified') return '尚未验证通过'
+  return testResult.value.ok ? (testResult.value.outcome === 'reachable' ? '服务检查完成' : '测试成功') : '测试未通过'
 })
 
 const testResultMessage = computed(() => {
-  if (testingCurrent.value) return '正在请求供应商接口'
-  if (!testResult.value) return '保存前可先测试当前配置'
+  if (testingCurrent.value) {
+    const phase = currentTest.value?.progress.phase
+    return `${form.scene === 'image' ? '正在检查模型列表' : phase === 'thinking' ? '模型正在思考' : phase === 'receiving' ? '正在接收模型回复' : '等待模型回复'}，${elapsedText(currentTest.value?.progress.elapsedMs || 0)}`
+  }
+  if (!testResult.value) return form.scene === 'image' ? '仅检查模型列表，不生成图片，不验证生图效果' : '请求一句简短回复，可能产生少量模型用量'
   return testResult.value.message
 })
 
@@ -625,6 +698,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeRemoteModelPanelOnOutside)
+  mounted = false
+  for (const test of tests.values()) test.controller.abort()
+  tests.clear()
 })
 
 const applyProvider = (preset: ProviderPreset) => {
@@ -633,7 +709,7 @@ const applyProvider = (preset: ProviderPreset) => {
   form.maxContext = preset.maxContext
   form.maxOutputTokens = preset.maxOutputTokens
   form.thinking = preset.thinking
-  testResult.value = null
+  resetCurrentTest()
   clearRemoteModels()
 }
 
@@ -651,13 +727,17 @@ const refreshModels = async () => {
 }
 
 const saveModel = async () => {
+  if (saving.value) return
   if (!validateForm()) return
   saving.value = true
   try {
     const payload = buildPayload()
+    const completed = testResult.value ? toRaw(testResult.value) : null
+    resetCurrentTest()
     const wasEditing = Boolean(editingId.value)
     const sceneHadNone = !models.value.some(model => model.scene === payload.scene && model.status === 1)
-    await saveUserAiModelApi(payload)
+    const saved = await saveUserAiModelApi(payload)
+    if (completed) await persistModelTestResult(saved.data.id, completed).catch(error => console.warn('模型已保存，测试结果记录失败', error))
     // 保存即关弹窗回到列表，刚存的那条在列表里、默认模型里都能看到。
     // 之前保存后表单仍处于该条的编辑态，用户接着改再点保存，就把上一条悄悄覆盖了。
     // 要改已保存的模型，从列表点「编辑」显式进入。
@@ -677,54 +757,12 @@ const saveModel = async () => {
   }
 }
 
-/** 测试结果写回本地库，否则列表"测试"列永远是未测试（旧服务端是在 test 接口里顺手更新的） */
-const persistTestResult = async (id: number | null | undefined, data: UserAiModelTestResult | null | undefined) => {
-  if (!id || !data) return
-  try {
-    await recordLocalAiModelTest(id, data)
-  } catch (error) {
-    console.warn('记录模型测试结果失败', error)
-  }
-}
-
 const testCurrentModel = async () => {
   if (!validateForm()) return
-  testingCurrent.value = true
-  try {
-    const { data } = await testUserAiModelApi(buildPayload())
-    testResult.value = data || null
-    if (data?.ok) {
-      ElMessage.success('连接成功')
-    } else {
-      ElMessage.error(data?.message || '连接失败')
-    }
-    await persistTestResult(editingId.value, data)
-    await refreshModels()
-  } catch (error) {
-    showApiError(error, '连接测试失败')
-  } finally {
-    testingCurrent.value = false
-  }
+  await runTest(buildPayload())
 }
 
-const testRowModel = async (model: AiModelOption) => {
-  testingRowId.value = model.id
-  try {
-    const { data } = await testUserAiModelApi({ id: model.id })
-    testResult.value = data || null
-    if (data?.ok) {
-      ElMessage.success('连接成功')
-    } else {
-      ElMessage.error(data?.message || '连接失败')
-    }
-    await persistTestResult(model.id, data)
-    await refreshModels()
-  } catch (error) {
-    showApiError(error, '连接测试失败')
-  } finally {
-    testingRowId.value = null
-  }
-}
+const testRowModel = (model: AiModelOption) => runTest({ id: model.id })
 
 const fetchRemoteModels = async () => {
   // 模型列表由服务端代理拉取，输入框仍保留手动填写能力。
@@ -765,6 +803,8 @@ const closeRemoteModelPanelOnOutside = (event: MouseEvent) => {
 }
 
 const editModel = (model: AiModelOption) => {
+  resetCurrentTest()
+  advancedOpen.value = []
   editingId.value = model.id
   form.name = model.name || ''
   form.scene = model.scene === 'image' ? 'image' : 'text'
@@ -777,8 +817,9 @@ const editModel = (model: AiModelOption) => {
   form.maxOutputTokens = Number(model.maxOutputTokens || 8192)
   form.thinking = model.thinking || 'default'
   form.extraParams = model.extraParams || ''
+  form.testWaitSeconds = model.testWaitSeconds
   form.status = model.status === 0 ? 0 : 1
-  testResult.value = null
+  resetCurrentTest()
   clearRemoteModels()
   composerOpen.value = true
 }
@@ -808,6 +849,8 @@ const deleteModel = async (model: AiModelOption) => {
     return
   }
   try {
+    cancelTest(model.id)
+    tests.delete(testKey(model.id))
     await deleteUserAiModelApi(model.id)
     ElMessage.success('模型已删除')
     if (editingId.value === model.id) closeComposer()
@@ -818,6 +861,8 @@ const deleteModel = async (model: AiModelOption) => {
 }
 
 const resetForm = () => {
+  resetCurrentTest()
+  advancedOpen.value = []
   editingId.value = null
   form.name = ''
   form.scene = 'text'
@@ -832,7 +877,8 @@ const resetForm = () => {
   form.sort = 0
   form.thinking = DEFAULT_PRESET.thinking
   form.extraParams = ''
-  testResult.value = null
+  form.testWaitSeconds = undefined
+  resetCurrentTest()
   clearRemoteModels()
 }
 
@@ -851,6 +897,14 @@ const buildPayload = (): UserAiModelSavePayload => ({
   sort: Number(form.sort || 0),
   thinking: form.thinking || 'default',
   extraParams: form.extraParams?.trim() || '',
+  testWaitSeconds: form.testWaitSeconds,
+})
+
+watch(() => [form.provider, form.baseUrl, form.modelCode, form.apiKey, form.scene, form.thinking, form.extraParams, form.maxOutputTokens, form.testWaitSeconds], () => {
+  if (!composerOpen.value) return
+  const running = testingCurrent.value
+  resetCurrentTest()
+  if (running) ElMessage.info('配置已修改，旧测试已取消')
 })
 
 const buildRemoteModelPayload = (): Partial<UserAiModelSavePayload> => ({
@@ -968,16 +1022,26 @@ const getSelectedModelIcon = (groupCode: AiModelGroupCode) => {
   return getModelProviderIcon(getSelectedModel(groupCode))
 }
 
-const getTestLabel = (status?: number) => {
+const getTestLabel = (model: AiModelOption) => {
+  const outcome = rowTest(model.id)?.result?.outcome || model.lastTestOutcome
+  if (outcome === 'cancelled') return '已取消'
+  if (outcome === 'timeout') return '等待超时'
+  if (outcome === 'unverified') return '未验证'
+  if (outcome === 'success') return '已回复'
+  const status = model.testStatus
   if (status === 1) return '已连接'
   if (status === 2) return '失败'
   return '未测试'
 }
 
-const getTestClass = (status?: number) => {
+const getTestClass = (model: AiModelOption) => {
+  const outcome = rowTest(model.id)?.result?.outcome || model.lastTestOutcome
+  if (outcome === 'cancelled') return 'info'
+  if (outcome === 'timeout' || outcome === 'unverified') return 'warning'
+  const status = model.testStatus
   if (status === 1) return 'success'
-  if (status === 2) return 'error'
-  return 'idle'
+  if (status === 2) return 'danger'
+  return 'info'
 }
 </script>
 
@@ -1317,7 +1381,23 @@ const getTestClass = (status?: number) => {
   display: flex;
   align-items: center;
   gap: 8px;
+
+  .el-button + .el-button { margin-left: 0; }
 }
+
+.row-actions .el-button + .el-button { margin-left: 0; }
+.model-test-running { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--ink-sec); font-variant-numeric: tabular-nums; }
+.model-table .test-warning { color: var(--state-warning-on); }
+.model-test-advanced {
+  --el-collapse-header-bg-color: transparent;
+  --el-collapse-content-bg-color: transparent;
+  --el-collapse-border-color: var(--input-border);
+  --el-collapse-header-text-color: var(--ink-main);
+  --el-collapse-content-text-color: var(--ink-sec);
+}
+.model-test-wait { max-width: 360px; padding: 4px 0 0; }
+.model-test-wait small { color: var(--ink-sec); line-height: 1.6; }
+.model-test-reply { color: var(--ink-main); align-self: flex-start; }
 
 .compact-btn {
   min-height: 30px;
@@ -1348,7 +1428,8 @@ const getTestClass = (status?: number) => {
     color: var(--state-danger-on);
   }
 
-  &.testing {
+  &.testing,
+  &.warning {
     border-color: var(--state-warning-border);
     background: var(--state-warning-surface);
     color: var(--state-warning-on);
@@ -1387,6 +1468,9 @@ const getTestClass = (status?: number) => {
 
   span {
     font-size: calc(12px * var(--ui-font-scale, 1));
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
   }
 }
 
@@ -1952,6 +2036,8 @@ const getTestClass = (status?: number) => {
     color: var(--settings-muted-color, var(--ink-sec));
   }
 }
+
+.composer-test-footer { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 
 .composer-footer {
   width: 100%;
