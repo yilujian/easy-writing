@@ -72,3 +72,7 @@ dispatch2 = "0.3.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# 统一修正本机 HTTP 请求的系统代理路由，保留插件权限、流式和取消实现。
+[patch.crates-io]
+tauri-plugin-http = { path = "vendor/tauri-plugin-http" }
