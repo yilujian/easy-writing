@@ -299,6 +299,7 @@ import { CATEGORY_TAG_MAP } from '@/utils/constants'
 import { useThemeStore } from '@/stores/theme'
 import { getLocalLibraryStorage } from '@/storage/local-library'
 import { readLastListeningBook } from '@/storage/listening-position'
+import { useListeningStore } from '@/stores/listening'
 
 const wordCounter = useWordCount()
 
@@ -403,8 +404,8 @@ const fetchBooks = async () => {
 }
 
 const refreshBooks = async () => {
-  // 分组与书籍列表并行拉取，缩短首屏等待
-  await Promise.all([fetchGroups(), fetchBooks()])
+  // 分组、书籍列表与继续听入口一起刷新，删除/恢复后不能留下旧入口。
+  await Promise.all([fetchGroups(), fetchBooks(), refreshContinueBook()])
 }
 
 const handleSaveSuccess = async (book?: Book) => {
@@ -430,8 +431,10 @@ const handleDelete = (work: Book) => {
     .then(async () => {
       try {
         await localLibrary.softDeleteLocalBook([work.id])
+        const listeningStore = useListeningStore()
+        if (String(listeningStore.book?.id) === String(work.id)) listeningStore.endSession()
         ElMessage.success('删除成功')
-        refreshBooks()
+        await refreshBooks()
       } catch (error) {
         console.error('删除失败:', error)
       }
@@ -463,31 +466,40 @@ const handleGroupDeleted = (groupId: string) => {
 }
 
 const continueBook = ref<Book | null>(null)
+let continueFetchSeq = 0
 
 const refreshContinueBook = async () => {
+  const seq = ++continueFetchSeq
   const id = Number(readLastListeningBook())
   if (!Number.isFinite(id) || !id) {
     continueBook.value = null
     return
   }
   try {
-    const detail = await getLocalLibraryStorage().getLocalBookDetail(id)
-    continueBook.value = detail ? detail as Book : null
+    const detail = await localLibrary.getLocalBookDetail(id)
+    if (seq !== continueFetchSeq) return
+    // 详情接口也供回收站使用，会返回软删除记录；听书入口须单独排除。
+    continueBook.value = detail && !detail.deletedAt ? detail : null
+    if (!continueBook.value) {
+      const listeningStore = useListeningStore()
+      if (String(listeningStore.book?.id) === String(id)) listeningStore.endSession()
+    }
   } catch {
-    continueBook.value = null
+    if (seq === continueFetchSeq) continueBook.value = null
   }
 }
 
-const continueListening = () => {
+const continueListening = async () => {
+  // 按钮显示后作品仍可能被删除，不能只信任页面缓存。
+  await refreshContinueBook()
   const id = continueBook.value?.id
   if (!id) return
-  router.push({ name: 'Listen', params: { bookId: id } })
+  void router.push({ name: 'Listen', params: { bookId: id } })
 }
 
 // 初始化：先并行拉列表与分组渲染首屏，认领检测在列表就绪后异步执行
 onMounted(() => {
   void refreshBooks()
-  void refreshContinueBook()
   if (route.query.create === '1' || route.query.create === 'true') {
     handleCreate()
     const nextQuery = { ...route.query }
