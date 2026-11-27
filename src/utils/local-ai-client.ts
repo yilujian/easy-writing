@@ -648,6 +648,7 @@ export const generateLocalAiImageRequest = async (options: {
     const aiFetch = await resolveAiFetch()
     const response = await aiFetch(joinAiUrl(model.baseUrl, 'images/generations'), {
       method: 'POST',
+      redirect: isH3 ? 'error' : undefined,
       signal: controller.signal,
       headers: buildAuthHeaders(model.apiKey),
       body: JSON.stringify({
