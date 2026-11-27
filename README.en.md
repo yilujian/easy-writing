@@ -86,6 +86,8 @@ The app checks GitHub for new releases at most once a day and shows a notificati
 2. For AI features: sidebar → **Model Manager** → pick a provider preset → paste your own API key → test → save, then set it as the default model.
 3. To customize prompts: sidebar → **Prompt Manager**; every scene is editable and restorable.
 
+For MiniMax H3 cover and illustration generation, add an image model in **Model Manager**. Enter `MiniMax-H3-Image` or `MiniMax-H3-Image-Highspeed` and the base URL for your API key's region (`https://api.minimax.io/v1` for global keys or `https://api.minimax.cn/v1` for mainland China keys). Select the saved image model for artwork.
+
 ## Where data lives
 
 - **Desktop**: a SQLite database inside the app data directory; automatic backups (txt + json) and prompt Markdown files live in your Documents folder.
