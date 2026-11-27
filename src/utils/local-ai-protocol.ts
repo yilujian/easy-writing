@@ -13,6 +13,7 @@ export const resolveAiFetch = async (): Promise<FetchLike> => {
     return (input, init) =>
       tauriFetch(input, {
         ...init,
+        ...(init?.redirect === 'error' ? { maxRedirections: 0 } : {}),
         headers: { Origin: '', ...(init?.headers as Record<string, string> | undefined) }
       })
   }

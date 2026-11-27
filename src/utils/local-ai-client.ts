@@ -576,6 +576,13 @@ export const listLocalAiRemoteModels = async (
 
 // 生图是长任务：gpt-image 常规 70~120s，给足 5 分钟；超时文案单独给
 const IMAGE_TIMEOUT_MS = 300_000
+const H3_IMAGE_TIMEOUT_MS = 600_000
+
+interface GeneratedImage {
+  b64_json?: string
+  url?: string
+  error?: { code?: string; message?: string }
+}
 
 export interface LocalAiImageResult {
   /** 优先：图片二进制（b64 响应或 url 已成功回捞） */
@@ -609,6 +616,8 @@ export const generateLocalAiImageRequest = async (options: {
   }
   const petActivity = beginPetActivity(options.sceneLabel ? `正在${options.sceneLabel}…` : 'AI 正在处理…')
   const startedAt = Date.now()
+  const isH3 = model.modelCode === 'MiniMax-H3-Image' || model.modelCode === 'MiniMax-H3-Image-Highspeed'
+  const timeoutMs = isH3 ? H3_IMAGE_TIMEOUT_MS : IMAGE_TIMEOUT_MS
   const recordImage = (status: 0 | 1, errorMsg?: string) =>
     recordAiCall({
       recordType: 'image',
@@ -628,7 +637,7 @@ export const generateLocalAiImageRequest = async (options: {
   const timer = window.setTimeout(() => {
     timedOut = true
     controller.abort()
-  }, IMAGE_TIMEOUT_MS)
+  }, timeoutMs)
   const onCallerAbort = () => controller.abort()
   if (options.signal) {
     if (options.signal.aborted) controller.abort()
@@ -639,6 +648,7 @@ export const generateLocalAiImageRequest = async (options: {
     const aiFetch = await resolveAiFetch()
     const response = await aiFetch(joinAiUrl(model.baseUrl, 'images/generations'), {
       method: 'POST',
+      redirect: isH3 ? 'error' : undefined,
       signal: controller.signal,
       headers: buildAuthHeaders(model.apiKey),
       body: JSON.stringify({
@@ -647,13 +657,17 @@ export const generateLocalAiImageRequest = async (options: {
         n: 1,
         response_format: 'b64_json',
         ...(options.size ? { size: options.size } : {}),
-        ...(options.quality ? { quality: options.quality } : {}),
+        ...(isH3 ? { output_format: 'png' } : options.quality ? { quality: options.quality } : {}),
       }),
     })
     if (!response.ok) throw new Error(await readableHttpError(response))
     const body = await response.json()
     if (body?.error?.message) throw new Error(String(body.error.message))
-    const item = body?.data?.[0] || {}
+    const images: GeneratedImage[] = Array.isArray(body?.data) ? body.data : []
+    const item = (isH3 && images.find(image => !image?.error && (image?.b64_json || image?.url))) || images[0] || {}
+    if (isH3 && item.error) {
+      throw new Error(String(item.error.message || item.error.code || 'Image generation failed'))
+    }
     const b64 = String(item.b64_json || '')
     if (b64) {
       const blob = base64ToBlob(b64)
@@ -677,11 +691,14 @@ export const generateLocalAiImageRequest = async (options: {
       return { remoteUrl: url }
     }
   } catch (error) {
-    const readable = isAbortError(error)
+    const cause = isH3 && timedOut
+      ? new Error(`Image generation timed out after ${timeoutMs / 1000} seconds. The request may still complete.`)
+      : error
+    const readable = isAbortError(cause)
       ? timedOut
         ? new Error(`生图超时（${IMAGE_TIMEOUT_MS / 1000} 秒无结果），请重试`)
         : new DOMException('The operation was aborted.', 'AbortError')
-      : new Error(readableRequestError(error))
+      : new Error(readableRequestError(cause))
     if (!(readable instanceof DOMException)) recordImage(0, readable.message)
     if (readable instanceof DOMException && readable.name === 'AbortError') petActivity.cancel()
     else petActivity.error()
